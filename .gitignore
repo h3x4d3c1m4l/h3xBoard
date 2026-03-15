@@ -46,3 +46,12 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.chopper.dart
+*.gr.dart
+
+# l10n
+lib/l10n/generated/
