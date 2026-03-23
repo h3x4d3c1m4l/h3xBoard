@@ -22,12 +22,14 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
         spacing: 8,
         children: [
           const ToolToolbar(),
-          Row(
-            spacing: 8,
-            children: [
-              DrawingToolbar(),
-              Flexible(child: Board()),
-            ],
+          Flexible(
+            child: Row(
+              spacing: 8,
+              children: [
+                DrawingToolbar(),
+                Flexible(child: Board(drawingController: controller.drawingController)),
+              ],
+            ),
           ),
         ],
       ),
