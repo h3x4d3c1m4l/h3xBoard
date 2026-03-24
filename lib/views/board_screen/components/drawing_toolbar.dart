@@ -4,7 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 class DrawingToolbar extends StatelessWidget {
 
-  final Color activeColor;
+  final Color? activeColor;
   final ValueChanged<Color> onColorButtonPressed;
 
   const DrawingToolbar({super.key, required this.activeColor, required this.onColorButtonPressed});

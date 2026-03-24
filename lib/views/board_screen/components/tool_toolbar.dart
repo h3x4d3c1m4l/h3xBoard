@@ -3,17 +3,22 @@ import 'package:h3xboard/views/board_screen/components/toggle_button_toolbar.dar
 import 'package:h3xboard/views/board_screen/components/tool_button.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+enum EditTool { pen, eraser, addWidget }
+
 class ToolToolbar extends StatelessWidget {
 
-  const ToolToolbar({super.key});
+  final EditTool activeTool;
+  final ValueChanged<EditTool> onToolButtonPressed;
+
+  const ToolToolbar({super.key, required this.activeTool, required this.onToolButtonPressed});
 
   @override
   Widget build(BuildContext context) {
     return ToggleButtonToolbar(
       buttons: [
-        ToolButton(icon: LucideIcons.pen, title: 'Draw', checked: true, onPressed: () {}),
-        ToolButton(icon: LucideIcons.eraser, title: 'Erase', checked: false, onPressed: () {}),
-        ToolButton(icon: LucideIcons.ellipsis, title: 'Widgets', checked: false, onPressed: () {}),
+        ToolButton(icon: LucideIcons.pen, title: 'Draw', checked: activeTool == .pen, onPressed: () => onToolButtonPressed(.pen)),
+        ToolButton(icon: LucideIcons.eraser, title: 'Erase', checked: activeTool == .eraser, onPressed: () => onToolButtonPressed(.eraser)),
+        ToolButton(icon: LucideIcons.ellipsis, title: 'Widgets', checked: activeTool == .addWidget, onPressed: () => onToolButtonPressed(.addWidget)),
       ],
     );
   }
