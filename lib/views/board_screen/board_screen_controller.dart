@@ -1,7 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
+import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
+import 'package:h3xboard/views/board_screen/components/tool_toolbar.dart';
 
 class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
@@ -23,8 +25,28 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   }
 
   void onColorButtonPressed(Color value) {
-    viewModel.setActiveColor(value);
-    drawingController.setStyle(color: value);
+    viewModel
+      ..setActiveColor(value)
+      ..setActiveTool(.pen);
+    drawingController
+      ..setPaintContent(SimpleLine())
+      ..setStyle(color: value);
+  }
+
+  void onToolButtonPressed(EditTool value) {
+    switch (value) {
+      case .pen:
+        if (viewModel.activeColor == null) {
+          viewModel.setActiveColor(viewModel.lastActiveColor);
+        }
+        drawingController.setPaintContent(SimpleLine());
+      case .eraser:
+        viewModel.setActiveColor(null);
+        drawingController.setPaintContent(Eraser());
+      case .addWidget:
+    }
+
+    viewModel.setActiveTool(value);
   }
 
 }
