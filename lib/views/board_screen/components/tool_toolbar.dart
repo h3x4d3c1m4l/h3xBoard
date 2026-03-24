@@ -11,8 +11,8 @@ class ToolToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     return ToggleButtonToolbar(
       buttons: [
-        ToolButton(icon: LucideIcons.pen, title: 'Draw', checked: false, onPressed: () {}),
-        ToolButton(icon: LucideIcons.eraser, title: 'Erase', checked: true, onPressed: () {}),
+        ToolButton(icon: LucideIcons.pen, title: 'Draw', checked: true, onPressed: () {}),
+        ToolButton(icon: LucideIcons.eraser, title: 'Erase', checked: false, onPressed: () {}),
         ToolButton(icon: LucideIcons.ellipsis, title: 'Widgets', checked: false, onPressed: () {}),
       ],
     );
