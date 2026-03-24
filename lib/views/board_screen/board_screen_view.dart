@@ -26,7 +26,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
             child: Row(
               spacing: 8,
               children: [
-                DrawingToolbar(),
+                DrawingToolbar(activeColor: viewModel.activeColor, onColorButtonPressed: controller.onColorButtonPressed),
                 Flexible(child: Board(drawingController: controller.drawingController)),
               ],
             ),
