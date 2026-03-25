@@ -16,7 +16,7 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   Color _lastActiveColor = Colors.black;
 
   @readonly
-  EditTool _activeTool = .pen;
+  SelectableEditTool _activeTool = .pen;
 
   BoardScreenViewModelBase({
     required super.contextAccessor,
@@ -29,6 +29,6 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   }
 
   @action
-  void setActiveTool(EditTool tool) => _activeTool = tool;
+  void setActiveTool(SelectableEditTool tool) => _activeTool = tool;
 
 }

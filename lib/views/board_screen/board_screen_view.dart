@@ -19,7 +19,8 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
         children: [
           Observer(builder: (_) => ToolToolbar(
             activeTool: viewModel.activeTool,
-            onToolButtonPressed: controller.onToolButtonPressed,
+            onSelectableToolButtonPressed: controller.onSelectableToolButtonPressed,
+            onClearButtonPressed: controller.onClearButtonPressed,
           )),
           Flexible(
             child: Row(

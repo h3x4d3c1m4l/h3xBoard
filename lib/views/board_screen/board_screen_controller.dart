@@ -33,7 +33,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       ..setStyle(color: value);
   }
 
-  void onToolButtonPressed(EditTool value) {
+  void onSelectableToolButtonPressed(SelectableEditTool value) {
     switch (value) {
       case .pen:
         if (viewModel.activeColor == null) {
@@ -43,10 +43,12 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       case .eraser:
         viewModel.setActiveColor(null);
         drawingController.setPaintContent(Eraser());
-      case .addWidget:
     }
 
     viewModel.setActiveTool(value);
   }
 
+  void onClearButtonPressed() {
+    drawingController.clear();
+  }
 }
