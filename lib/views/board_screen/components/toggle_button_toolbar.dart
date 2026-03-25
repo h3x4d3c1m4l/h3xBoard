@@ -12,16 +12,28 @@ class ToggleButtonToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     FluentThemeData theme = FluentTheme.of(context);
-    ToggleButtonThemeData leftTheme = _getToggleButtonTheme(context, theme, _Side.left);
-    ToggleButtonThemeData middleTheme = _getToggleButtonTheme(context, theme, _Side.middle);
-    ToggleButtonThemeData rightTheme = _getToggleButtonTheme(context, theme, _Side.right);
+    ToggleButtonThemeData leftToggleButtonTheme = _getToggleButtonTheme(context, theme, _Side.left);
+    ToggleButtonThemeData middleToggleButtonTheme = _getToggleButtonTheme(context, theme, _Side.middle);
+    ToggleButtonThemeData rightToggleButtonTheme = _getToggleButtonTheme(context, theme, _Side.right);
+    ButtonThemeData leftButtonTheme = _getButtonTheme(context, theme, _Side.left);
+    ButtonThemeData middleButtonTheme = _getButtonTheme(context, theme, _Side.middle);
+    ButtonThemeData rightButtonTheme = _getButtonTheme(context, theme, _Side.right);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ToggleButtonTheme.merge(data: leftTheme, child: buttons.first),
-        ...buttons.skip(1).take(buttons.length - 2).map((button) => ToggleButtonTheme.merge(data: middleTheme, child: button)),
-        ToggleButtonTheme.merge(data: rightTheme, child: buttons.last),
+        ToggleButtonTheme.merge(
+          data: leftToggleButtonTheme,
+          child: ButtonTheme.merge(data: leftButtonTheme, child: buttons.first),
+        ),
+        ...buttons.skip(1).take(buttons.length - 2).map((button) => ToggleButtonTheme.merge(
+          data: middleToggleButtonTheme,
+          child: ButtonTheme.merge(data: middleButtonTheme, child: button),
+        )),
+        ToggleButtonTheme.merge(data: rightToggleButtonTheme, child: ButtonTheme.merge(
+          data: rightButtonTheme,
+          child: buttons.last,
+        )),
       ],
     );
   }
@@ -63,7 +75,13 @@ class ToggleButtonToolbar extends StatelessWidget {
           (states) => _getShapeBorder(FilledButton.shapeBorder(theme, states), states, side),
         ),
       ),
-      uncheckedButtonStyle: ButtonStyle(
+      uncheckedButtonStyle: _getButtonTheme(context, theme, side).defaultButtonStyle,
+    );
+  }
+
+  ButtonThemeData _getButtonTheme(BuildContext context, FluentThemeData theme, _Side side) {
+    return ButtonThemeData(
+      defaultButtonStyle: ButtonStyle(
         shape: WidgetStateProperty.resolveWith(
           (states) => _getShapeBorder(ButtonThemeData.shapeBorder(context, states), states, side),
         ),
