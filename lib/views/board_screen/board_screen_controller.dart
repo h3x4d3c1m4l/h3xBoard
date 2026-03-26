@@ -51,4 +51,5 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   void onClearButtonPressed() {
     drawingController.clear();
   }
+
 }
