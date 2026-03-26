@@ -18,6 +18,12 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @readonly
   SelectableEditTool _activeTool = .pen;
 
+  @readonly
+  double _penWidth = 2;
+
+  @readonly
+  double _eraserWidth = 8;
+
   BoardScreenViewModelBase({
     required super.contextAccessor,
   });
@@ -30,5 +36,11 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @action
   void setActiveTool(SelectableEditTool tool) => _activeTool = tool;
+
+  @action
+  void setPenWidth(double width) => _penWidth = width;
+
+  @action
+  void setEraserWidth(double width) => _eraserWidth = width;
 
 }

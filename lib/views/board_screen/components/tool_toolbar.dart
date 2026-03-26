@@ -33,7 +33,13 @@ class ToolToolbar extends StatelessWidget {
         ),
         ToggleButtonToolbar(
           buttons: [
-            ToolButton(icon: LucideIcons.pen, title: 'Draw', checked: activeTool == .pen, onPressed: () => onSelectableToolButtonPressed(.pen)),
+            ToolButton(
+              icon: LucideIcons.pen,
+              title: 'Draw',
+              checked: activeTool == .pen,
+              onPressed: () => onSelectableToolButtonPressed(.pen),
+              flyout: Text("<Placeholder for pen size>"),
+            ),
             ToolButton(icon: LucideIcons.eraser, title: 'Erase', checked: activeTool == .eraser, onPressed: () => onSelectableToolButtonPressed(.eraser)),
             ToolButton(icon: LucideIcons.ellipsis, title: 'Widgets', onPressed: null),
           ],
