@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 
 class Board extends StatelessWidget {
+
   final DrawingController drawingController;
 
   const Board({super.key, required this.drawingController});
@@ -24,4 +25,5 @@ class Board extends StatelessWidget {
       ),
     );
   }
+
 }

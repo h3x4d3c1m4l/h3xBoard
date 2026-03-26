@@ -40,9 +40,11 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
           viewModel.setActiveColor(viewModel.lastActiveColor);
         }
         drawingController.setPaintContent(SimpleLine());
+        drawingController.setStyle(strokeWidth: viewModel.penWidth);
       case .eraser:
         viewModel.setActiveColor(null);
         drawingController.setPaintContent(Eraser());
+        drawingController.setStyle(strokeWidth: viewModel.eraserWidth);
     }
 
     viewModel.setActiveTool(value);
@@ -50,6 +52,16 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onClearButtonPressed() {
     drawingController.clear();
+  }
+
+  void onPenWidthSliderMoved(double value) {
+    drawingController.setStyle(strokeWidth: value);
+    viewModel.setPenWidth(value);
+  }
+
+  void onEraserWidthSliderMoved(double value) {
+    drawingController.setStyle(strokeWidth: value);
+    viewModel.setEraserWidth(value);
   }
 
 }
