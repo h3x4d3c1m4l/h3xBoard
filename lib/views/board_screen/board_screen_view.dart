@@ -17,11 +17,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
       child: Column(
         spacing: 8,
         children: [
-          Observer(builder: (_) => ToolToolbar(
-            activeTool: viewModel.activeTool,
-            onSelectableToolButtonPressed: controller.onSelectableToolButtonPressed,
-            onClearButtonPressed: controller.onClearButtonPressed,
-          )),
+          ToolToolbar(controller: controller, viewModel: viewModel),
           Flexible(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -33,7 +29,12 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
                     onColorButtonPressed: controller.onColorButtonPressed,
                   ),
                 ),
-                Flexible(child: Board(drawingController: controller.drawingController)),
+                Flexible(child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    viewModel.updateResizeFactor(constraints);
+                    return Board(drawingController: controller.drawingController);
+                  }
+                )),
               ],
             ),
           ),

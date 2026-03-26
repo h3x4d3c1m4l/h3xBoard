@@ -24,6 +24,9 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @readonly
   double _eraserWidth = 8;
 
+  @readonly
+  double _boardPixelRatio = 1;
+
   BoardScreenViewModelBase({
     required super.contextAccessor,
   });
@@ -42,5 +45,20 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @action
   void setEraserWidth(double width) => _eraserWidth = width;
+
+  @action
+  void updateResizeFactor(BoxConstraints constaints) {
+    double heightFactor = 1080 / constaints.maxHeight;
+    double widthFactor = 1920 / constaints.maxWidth;
+
+    double resize;
+    if (heightFactor > widthFactor) {
+      resize = heightFactor;
+    } else {
+      resize = widthFactor;
+    }
+
+    _boardPixelRatio = resize;
+  }
 
 }
