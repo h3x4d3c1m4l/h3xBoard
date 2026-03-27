@@ -35,5 +35,5 @@ dev_dependencies:
   mobx_codegen: 2.7.6
 
 flutter:
-  uses-material-design: false
+  uses-material-design: true
   generate: true

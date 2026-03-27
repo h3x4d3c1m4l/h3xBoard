@@ -36,6 +36,7 @@ class EraserToolButton extends StatelessWidget {
               width: viewModel.eraserWidth / viewModel.boardPixelRatio,
               height: viewModel.eraserWidth / viewModel.boardPixelRatio,
               decoration: BoxDecoration(
+                border: BoxBorder.all(),
                 color: Colors.white,
                 shape: BoxShape.circle,
                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
