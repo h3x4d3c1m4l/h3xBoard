@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
-import 'package:h3xboard/views/board_screen/components/tool_button.dart';
+import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class PenToolButton extends StatelessWidget {

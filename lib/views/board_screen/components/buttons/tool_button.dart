@@ -63,6 +63,7 @@ class _ToolButtonState extends State<ToolButton> {
         builder: (context) => FlyoutContent(child: widget.flyout!),
         placementMode: FlyoutPlacementMode.bottomCenter,
         additionalOffset: 16,
+        dismissOnPointerMoveAway: true,
       );
     }
   }
@@ -79,6 +80,7 @@ class _ToolButtonState extends State<ToolButton> {
       )),
       placementMode: FlyoutPlacementMode.bottomCenter,
       additionalOffset: 16,
+      dismissOnPointerMoveAway: true,
     );
   }
 
