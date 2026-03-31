@@ -6,16 +6,19 @@ import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart'
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class BoardSettingsButton extends StatefulWidget {
-  const BoardSettingsButton({super.key, required this.viewModel, required this.controller});
 
   final BoardScreenViewModel viewModel;
   final BoardScreenController controller;
 
+  const BoardSettingsButton({super.key, required this.viewModel, required this.controller});
+
   @override
   State<BoardSettingsButton> createState() => _BoardSettingsButtonState();
+
 }
 
 class _BoardSettingsButtonState extends State<BoardSettingsButton> {
+
   final FlyoutController _menuController = FlyoutController();
   static const List<Color> _regularBoardColors = [Colors.black, Colors.white];
   static const List<Color> _chalkboardColors = [Color(0xFF1F3A2E), Color(0xFF2B2F3A)];
@@ -48,6 +51,7 @@ class _BoardSettingsButtonState extends State<BoardSettingsButton> {
                               mainAxisSize: MainAxisSize.min,
                               children: _regularBoardColors.map((color) => _BackgroundColorButton(
                                 color: color,
+                                isChalkboard: false,
                                 isActive: widget.viewModel.boardColor == color,
                                 onPressed: () {
                                   Flyout.of(context).close();
@@ -60,6 +64,7 @@ class _BoardSettingsButtonState extends State<BoardSettingsButton> {
                               mainAxisSize: MainAxisSize.min,
                               children: _chalkboardColors.map((color) => _BackgroundColorButton(
                                 color: color,
+                                isChalkboard: true,
                                 isActive: widget.viewModel.boardColor == color,
                                 onPressed: () {
                                   Flyout.of(context).close();
@@ -87,14 +92,17 @@ class _BoardSettingsButtonState extends State<BoardSettingsButton> {
     _menuController.dispose();
     super.dispose();
   }
+
 }
 
 class _BackgroundColorButton extends StatelessWidget {
+
   final Color color;
+  final bool isChalkboard;
   final bool isActive;
   final VoidCallback onPressed;
 
-  const _BackgroundColorButton({required this.color, required this.isActive, required this.onPressed});
+  const _BackgroundColorButton({required this.color, required this.isChalkboard, required this.isActive, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +111,13 @@ class _BackgroundColorButton extends StatelessWidget {
       onPressed: onPressed,
       style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsetsDirectional.all(4))),
       autofocus: isActive,
-      child: Container(width: 32, height: 32, color: color),
+      child: Container(
+        width: 32,
+        height: 32,
+        color: color,
+        child: isChalkboard ? Icon(LucideIcons.pen, color: Colors.white) : null,
+      ),
     );
   }
+
 }
