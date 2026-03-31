@@ -3,7 +3,7 @@ import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
-import 'package:h3xboard/views/board_screen/components/tool_toolbar.dart';
+import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dart';
 
 class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
@@ -15,7 +15,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     required super.viewModel,
     required super.contextAccessor,
   }) {
-    drawingController.setStyle(color: viewModel.activeColor);
+    drawingController.setStyle(color: viewModel.activeDrawingColor);
   }
 
   @override
@@ -36,8 +36,8 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   void onSelectableToolButtonPressed(SelectableEditTool value) {
     switch (value) {
       case .pen:
-        if (viewModel.activeColor == null) {
-          viewModel.setActiveColor(viewModel.lastActiveColor);
+        if (viewModel.activeDrawingColor == null) {
+          viewModel.setActiveColor(viewModel.lastActiveDrawingColor);
         }
         drawingController.setPaintContent(SimpleLine());
         drawingController.setStyle(strokeWidth: viewModel.penWidth);
@@ -62,6 +62,14 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   void onEraserWidthSliderMoved(double value) {
     drawingController.setStyle(strokeWidth: value);
     viewModel.setEraserWidth(value);
+  }
+
+  void onBoardBackgroundColorPicked(Color color, bool isChalkboard) {
+    viewModel.setBoardColorAndType(color, isChalkboard);
+  }
+
+  void onBoardPatternPicked() {
+
   }
 
 }

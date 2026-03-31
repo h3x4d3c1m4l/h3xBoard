@@ -19,32 +19,34 @@ class EraserToolButton extends StatelessWidget {
       title: 'Erase',
       checked: viewModel.activeTool == .eraser,
       onPressed: () => controller.onSelectableToolButtonPressed(.eraser),
-      flyout: Observer(builder: (_) => Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 4,
-        children: [
-          Text('Dikte:'),
-          SizedBox(
-            height: 24,
-            child: Slider(min: 2, max: 64, value: viewModel.eraserWidth, onChanged: controller.onEraserWidthSliderMoved),
-          ),
-          Container(
-            width: 64 / viewModel.boardPixelRatio,
-            height: 64 / viewModel.boardPixelRatio,
-            alignment: Alignment.center,
-            child: Container(
-              width: viewModel.eraserWidth / viewModel.boardPixelRatio,
-              height: viewModel.eraserWidth / viewModel.boardPixelRatio,
-              decoration: BoxDecoration(
-                border: BoxBorder.all(),
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
+      flyoutBuilder: (context) => FlyoutContent(
+        child: Observer(builder: (_) => Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 4,
+          children: [
+            Text('Dikte:'),
+            SizedBox(
+              height: 24,
+              child: Slider(min: 2, max: 64, value: viewModel.eraserWidth, onChanged: controller.onEraserWidthSliderMoved),
+            ),
+            Container(
+              width: 64 / viewModel.boardPixelRatio,
+              height: 64 / viewModel.boardPixelRatio,
+              alignment: Alignment.center,
+              child: Container(
+                width: viewModel.eraserWidth / viewModel.boardPixelRatio,
+                height: viewModel.eraserWidth / viewModel.boardPixelRatio,
+                decoration: BoxDecoration(
+                  border: BoxBorder.all(),
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
+                ),
               ),
             ),
-          ),
-        ],
-      ))),
+          ],
+        )),
+      )),
     );
   }
 
