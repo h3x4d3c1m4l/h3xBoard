@@ -74,7 +74,7 @@ class _ToolButtonState extends State<ToolButton> {
         spacing: 4,
         children: [
           Icon(LucideIcons.circleAlert, color: Colors.errorPrimaryColor),
-          Text('Deze actie kan nu niet.'),
+          Text('This action is not available right now.'),
         ],
       )),
       placementMode: FlyoutPlacementMode.bottomCenter,
@@ -104,10 +104,11 @@ class _ToolButtonContent extends StatelessWidget {
       padding: hasFlyout ? const EdgeInsets.fromLTRB(8, 8, 0, 8) : const EdgeInsets.all(8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        spacing: 8,
+        spacing: 6,
         children: [
           Column(
             mainAxisSize: MainAxisSize.min,
+            spacing: 2,
             children: [Icon(icon), Text(title, maxLines: 1)],
           ),
           if (hasFlyout) Icon(LucideIcons.chevronDown),
