@@ -35,42 +35,48 @@ class _BoardState extends State<Board> {
 
   @override
   Widget build(BuildContext context) {
-    return FittedBox(
-      child: Container(
-        width: 1920,
-        height: 1080,
-        decoration: BoxDecoration(border: Border.all(color: Colors.black45, width: 1)),
-        child: Stack(
-          children: [
-            DrawingBoard(
-              controller: widget.drawingController,
-              background: Observer(builder: (_) {
-                Widget box = SizedBox(width: 1920, height: 1080);
-                return widget.viewModel.isChalkboard ? ChalkboardBackground(
-                  boardColor: widget.viewModel.boardColor,
-                  child: box,
-                ) : ColoredBox(color: widget.viewModel.boardColor, child: box);
-              }),
-              onPointerDown: (pde) => setState(() => _pointerPosition = pde.localPosition),
-              onPointerMove: (pme) => setState(() => _pointerPosition = pme.localPosition),
-              onPointerUp: (pue) => setState(() => _pointerPosition = null),
-              boardPanEnabled: false,
-              boardScaleEnabled: false,
-            ),
-            if (_eraseStrokeWidth != null)
-              Positioned(
-                left: _pointerPosition!.dx - (_eraseStrokeWidth! / 2),
-                top: _pointerPosition!.dy - (_eraseStrokeWidth! / 2),
-                width: _eraseStrokeWidth,
-                height: _eraseStrokeWidth,
-                child: Container(
-                  decoration: BoxDecoration(border: BoxBorder.all(), shape: BoxShape.circle, color: Colors.white),
-                ),
+    return Observer(builder: (context) => Container(
+      decoration: BoxDecoration(
+        border: widget.viewModel.boardColor == Colors.white ? BoxBorder.all(width: 1, color: Colors.black12, strokeAlign: BorderSide.strokeAlignOutside) : null,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: FittedBox(
+        child: SizedBox(
+          width: 1920,
+          height: 1080,
+          child: Stack(
+            children: [
+              DrawingBoard(
+                controller: widget.drawingController,
+                background: Observer(builder: (_) {
+                  Widget box = SizedBox(width: 1920, height: 1080);
+                  return widget.viewModel.isChalkboard ? ChalkboardBackground(
+                    boardColor: widget.viewModel.boardColor,
+                    child: box,
+                  ) : ColoredBox(color: widget.viewModel.boardColor, child: box);
+                }),
+                onPointerDown: (pde) => setState(() => _pointerPosition = pde.localPosition),
+                onPointerMove: (pme) => setState(() => _pointerPosition = pme.localPosition),
+                onPointerUp: (pue) => setState(() => _pointerPosition = null),
+                boardPanEnabled: false,
+                boardScaleEnabled: false,
               ),
-          ],
+              if (_eraseStrokeWidth != null)
+                Positioned(
+                  left: _pointerPosition!.dx - (_eraseStrokeWidth! / 2),
+                  top: _pointerPosition!.dy - (_eraseStrokeWidth! / 2),
+                  width: _eraseStrokeWidth,
+                  height: _eraseStrokeWidth,
+                  child: Container(
+                    decoration: BoxDecoration(border: BoxBorder.all(), shape: BoxShape.circle, color: Colors.white),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
-    );
+    ));
   }
 
   @override
