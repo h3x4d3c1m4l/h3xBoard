@@ -19,31 +19,33 @@ class PenToolButton extends StatelessWidget {
       title: 'Draw',
       checked: viewModel.activeTool == .pen,
       onPressed: () => controller.onSelectableToolButtonPressed(.pen),
-      flyout: Observer(builder: (_) => Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 4,
-        children: [
-          Text('Dikte:'),
-          SizedBox(
-            height: 24,
-            child: Slider(min: 2, max: 64, value: viewModel.penWidth, onChanged: controller.onPenWidthSliderMoved),
-          ),
-          Container(
-            width: 64 / viewModel.boardPixelRatio,
-            height: 64 / viewModel.boardPixelRatio,
-            alignment: Alignment.center,
-            child: Container(
-              width: viewModel.penWidth / viewModel.boardPixelRatio,
-              height: viewModel.penWidth / viewModel.boardPixelRatio,
-              decoration: BoxDecoration(
-                color: viewModel.activeColor,
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
+      flyoutBuilder: (context) => FlyoutContent(
+        child: Observer(builder: (_) => Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 4,
+          children: [
+            Text('Dikte:'),
+            SizedBox(
+              height: 24,
+              child: Slider(min: 2, max: 64, value: viewModel.penWidth, onChanged: controller.onPenWidthSliderMoved),
+            ),
+            Container(
+              width: 64 / viewModel.boardPixelRatio,
+              height: 64 / viewModel.boardPixelRatio,
+              alignment: Alignment.center,
+              child: Container(
+                width: viewModel.penWidth / viewModel.boardPixelRatio,
+                height: viewModel.penWidth / viewModel.boardPixelRatio,
+                decoration: BoxDecoration(
+                  color: viewModel.activeDrawingColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
+                ),
               ),
             ),
-          ),
-        ],
-      ))),
+          ],
+        )),
+      )),
     );
   }
 

@@ -6,10 +6,10 @@ class ToolButton extends StatefulWidget {
   final IconData icon;
   final String title;
   final bool? checked;
-  final Widget? flyout;
+  final WidgetBuilder? flyoutBuilder;
   final VoidCallback? onPressed;
 
-  const ToolButton({super.key, required this.icon, required this.title, this.checked, this.flyout, required this.onPressed});
+  const ToolButton({super.key, required this.icon, required this.title, this.checked, this.flyoutBuilder, required this.onPressed});
 
   @override
   State<ToolButton> createState() => _ToolButtonState();
@@ -22,7 +22,7 @@ class _ToolButtonState extends State<ToolButton> {
 
   @override
   Widget build(BuildContext context) {
-    Widget buttonContent = _ToolButtonContent(icon: widget.icon, title: widget.title, hasFlyout: widget.flyout != null);
+    Widget buttonContent = _ToolButtonContent(icon: widget.icon, title: widget.title, hasFlyout: widget.flyoutBuilder != null);
 
     Widget button;
     if (widget.checked != null) {
@@ -58,15 +58,14 @@ class _ToolButtonState extends State<ToolButton> {
 
   void _onPressed() {
     widget.onPressed!();
-    if (widget.flyout != null) {
+    if (widget.flyoutBuilder != null) {
       _controller.showFlyout(
-        builder: (context) => FlyoutContent(child: widget.flyout!),
+        builder: widget.flyoutBuilder!,
         placementMode: FlyoutPlacementMode.bottomCenter,
         additionalOffset: 16,
-        dismissOnPointerMoveAway: true,
       );
     }
-  }
+    }
 
   void _onDisabledButtonPressed() {
     _controller.showFlyout(
@@ -80,7 +79,6 @@ class _ToolButtonState extends State<ToolButton> {
       )),
       placementMode: FlyoutPlacementMode.bottomCenter,
       additionalOffset: 16,
-      dismissOnPointerMoveAway: true,
     );
   }
 

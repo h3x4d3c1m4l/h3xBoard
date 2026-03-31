@@ -23,7 +23,10 @@ class DrawingToolbar extends StatelessWidget {
           onPressed: onColorButtonPressed != null ? () => onColorButtonPressed!(c) : null,
         )),
         Divider(size: 24),
-        CustomColorButton(pickedColorIsActive: !_colors.contains(activeColor), onColorPicked: onColorButtonPressed),
+        CustomColorButton(
+          pickedColorIsActive: activeColor != null && !_colors.contains(activeColor),
+          onColorPicked: onColorButtonPressed,
+        ),
       ],
     );
   }
