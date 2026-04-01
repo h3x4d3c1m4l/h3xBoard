@@ -23,7 +23,7 @@ dependencies:
   get_it: 9.2.1
   mobx: 2.6.0
   flutter_mobx: 2.3.0
-  lucide_icons_flutter: 3.1.11
+  lucide_icons_flutter: 3.1.12
   google_fonts: 8.0.2
 
 dev_dependencies:
