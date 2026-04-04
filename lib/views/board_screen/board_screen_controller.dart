@@ -68,8 +68,16 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     viewModel.setBoardColorAndType(color, isChalkboard);
   }
 
-  void onBoardPatternPicked() {
+  void onBoardLinesPicked(BoardLines lines) {
+    viewModel.setBoardLines(lines);
+  }
 
+  void onBoardLineDensitySliderMoved(double value) {
+    viewModel.setBoardLineDensity(value);
+  }
+
+  void onBoardLinesColorPicked(Color color) {
+    viewModel.setBoardLinesColor(color);
   }
 
 }

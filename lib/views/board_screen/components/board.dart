@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
-import 'package:h3xboard/views/board_screen/components/board_background.dart';
+import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
+import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 
 class Board extends StatefulWidget {
 
@@ -50,7 +51,12 @@ class _BoardState extends State<Board> {
               DrawingBoard(
                 controller: widget.drawingController,
                 background: Observer(builder: (_) {
-                  Widget box = SizedBox(width: 1920, height: 1080);
+                  Widget box = BackgroundLines(
+                    lines: widget.viewModel.boardLines,
+                    density: widget.viewModel.boardLineDensity,
+                    color: widget.viewModel.boardLinesColor,
+                    child: SizedBox(width: 1920, height: 1080),
+                  );
                   return widget.viewModel.isChalkboard ? ChalkboardBackground(
                     boardColor: widget.viewModel.boardColor,
                     child: box,
