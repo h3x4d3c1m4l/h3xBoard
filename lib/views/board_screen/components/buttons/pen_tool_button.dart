@@ -24,7 +24,7 @@ class PenToolButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 4,
           children: [
-            Text('Dikte:'),
+            Text('Stroke:'),
             SizedBox(
               height: 24,
               child: Slider(min: 2, max: 64, value: viewModel.penWidth, onChanged: controller.onPenWidthSliderMoved),

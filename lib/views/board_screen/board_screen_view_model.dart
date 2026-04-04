@@ -7,6 +7,8 @@ part 'board_screen_view_model.g.dart';
 
 class BoardScreenViewModel = BoardScreenViewModelBase with _$BoardScreenViewModel;
 
+enum BoardLines { none, horizontal, grid }
+
 abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @readonly
@@ -32,6 +34,15 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @readonly
   double _boardPixelRatio = 1;
+
+  @readonly
+  BoardLines _boardLines = BoardLines.none;
+
+  @readonly
+  double _boardLineDensity = 64;
+
+  @readonly
+  Color _boardLinesColor = Colors.grey[100];
 
   BoardScreenViewModelBase({
     required super.contextAccessor,
@@ -71,6 +82,21 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   void setBoardColorAndType(Color color, bool isChalkboard) {
     _boardColor = color;
     _isChalkboard = isChalkboard;
+  }
+
+  @action
+  void setBoardLinesColor(Color color) {
+    _boardLinesColor = color;
+  }
+
+  @action
+  void setBoardLines(BoardLines lines) {
+    _boardLines = lines;
+  }
+
+  @action
+  void setBoardLineDensity(double density) {
+    _boardLineDensity = density;
   }
 
 }
