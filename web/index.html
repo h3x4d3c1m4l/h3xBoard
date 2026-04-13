@@ -16,10 +16,195 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
+  <style>
+    /* Loading message, error message, retry button */
+    body {
+      margin: 0;
+    }
+
+    #loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 16px;
+    }
+
+    #loading-message {
+      font-family: sans-serif;
+      font-size: 14px;
+      color: #666;
+      margin: 0;
+    }
+
+    #error-container {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 16px;
+      font-family: sans-serif;
+      text-align: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    #error-message {
+      font-size: 16px;
+      color: #c0392b;
+      margin: 0;
+    }
+
+    #retry-button {
+      padding: 10px 24px;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    #retry-button:hover {
+      background: #f5f5f5;
+    }
+
+    /* Loading spinner (Adapted from: https://loading.io/css/) */
+    .lds-roller,
+    .lds-roller div,
+    .lds-roller div:after {
+      box-sizing: border-box;
+    }
+    .lds-roller {
+      display: inline-block;
+      position: relative;
+      width: 80px;
+      height: 80px;
+    }
+    .lds-roller div {
+      animation: lds-roller 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+      transform-origin: 40px 40px;
+    }
+    .lds-roller div:after {
+      content: " ";
+      display: block;
+      position: absolute;
+      width: 7.2px;
+      height: 7.2px;
+      border-radius: 50%;
+      background: currentColor;
+      margin: -3.6px 0 0 -3.6px;
+    }
+    .lds-roller div:nth-child(1) {
+      animation-delay: -0.036s;
+    }
+    .lds-roller div:nth-child(1):after {
+      top: 62.62742px;
+      left: 62.62742px;
+    }
+    .lds-roller div:nth-child(2) {
+      animation-delay: -0.072s;
+    }
+    .lds-roller div:nth-child(2):after {
+      top: 67.71281px;
+      left: 56px;
+    }
+    .lds-roller div:nth-child(3) {
+      animation-delay: -0.108s;
+    }
+    .lds-roller div:nth-child(3):after {
+      top: 70.90963px;
+      left: 48.28221px;
+    }
+    .lds-roller div:nth-child(4) {
+      animation-delay: -0.144s;
+    }
+    .lds-roller div:nth-child(4):after {
+      top: 72px;
+      left: 40px;
+    }
+    .lds-roller div:nth-child(5) {
+      animation-delay: -0.18s;
+    }
+    .lds-roller div:nth-child(5):after {
+      top: 70.90963px;
+      left: 31.71779px;
+    }
+    .lds-roller div:nth-child(6) {
+      animation-delay: -0.216s;
+    }
+    .lds-roller div:nth-child(6):after {
+      top: 67.71281px;
+      left: 24px;
+    }
+    .lds-roller div:nth-child(7) {
+      animation-delay: -0.252s;
+    }
+    .lds-roller div:nth-child(7):after {
+      top: 62.62742px;
+      left: 17.37258px;
+    }
+    .lds-roller div:nth-child(8) {
+      animation-delay: -0.288s;
+    }
+    .lds-roller div:nth-child(8):after {
+      top: 56px;
+      left: 12.28719px;
+    }
+    @keyframes lds-roller {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+
   <title>h3xBoard</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <div id="loading-container">
+    <div class="lds-roller"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+    <p id="loading-message">Loading h3xBoard ...</p>
+  </div>
+  <div id="error-container">
+    <p id="error-message">Failed to load the h3xBoard application.</p>
+    <button id="retry-button" onclick="window.location.reload()">Try again</button>
+  </div>
+  <script>
+    {{flutter_js}}
+    {{flutter_build_config}}
+
+    // Custom loading procedure which shows basic progress.
+    // Adapted from: https://docs.flutter.dev/platform-integration/web/initialization
+
+    const loadingContainer = document.getElementById('loading-container');
+    const loadingMessage = document.getElementById('loading-message');
+    const errorContainer = document.getElementById('error-container');
+
+    function showError() {
+      loadingContainer.remove();
+      errorContainer.style.display = 'flex';
+    }
+
+    _flutter.loader.load({
+      onEntrypointLoaded: async function(engineInitializer) {
+        try {
+          loadingMessage.textContent = 'Initializing engine...';
+          const appRunner = await engineInitializer.initializeEngine();
+
+          loadingMessage.textContent = 'Starting app...';
+          await appRunner.runApp();
+
+          loadingContainer.remove();
+        } catch (e) {
+          showError();
+        }
+      }
+    });
+  </script>
 </body>
 </html>
