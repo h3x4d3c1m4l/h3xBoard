@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ToolButton extends StatefulWidget {
@@ -74,7 +75,7 @@ class _ToolButtonState extends State<ToolButton> {
         spacing: 4,
         children: [
           Icon(LucideIcons.circleAlert, color: Colors.errorPrimaryColor),
-          Text('This action is not available right now.'),
+          Text(context.localizations.toolButton_actionNotAvailable),
         ],
       )),
       placementMode: FlyoutPlacementMode.bottomCenter,

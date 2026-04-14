@@ -3,10 +3,10 @@ part of '../buttons/board_settings_button.dart';
 const List<Color> _regularBoardColors = [Colors.black, Colors.white];
 const List<Color> _chalkboardColors = [Color(0xFF1F3A2E), Color(0xFF2B2F3A)];
 
-MenuFlyoutSubItem _boardColorSubmenu(BoardScreenViewModel viewModel, BoardScreenController controller) {
+MenuFlyoutSubItem _boardColorSubmenu(BuildContext context, BoardScreenViewModel viewModel, BoardScreenController controller) {
   return MenuFlyoutSubItem(
     leading: Icon(LucideIcons.paintBucket),
-    text: const Text('Board color:'),
+    text: Text(context.localizations.boardColorSubmenu_title),
     items: (context) => [
       MenuFlyoutItem(
         selected: true,

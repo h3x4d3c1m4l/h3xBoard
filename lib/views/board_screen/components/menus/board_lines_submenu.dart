@@ -2,10 +2,10 @@ part of '../buttons/board_settings_button.dart';
 
 final List<Color> _boardLineColorPresets = [Colors.black, Colors.white, Colors.grey[100], Colors.errorPrimaryColor];
 
-MenuFlyoutSubItem _boardLinesSubmenu(BoardScreenViewModel viewModel, BoardScreenController controller) {
+MenuFlyoutSubItem _boardLinesSubmenu(BuildContext context, BoardScreenViewModel viewModel, BoardScreenController controller) {
   return MenuFlyoutSubItem(
     leading: Icon(LucideIcons.grid2x2),
-    text: const Text('Board lines:'),
+    text: Text(context.localizations.boardLinesSubmenu_title),
     items: (context) => [
       MenuFlyoutItem(
         onPressed: null,

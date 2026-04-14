@@ -28,6 +28,7 @@ class _BoardAppState extends State<BoardApp> {
         GlobalCupertinoLocalizations.delegate,
         FluentLocalizations.delegate,
       ],
+      supportedLocales: [Locale('en'), Locale('nl')],
       theme: FluentThemeData(
         typography: Typography.fromBrightness(
           brightness: Brightness.light,
