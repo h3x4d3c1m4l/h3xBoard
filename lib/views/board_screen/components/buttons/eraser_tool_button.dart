@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart';
@@ -16,7 +17,7 @@ class EraserToolButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Observer(builder: (_) => ToolButton(
       icon: LucideIcons.eraser,
-      title: 'Erase',
+      title: context.localizations.eraserToolButton_erase,
       checked: viewModel.activeTool == .eraser,
       onPressed: () => controller.onSelectableToolButtonPressed(.eraser),
       flyoutBuilder: (context) => FlyoutContent(
@@ -24,7 +25,7 @@ class EraserToolButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 4,
           children: [
-            Text('Stroke:'),
+            Text(context.localizations.eraserToolButton_stroke),
             SizedBox(
               height: 24,
               child: Slider(min: 2, max: 64, value: viewModel.eraserWidth, onChanged: controller.onEraserWidthSliderMoved),

@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/board_settings_button.dart';
@@ -27,16 +28,16 @@ class ToolToolbar extends StatelessWidget {
         children: [
           ToggleButtonToolbar(
             buttons: [
-              ToolButton(icon: LucideIcons.undo, title: 'Undo', onPressed: null),
-              ToolButton(icon: LucideIcons.redo, title: 'Redo', onPressed: null),
-              ToolButton(icon: LucideIcons.trash2, title: 'Clear', onPressed: controller.onClearButtonPressed),
+              ToolButton(icon: LucideIcons.undo, title: context.localizations.toolToolbar_undo, onPressed: null),
+              ToolButton(icon: LucideIcons.redo, title: context.localizations.toolToolbar_redo, onPressed: null),
+              ToolButton(icon: LucideIcons.trash2, title: context.localizations.toolToolbar_clear, onPressed: controller.onClearButtonPressed),
             ],
           ),
           ToggleButtonToolbar(
             buttons: [
               PenToolButton(viewModel: viewModel, controller: controller),
               EraserToolButton(viewModel: viewModel, controller: controller),
-              ToolButton(icon: LucideIcons.ellipsis, title: 'Widgets', onPressed: null),
+              ToolButton(icon: LucideIcons.ellipsis, title: context.localizations.toolToolbar_widgets, onPressed: null),
               BoardSettingsButton(viewModel: viewModel, controller: controller),
             ],
           ),

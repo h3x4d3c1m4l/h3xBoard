@@ -17,7 +17,7 @@ class DashboardScreenView extends ScreenViewBase<DashboardScreenViewModel, Dashb
   Widget get body {
     return ScaffoldPage(
       content: Center(
-        child: FilledButton(child: Text('Go to board'), onPressed: () => context.replaceRoute(BoardRoute())),
+        child: FilledButton(child: Text(localizations.dashboardScreen_goToBoard), onPressed: () => context.replaceRoute(BoardRoute())),
       ),
     );
   }

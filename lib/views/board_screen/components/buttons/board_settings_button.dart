@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/color_preset_button.dart';
@@ -30,13 +31,13 @@ class _BoardSettingsButtonState extends State<BoardSettingsButton> {
     return Observer(
       builder: (_) => ToolButton(
         icon: LucideIcons.settings,
-        title: 'Settings',
+        title: context.localizations.boardSettingsButton_settings,
         onPressed: () {},
         flyoutBuilder: (context) => Observer(
           builder: (context) => MenuFlyout(
             items: [
-              _boardColorSubmenu(widget.viewModel, widget.controller),
-              _boardLinesSubmenu(widget.viewModel, widget.controller),
+              _boardColorSubmenu(context, widget.viewModel, widget.controller),
+              _boardLinesSubmenu(context, widget.viewModel, widget.controller),
             ],
           ),
         ),

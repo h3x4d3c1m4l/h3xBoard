@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart';
@@ -16,7 +17,7 @@ class PenToolButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Observer(builder: (_) => ToolButton(
       icon: LucideIcons.pen,
-      title: 'Draw',
+      title: context.localizations.penToolButton_draw,
       checked: viewModel.activeTool == .pen,
       onPressed: () => controller.onSelectableToolButtonPressed(.pen),
       flyoutBuilder: (context) => FlyoutContent(
@@ -24,7 +25,7 @@ class PenToolButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 4,
           children: [
-            Text('Stroke:'),
+            Text(context.localizations.penToolButton_stroke),
             SizedBox(
               height: 24,
               child: Slider(min: 2, max: 64, value: viewModel.penWidth, onChanged: controller.onPenWidthSliderMoved),
