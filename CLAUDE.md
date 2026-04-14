@@ -59,7 +59,7 @@ The app uses **fluent_ui** (Windows Fluent Design) for core widgets (`FilledButt
 
 ### Localization
 
-ARB files live in `lib/l10n/` (`app_en.arb`, `app_nl.arb`). Generated code lands in `lib/l10n/generated/`. Access strings via the `AppLocalizations` extension on `BuildContext`. After editing ARB files, run `just gen-l10n`. The convention for keys is `myWidgetName_short_description`.
+ARB files live in `lib/l10n/` (`app_en.arb`, `app_nl.arb`). Generated code lands in `lib/l10n/generated/`. Access strings via the `AppLocalizations` extension on `BuildContext`. After editing ARB files, run `just gen-l10n`. The convention for keys is `myWidgetName_short_description`. Localizations can always be accessed by screens using `localizations.myWidgetName_short_description` and by regular widgets using `context.localizations.myWidgetName_short_description` if the following import is added: `import 'package:h3xboard/extensions/build_context_extension.dart';`.
 
 ## Key Configuration
 
