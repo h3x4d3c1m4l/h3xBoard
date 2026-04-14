@@ -1,5 +1,5 @@
 {
     "@@locale": "en",
-    "dashboard_screen_title_welcome": "Welcome",
-    "@dashboard_screen_title_welcome": {}
+    "dashboardScreen_title_welcome": "Welcome",
+    "@dashboardScreen_title_welcome": {}
 }
