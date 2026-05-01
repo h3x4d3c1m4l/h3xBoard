@@ -58,7 +58,7 @@ jobs:
         run: flutter build web --release --wasm --base-href '/h3xBoard/'
 
       - name: Upload artifact for Pages
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: 'build/web'
 
