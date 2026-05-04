@@ -7,19 +7,39 @@
         {
             "name": "h3xBoard",
             "request": "launch",
-            "type": "dart",
+            "type": "dart"
         },
         {
             "name": "h3xBoard (profile mode)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile",
+            "flutterMode": "profile"
         },
         {
             "name": "h3xBoard (release mode)",
             "request": "launch",
             "type": "dart",
+            "flutterMode": "release"
+        },
+{
+            "name": "h3xBoard (public :8080)",
+            "request": "launch",
+            "type": "dart",
+            "args": ["--web-hostname=0.0.0.0", "--web-port=8080"]
+        },
+        {
+            "name": "h3xBoard (public :8080, profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "args": ["--web-hostname=0.0.0.0", "--web-port=8080"]
+        },
+        {
+            "name": "h3xBoard (public :8080, release mode)",
+            "request": "launch",
+            "type": "dart",
             "flutterMode": "release",
-        }
+            "args": ["--web-hostname=0.0.0.0", "--web-port=8080"]
+        },
     ]
 }
