@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
+import 'package:h3xboard/models/board.dart';
 
 class BackgroundLines extends StatelessWidget {
 
-  final BoardLines lines;
-  final double density;
+  final BoardLinePattern pattern;
+  final double spacing;
   final Color color;
   final Widget? child;
 
   const BackgroundLines({
     super.key,
-    required this.lines,
-    required this.density,
+    required this.pattern,
+    required this.spacing,
     required this.color,
     this.child,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (lines == .none) return child ?? const SizedBox();
+    if (pattern == .none) return child ?? const SizedBox();
 
     return CustomPaint(
-      painter: _BackgroundLinesPainter(lines: lines, density: density, color: color),
+      painter: _BackgroundLinesPainter(pattern: pattern, spacing: spacing, color: color),
       child: child,
     );
   }
@@ -30,22 +30,22 @@ class BackgroundLines extends StatelessWidget {
 
 class _BackgroundLinesPainter extends CustomPainter {
 
-  final BoardLines lines;
-  final double density;
+  final BoardLinePattern pattern;
+  final double spacing;
   final Color color;
 
-  _BackgroundLinesPainter({required this.lines, required this.density, required this.color})
-    : assert(lines != .none, 'Painter should not be invoked if there are no lines to paint.');
+  _BackgroundLinesPainter({required this.pattern, required this.spacing, required this.color})
+    : assert(pattern != .none, 'Painter should not be invoked if there are no lines to paint.');
 
   @override
   void paint(Canvas canvas, Size size) {
     Paint paint = Paint()..color = color;
-    for (double y = density; y < size.height; y += density) {
+    for (double y = spacing; y < size.height; y += spacing) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
 
-    if (lines == BoardLines.grid) {
-      for (double x = density; x < size.width; x += density) {
+    if (pattern == BoardLinePattern.grid) {
+      for (double x = spacing; x < size.width; x += spacing) {
         canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
       }
     }
@@ -53,6 +53,6 @@ class _BackgroundLinesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BackgroundLinesPainter oldDelegate) =>
-      lines != oldDelegate.lines || density != oldDelegate.density || color != oldDelegate.color;
+      pattern != oldDelegate.pattern || spacing != oldDelegate.spacing || color != oldDelegate.color;
 
 }

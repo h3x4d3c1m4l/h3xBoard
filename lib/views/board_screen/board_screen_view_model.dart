@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/views/base/screen_view_model_base.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dart';
 import 'package:mobx/mobx.dart';
@@ -7,21 +8,22 @@ part 'board_screen_view_model.g.dart';
 
 class BoardScreenViewModel = BoardScreenViewModelBase with _$BoardScreenViewModel;
 
-enum BoardLines { none, horizontal, grid }
-
 abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
+
+  @readonly
+  Board _board = Board(
+    backgroundColor: Colors.white,
+    isChalkboard: false,
+    linePattern: BoardLinePattern.none,
+    lineSpacing: 64,
+    lineColor: Colors.grey[100],
+  );
 
   @readonly
   Color? _activeDrawingColor = Colors.black;
 
   @readonly
   Color _lastActiveDrawingColor = Colors.black;
-
-  @readonly
-  Color _boardColor = Colors.white;
-
-  @readonly
-  bool _isChalkboard = false;
 
   @readonly
   SelectableEditTool _activeTool = .pen;
@@ -34,15 +36,6 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @readonly
   double _boardPixelRatio = 1;
-
-  @readonly
-  BoardLines _boardLines = BoardLines.none;
-
-  @readonly
-  double _boardLineDensity = 64;
-
-  @readonly
-  Color _boardLinesColor = Colors.grey[100];
 
   BoardScreenViewModelBase({
     required super.contextAccessor,
@@ -80,23 +73,22 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @action
   void setBoardColorAndType(Color color, bool isChalkboard) {
-    _boardColor = color;
-    _isChalkboard = isChalkboard;
+    _board = _board.copyWith(backgroundColor: color, isChalkboard: isChalkboard);
   }
 
   @action
-  void setBoardLinesColor(Color color) {
-    _boardLinesColor = color;
+  void setBoardLineColor(Color color) {
+    _board = _board.copyWith(lineColor: color);
   }
 
   @action
-  void setBoardLines(BoardLines lines) {
-    _boardLines = lines;
+  void setBoardLinePattern(BoardLinePattern pattern) {
+    _board = _board.copyWith(linePattern: pattern);
   }
 
   @action
-  void setBoardLineDensity(double density) {
-    _boardLineDensity = density;
+  void setBoardLineSpacing(double spacing) {
+    _board = _board.copyWith(lineSpacing: spacing);
   }
 
 }

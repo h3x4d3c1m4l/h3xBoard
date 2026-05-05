@@ -36,9 +36,11 @@ class _BoardState extends State<Board> {
 
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (context) => Container(
+    return Observer(builder: (context) {
+      final board = widget.viewModel.board;
+      return Container(
       decoration: BoxDecoration(
-        border: widget.viewModel.boardColor == Colors.white ? BoxBorder.all(width: 1, color: Colors.black12, strokeAlign: BorderSide.strokeAlignOutside) : null,
+        border: board.backgroundColor == Colors.white ? BoxBorder.all(width: 1, color: Colors.black12, strokeAlign: BorderSide.strokeAlignOutside) : null,
         borderRadius: BorderRadius.circular(24),
       ),
       clipBehavior: Clip.antiAlias,
@@ -51,16 +53,17 @@ class _BoardState extends State<Board> {
               DrawingBoard(
                 controller: widget.drawingController,
                 background: Observer(builder: (_) {
+                  final board = widget.viewModel.board;
                   Widget box = BackgroundLines(
-                    lines: widget.viewModel.boardLines,
-                    density: widget.viewModel.boardLineDensity,
-                    color: widget.viewModel.boardLinesColor,
+                    pattern: board.linePattern,
+                    spacing: board.lineSpacing,
+                    color: board.lineColor,
                     child: SizedBox(width: 1920, height: 1080),
                   );
-                  return widget.viewModel.isChalkboard ? ChalkboardBackground(
-                    boardColor: widget.viewModel.boardColor,
+                  return board.isChalkboard ? ChalkboardBackground(
+                    boardColor: board.backgroundColor,
                     child: box,
-                  ) : ColoredBox(color: widget.viewModel.boardColor, child: box);
+                  ) : ColoredBox(color: board.backgroundColor, child: box);
                 }),
                 onPointerDown: (pde) => setState(() => _pointerPosition = pde.localPosition),
                 onPointerMove: (pme) => setState(() => _pointerPosition = pme.localPosition),
@@ -82,7 +85,8 @@ class _BoardState extends State<Board> {
           ),
         ),
       ),
-    ));
+    );
+    });
   }
 
   @override
