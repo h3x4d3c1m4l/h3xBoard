@@ -17,8 +17,8 @@ class EraserToolButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Observer(builder: (_) => ToolButton(
       icon: LucideIcons.eraser,
-      title: context.localizations.eraserToolButton_erase,
-      checked: viewModel.activeTool == .eraser,
+      title: 'Erase',
+      checked: viewModel.drawingTools.activeTool == .eraser,
       onPressed: () => controller.onSelectableToolButtonPressed(.eraser),
       flyoutBuilder: (context) => FlyoutContent(
         child: Observer(builder: (_) => Row(
@@ -28,15 +28,15 @@ class EraserToolButton extends StatelessWidget {
             Text(context.localizations.eraserToolButton_stroke),
             SizedBox(
               height: 24,
-              child: Slider(min: 2, max: 64, value: viewModel.eraserWidth, onChanged: controller.onEraserWidthSliderMoved),
+              child: Slider(min: 2, max: 64, value: viewModel.drawingTools.eraserWidth, onChanged: controller.onEraserWidthSliderMoved),
             ),
             Container(
               width: 64 / viewModel.boardPixelRatio,
               height: 64 / viewModel.boardPixelRatio,
               alignment: Alignment.center,
               child: Container(
-                width: viewModel.eraserWidth / viewModel.boardPixelRatio,
-                height: viewModel.eraserWidth / viewModel.boardPixelRatio,
+                width: viewModel.drawingTools.eraserWidth / viewModel.boardPixelRatio,
+                height: viewModel.drawingTools.eraserWidth / viewModel.boardPixelRatio,
                 decoration: BoxDecoration(
                   border: BoxBorder.all(),
                   color: Colors.white,
