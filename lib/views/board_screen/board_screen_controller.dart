@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:h3xboard/models/board.dart';
+import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
@@ -17,6 +18,12 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     required super.contextAccessor,
   }) {
     drawingController.setStyle(color: viewModel.drawingTools.activeColor);
+    viewModel.addBoardWidget(const BoardWidget(
+      id: 'clock_1',
+      type: BoardWidgetType.clock,
+      x: 1770,
+      y: 60,
+    ));
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/models/board.dart';
+import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/views/base/screen_view_model_base.dart';
 import 'package:mobx/mobx.dart';
@@ -31,6 +32,9 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @readonly
   double _boardPixelRatio = 1;
+
+  @readonly
+  ObservableList<BoardWidget> _boardWidgets = ObservableList();
 
   BoardScreenViewModelBase({
     required super.contextAccessor,
@@ -92,6 +96,19 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @action
   void setBoardLineSpacing(double spacing) {
     _board = _board.copyWith(lineSpacing: spacing);
+  }
+
+  @action
+  void addBoardWidget(BoardWidget widget) {
+    _boardWidgets.add(widget);
+  }
+
+  @action
+  void updateBoardWidget(String id, double x, double y, double rotation, double scale) {
+    final index = _boardWidgets.indexWhere((w) => w.id == id);
+    if (index != -1) {
+      _boardWidgets[index] = _boardWidgets[index].copyWith(x: x, y: y, rotation: rotation, scale: scale);
+    }
   }
 
 }
