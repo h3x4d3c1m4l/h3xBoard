@@ -18,7 +18,7 @@ class PenToolButton extends StatelessWidget {
     return Observer(builder: (_) => ToolButton(
       icon: LucideIcons.pen,
       title: context.localizations.penToolButton_draw,
-      checked: viewModel.activeTool == .pen,
+      checked: viewModel.drawingTools.activeTool == .pen,
       onPressed: () => controller.onSelectableToolButtonPressed(.pen),
       flyoutBuilder: (context) => FlyoutContent(
         child: Observer(builder: (_) => Row(
@@ -28,17 +28,17 @@ class PenToolButton extends StatelessWidget {
             Text(context.localizations.penToolButton_stroke),
             SizedBox(
               height: 24,
-              child: Slider(min: 2, max: 64, value: viewModel.penWidth, onChanged: controller.onPenWidthSliderMoved),
+              child: Slider(min: 2, max: 64, value: viewModel.drawingTools.penWidth, onChanged: controller.onPenWidthSliderMoved),
             ),
             Container(
               width: 64 / viewModel.boardPixelRatio,
               height: 64 / viewModel.boardPixelRatio,
               alignment: Alignment.center,
               child: Container(
-                width: viewModel.penWidth / viewModel.boardPixelRatio,
-                height: viewModel.penWidth / viewModel.boardPixelRatio,
+                width: viewModel.drawingTools.penWidth / viewModel.boardPixelRatio,
+                height: viewModel.drawingTools.penWidth / viewModel.boardPixelRatio,
                 decoration: BoxDecoration(
-                  color: viewModel.activeDrawingColor,
+                  color: viewModel.drawingTools.activeColor,
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
                 ),

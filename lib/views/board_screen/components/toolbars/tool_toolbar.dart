@@ -10,8 +10,6 @@ import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart'
 import 'package:h3xboard/views/board_screen/components/toolbars/toggle_button_toolbar.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-enum SelectableEditTool { pen, eraser }
-
 class ToolToolbar extends StatelessWidget {
 
   final BoardScreenController controller;
