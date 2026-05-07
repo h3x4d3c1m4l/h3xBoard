@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 
 class Board extends StatefulWidget {
 
@@ -33,6 +36,10 @@ class _BoardState extends State<Board> {
       _eraseStrokeWidth = widget.drawingController.eraserContent?.paint.strokeWidth;
     });
   }
+
+  Widget _buildWidgetContent(BoardWidgetType type) => switch (type) {
+        BoardWidgetType.clock => const ClockWidget(),
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +78,14 @@ class _BoardState extends State<Board> {
                 boardPanEnabled: false,
                 boardScaleEnabled: false,
               ),
+              for (final bw in widget.viewModel.boardWidgets)
+                ManipulableBoardWidget(
+                  key: ValueKey(bw.id),
+                  boardWidget: bw,
+                  onTransformChanged: (x, y, rotation, scale) =>
+                      widget.viewModel.updateBoardWidget(bw.id, x, y, rotation, scale),
+                  child: _buildWidgetContent(bw.type),
+                ),
               if (_eraseStrokeWidth != null)
                 Positioned(
                   left: _pointerPosition!.dx - (_eraseStrokeWidth! / 2),
