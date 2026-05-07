@@ -21,18 +21,18 @@ MenuFlyoutSubItem _boardLinesSubmenu(BuildContext context, BoardScreenViewModel 
                   mainAxisSize: .min,
                   children: [
                     ToggleButton(
-                      checked: viewModel.boardLines == .none,
-                      onChanged: (_) => controller.onBoardLinesPicked(.none),
+                      checked: viewModel.board.linePattern == .none,
+                      onChanged: (_) => controller.onBoardLinePatternPicked(.none),
                       child: Icon(LucideIcons.square, size: 24),
                     ),
                     ToggleButton(
-                      checked: viewModel.boardLines == .horizontal,
-                      onChanged: (_) => controller.onBoardLinesPicked(.horizontal),
+                      checked: viewModel.board.linePattern == .horizontal,
+                      onChanged: (_) => controller.onBoardLinePatternPicked(.horizontal),
                       child: Icon(LucideIcons.rows3, size: 24),
                     ),
                     ToggleButton(
-                      checked: viewModel.boardLines == .grid,
-                      onChanged: (_) => controller.onBoardLinesPicked(.grid),
+                      checked: viewModel.board.linePattern == .grid,
+                      onChanged: (_) => controller.onBoardLinePatternPicked(.grid),
                       child: Icon(LucideIcons.grid2x2, size: 24),
                     ),
                   ],
@@ -53,8 +53,8 @@ MenuFlyoutSubItem _boardLinesSubmenu(BuildContext context, BoardScreenViewModel 
               child: Slider(
                 min: 32,
                 max: 128,
-                value: viewModel.boardLineDensity,
-                onChanged: viewModel.boardLines != .none ? controller.onBoardLineDensitySliderMoved : null,
+                value: viewModel.board.lineSpacing,
+                onChanged: viewModel.board.linePattern != .none ? controller.onBoardLineSpacingSliderMoved : null,
               ),
             ),
             Icon(LucideIcons.grid2x2),
@@ -69,8 +69,8 @@ MenuFlyoutSubItem _boardLinesSubmenu(BuildContext context, BoardScreenViewModel 
           children: _boardLineColorPresets.map((color) =>
             ColorPresetButton(
               color: color,
-              isActive: viewModel.boardLinesColor == color,
-              onPressed: () => controller.onBoardLinesColorPicked(color),
+              isActive: viewModel.board.lineColor == color,
+              onPressed: () => controller.onBoardLineColorPicked(color),
             ),
           ).toList(),
         )),

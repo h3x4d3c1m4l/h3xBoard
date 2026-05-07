@@ -23,7 +23,7 @@ MenuFlyoutSubItem _boardColorSubmenu(BuildContext context, BoardScreenViewModel 
                   children: _regularBoardColors.map((color) => ColorPresetButton(
                     color: color,
                     isChalkboard: false,
-                    isActive: viewModel.boardColor == color,
+                    isActive: viewModel.board.backgroundColor == color,
                     onPressed: () {
                       controller.onBoardBackgroundColorPicked(color, false);
                     },
@@ -35,7 +35,7 @@ MenuFlyoutSubItem _boardColorSubmenu(BuildContext context, BoardScreenViewModel 
                   children: _chalkboardColors.map((color) => ColorPresetButton(
                     color: color,
                     isChalkboard: true,
-                    isActive: viewModel.boardColor == color,
+                    isActive: viewModel.board.backgroundColor == color,
                     onPressed: () {
                       controller.onBoardBackgroundColorPicked(color, true);
                     },

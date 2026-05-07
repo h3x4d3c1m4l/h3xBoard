@@ -25,7 +25,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
               children: [
                 Observer(
                   builder: (_) => DrawingToolbar(
-                    activeColor: viewModel.activeDrawingColor,
+                    activeColor: viewModel.drawingTools.activeColor,
                     onColorButtonPressed: controller.onColorButtonPressed,
                   ),
                 ),

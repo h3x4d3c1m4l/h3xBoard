@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 
 class Board extends StatefulWidget {
 
@@ -34,11 +37,17 @@ class _BoardState extends State<Board> {
     });
   }
 
+  Widget _buildWidgetContent(BoardWidgetType type) => switch (type) {
+        BoardWidgetType.clock => const ClockWidget(),
+      };
+
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (context) => Container(
+    return Observer(builder: (context) {
+      final board = widget.viewModel.board;
+      return Container(
       decoration: BoxDecoration(
-        border: widget.viewModel.boardColor == Colors.white ? BoxBorder.all(width: 1, color: Colors.black12, strokeAlign: BorderSide.strokeAlignOutside) : null,
+        border: board.backgroundColor == Colors.white ? BoxBorder.all(width: 1, color: Colors.black12, strokeAlign: BorderSide.strokeAlignOutside) : null,
         borderRadius: BorderRadius.circular(24),
       ),
       clipBehavior: Clip.antiAlias,
@@ -51,16 +60,17 @@ class _BoardState extends State<Board> {
               DrawingBoard(
                 controller: widget.drawingController,
                 background: Observer(builder: (_) {
+                  final board = widget.viewModel.board;
                   Widget box = BackgroundLines(
-                    lines: widget.viewModel.boardLines,
-                    density: widget.viewModel.boardLineDensity,
-                    color: widget.viewModel.boardLinesColor,
+                    pattern: board.linePattern,
+                    spacing: board.lineSpacing,
+                    color: board.lineColor,
                     child: SizedBox(width: 1920, height: 1080),
                   );
-                  return widget.viewModel.isChalkboard ? ChalkboardBackground(
-                    boardColor: widget.viewModel.boardColor,
+                  return board.isChalkboard ? ChalkboardBackground(
+                    boardColor: board.backgroundColor,
                     child: box,
-                  ) : ColoredBox(color: widget.viewModel.boardColor, child: box);
+                  ) : ColoredBox(color: board.backgroundColor, child: box);
                 }),
                 onPointerDown: (pde) => setState(() => _pointerPosition = pde.localPosition),
                 onPointerMove: (pme) => setState(() => _pointerPosition = pme.localPosition),
@@ -68,6 +78,14 @@ class _BoardState extends State<Board> {
                 boardPanEnabled: false,
                 boardScaleEnabled: false,
               ),
+              for (final bw in widget.viewModel.boardWidgets)
+                ManipulableBoardWidget(
+                  key: ValueKey(bw.id),
+                  boardWidget: bw,
+                  onTransformChanged: (x, y, rotation, scale) =>
+                      widget.viewModel.updateBoardWidget(bw.id, x, y, rotation, scale),
+                  child: _buildWidgetContent(bw.type),
+                ),
               if (_eraseStrokeWidth != null)
                 Positioned(
                   left: _pointerPosition!.dx - (_eraseStrokeWidth! / 2),
@@ -82,7 +100,8 @@ class _BoardState extends State<Board> {
           ),
         ),
       ),
-    ));
+    );
+    });
   }
 
   @override

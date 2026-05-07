@@ -1,9 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
+import 'package:h3xboard/models/board.dart';
+import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
-import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dart';
 
 class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
@@ -15,7 +17,13 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     required super.viewModel,
     required super.contextAccessor,
   }) {
-    drawingController.setStyle(color: viewModel.activeDrawingColor);
+    drawingController.setStyle(color: viewModel.drawingTools.activeColor);
+    viewModel.addBoardWidget(const BoardWidget(
+      id: 'clock_1',
+      type: BoardWidgetType.clock,
+      x: 1770,
+      y: 60,
+    ));
   }
 
   @override
@@ -30,21 +38,21 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       ..setActiveTool(.pen);
     drawingController
       ..setPaintContent(SimpleLine())
-      ..setStyle(color: value);
+      ..setStyle(color: value, strokeWidth: viewModel.drawingTools.penWidth);
   }
 
   void onSelectableToolButtonPressed(SelectableEditTool value) {
     switch (value) {
       case .pen:
-        if (viewModel.activeDrawingColor == null) {
-          viewModel.setActiveColor(viewModel.lastActiveDrawingColor);
+        if (viewModel.drawingTools.activeColor == null) {
+          viewModel.setActiveColor(viewModel.drawingTools.lastActiveColor);
         }
         drawingController.setPaintContent(SimpleLine());
-        drawingController.setStyle(strokeWidth: viewModel.penWidth);
+        drawingController.setStyle(strokeWidth: viewModel.drawingTools.penWidth);
       case .eraser:
         viewModel.setActiveColor(null);
         drawingController.setPaintContent(Eraser());
-        drawingController.setStyle(strokeWidth: viewModel.eraserWidth);
+        drawingController.setStyle(strokeWidth: viewModel.drawingTools.eraserWidth);
     }
 
     viewModel.setActiveTool(value);
@@ -68,16 +76,16 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     viewModel.setBoardColorAndType(color, isChalkboard);
   }
 
-  void onBoardLinesPicked(BoardLines lines) {
-    viewModel.setBoardLines(lines);
+  void onBoardLinePatternPicked(BoardLinePattern pattern) {
+    viewModel.setBoardLinePattern(pattern);
   }
 
-  void onBoardLineDensitySliderMoved(double value) {
-    viewModel.setBoardLineDensity(value);
+  void onBoardLineSpacingSliderMoved(double value) {
+    viewModel.setBoardLineSpacing(value);
   }
 
-  void onBoardLinesColorPicked(Color color) {
-    viewModel.setBoardLinesColor(color);
+  void onBoardLineColorPicked(Color color) {
+    viewModel.setBoardLineColor(color);
   }
 
 }
