@@ -3,7 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'drawing_tools.freezed.dart';
 
-enum SelectableEditTool { pen, eraser }
+enum SelectableEditTool { pointer, pen, eraser }
 
 @freezed
 abstract class DrawingTools with _$DrawingTools {

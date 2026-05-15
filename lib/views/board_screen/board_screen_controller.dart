@@ -34,7 +34,8 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   void onColorButtonPressed(Color value) {
     viewModel
       ..setActiveColor(value)
-      ..setActiveTool(.pen);
+      ..setActiveTool(.pen)
+      ..clearSelection();
     drawingController
       ..setPaintContent(SimpleLine())
       ..setStyle(color: value, strokeWidth: viewModel.drawingTools.penWidth);
@@ -42,16 +43,20 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onSelectableToolButtonPressed(SelectableEditTool value) {
     switch (value) {
+      case .pointer:
+        break;
       case .pen:
         if (viewModel.drawingTools.activeColor == null) {
           viewModel.setActiveColor(viewModel.drawingTools.lastActiveColor);
         }
         drawingController.setPaintContent(SimpleLine());
         drawingController.setStyle(strokeWidth: viewModel.drawingTools.penWidth);
+        viewModel.clearSelection();
       case .eraser:
         viewModel.setActiveColor(null);
         drawingController.setPaintContent(Eraser());
         drawingController.setStyle(strokeWidth: viewModel.drawingTools.eraserWidth);
+        viewModel.clearSelection();
     }
 
     viewModel.setActiveTool(value);
