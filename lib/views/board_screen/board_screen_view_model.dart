@@ -36,6 +36,9 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @readonly
   ObservableList<BoardWidget> _boardWidgets = ObservableList();
 
+  @readonly
+  ObservableSet<String> _selectedWidgetIds = ObservableSet();
+
   BoardScreenViewModelBase({
     required super.contextAccessor,
   });
@@ -109,6 +112,28 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
     if (index != -1) {
       _boardWidgets[index] = _boardWidgets[index].copyWith(x: x, y: y, rotation: rotation, scale: scale);
     }
+  }
+
+  @action
+  void selectWidget(String id, {bool multiSelect = false}) {
+    if (multiSelect) {
+      if (_selectedWidgetIds.contains(id)) {
+        _selectedWidgetIds.remove(id);
+      } else {
+        _selectedWidgetIds.add(id);
+      }
+    } else {
+      _selectedWidgetIds = ObservableSet.of([id]);
+    }
+  }
+
+  @action
+  void clearSelection() => _selectedWidgetIds.clear();
+
+  @action
+  void removeBoardWidget(String id) {
+    _boardWidgets.removeWhere((w) => w.id == id);
+    _selectedWidgetIds.remove(id);
   }
 
 }
