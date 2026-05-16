@@ -44,7 +44,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   void onSelectableToolButtonPressed(SelectableEditTool value) {
     switch (value) {
       case .pointer:
-        break;
+        viewModel.setActiveColor(null);
       case .pen:
         if (viewModel.drawingTools.activeColor == null) {
           viewModel.setActiveColor(viewModel.drawingTools.lastActiveColor);

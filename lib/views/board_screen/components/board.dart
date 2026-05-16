@@ -194,7 +194,9 @@ class _BoardState extends State<Board> {
         _currentY = bw.y;
         _gestureStartRotation = bw.rotation;
         _gestureStartScale = bw.scale;
-        widget.viewModel.setActiveTool(SelectableEditTool.pointer);
+        widget.viewModel
+          ..setActiveColor(null)
+          ..setActiveTool(SelectableEditTool.pointer);
         return;
       }
     }
