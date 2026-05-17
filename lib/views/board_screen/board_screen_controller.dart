@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
@@ -20,9 +18,6 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     required super.contextAccessor,
   }) {
     drawingController.setStyle(color: viewModel.drawingTools.activeColor);
-    viewModel
-      ..addBoardWidget(const BoardWidget(id: 'clock_1', config: ClockConfig(), x: 200, y: 400, scale: 1.5, rotation: 0.25 * pi))
-      ..addBoardWidget(const BoardWidget(id: 'traffic_1', config: TrafficLightConfig(), x: 960, y: 540));
   }
 
   @override
@@ -60,6 +55,11 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     }
 
     viewModel.setActiveTool(value);
+  }
+
+  void onAddWidget(BoardWidgetConfig config) {
+    final id = '${config.runtimeType}_${DateTime.now().millisecondsSinceEpoch}';
+    viewModel.addBoardWidget(BoardWidget(id: id, config: config, x: 960, y: 540));
   }
 
   void onClearButtonPressed() {

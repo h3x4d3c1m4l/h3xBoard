@@ -1,7 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
+import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class TrafficLightWidget extends StatelessWidget {
 
@@ -73,6 +75,12 @@ class TrafficLightWidgetDescriptor extends BoardWidgetDescriptor {
 
   static const TrafficLightWidgetDescriptor instance = TrafficLightWidgetDescriptor._();
   const TrafficLightWidgetDescriptor._();
+
+  @override
+  IconData get icon => LucideIcons.trafficCone;
+
+  @override
+  String label(AppLocalizations localizations) => localizations.addWidgetMenu_trafficLight;
 
   @override
   Size get naturalSize => TrafficLightWidget.naturalSize;
