@@ -27,5 +27,15 @@
     "eraserToolButton_erase": "Gummen",
     "@eraserToolButton_erase": {},
     "eraserToolButton_stroke": "Lijnbreedte:",
-    "@eraserToolButton_stroke": {}
+    "@eraserToolButton_stroke": {},
+    "clockSettingsMenu_24h": "24-uurs formaat",
+    "@clockSettingsMenu_24h": {},
+    "clockSettingsMenu_showSeconds": "Seconden tonen",
+    "@clockSettingsMenu_showSeconds": {},
+    "trafficLightSettingsMenu_red": "Rood",
+    "@trafficLightSettingsMenu_red": {},
+    "trafficLightSettingsMenu_yellow": "Geel",
+    "@trafficLightSettingsMenu_yellow": {},
+    "trafficLightSettingsMenu_green": "Groen",
+    "@trafficLightSettingsMenu_green": {}
 }

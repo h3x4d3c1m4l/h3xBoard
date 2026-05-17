@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 
-// Natural size (in virtual canvas pixels) for each widget type.
-Size naturalSizeFor(BoardWidgetType type) => switch (type) {
-      BoardWidgetType.clock => const Size(300, 100),
-    };
+Size naturalSizeFor(BoardWidgetConfig config) => descriptorFor(config).naturalSize;
 
 class ManipulableBoardWidget extends StatelessWidget {
+
   final BoardWidget boardWidget;
   final Widget child;
 
@@ -18,7 +17,7 @@ class ManipulableBoardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = naturalSizeFor(boardWidget.type);
+    final size = naturalSizeFor(boardWidget.config);
     final scaledWidth = size.width * boardWidget.scale;
     final scaledHeight = size.height * boardWidget.scale;
 
@@ -41,4 +40,5 @@ class ManipulableBoardWidget extends StatelessWidget {
       ),
     );
   }
+
 }

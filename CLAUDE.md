@@ -61,6 +61,25 @@ The app uses **fluent_ui** (Windows Fluent Design) for core widgets (`FilledButt
 
 ARB files live in `lib/l10n/` (`app_en.arb`, `app_nl.arb`). Generated code lands in `lib/l10n/generated/`. Access strings via the `AppLocalizations` extension on `BuildContext`. After editing ARB files, run `just gen-l10n`. The convention for keys is `myWidgetName_short_description`. Localizations can always be accessed by screens using `localizations.myWidgetName_short_description` and by regular widgets using `context.localizations.myWidgetName_short_description` if the following import is added: `import 'package:h3xboard/extensions/build_context_extension.dart';`.
 
+## Code Style
+
+### Class body padding
+
+Every class body must have a blank line after the opening `{` and a blank line before the closing `}`:
+
+```dart
+class MyClass {
+
+  final String myVar;
+
+  void myMethod() {
+  }
+
+}
+```
+
+This applies to all classes: widgets, state classes, descriptors, freezed classes, abstract classes, etc.
+
 ## Key Configuration
 
 - **Line length**: 120 characters (`analysis_options.yaml`); not enforced but more as a guideline
