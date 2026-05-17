@@ -21,8 +21,8 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   }) {
     drawingController.setStyle(color: viewModel.drawingTools.activeColor);
     viewModel
-      ..addBoardWidget(const BoardWidget(id: 'clock_1', type: BoardWidgetType.clock, x: 200, y: 400, scale: 1.5, rotation: 0.25 * pi))
-      ..addBoardWidget(const BoardWidget(id: 'clock_2', type: BoardWidgetType.clock, x: 1770, y: 60));
+      ..addBoardWidget(const BoardWidget(id: 'clock_1', config: ClockConfig(), x: 200, y: 400, scale: 1.5, rotation: 0.25 * pi))
+      ..addBoardWidget(const BoardWidget(id: 'traffic_1', config: TrafficLightConfig(), x: 960, y: 540));
   }
 
   @override

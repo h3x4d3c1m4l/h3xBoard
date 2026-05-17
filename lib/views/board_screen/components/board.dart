@@ -9,11 +9,12 @@ import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
-import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_selection_overlay.dart';
 
 class Board extends StatefulWidget {
+
   final DrawingController drawingController;
   final BoardScreenViewModel viewModel;
 
@@ -21,9 +22,11 @@ class Board extends StatefulWidget {
 
   @override
   State<Board> createState() => _BoardState();
+
 }
 
 class _BoardState extends State<Board> {
+
   Offset? _pointerPosition;
   double? _eraseStrokeWidth;
 
@@ -76,9 +79,7 @@ class _BoardState extends State<Board> {
     });
   }
 
-  Widget _buildWidgetContent(BoardWidgetType type) => switch (type) {
-        BoardWidgetType.clock => const ClockWidget(),
-      };
+  Widget _buildWidgetContent(BoardWidget bw) => descriptorFor(bw.config).buildWidget(bw.config);
 
   // Returns true if canvasPoint is inside the action button bar of any currently
   // selected widget's overlay. Must mirror the position math in WidgetSelectionOverlay
@@ -92,7 +93,7 @@ class _BoardState extends State<Board> {
     const gap = 6.0;
     for (final bw in widget.viewModel.boardWidgets) {
       if (!widget.viewModel.selectedWidgetIds.contains(bw.id)) continue;
-      final size = naturalSizeFor(bw.type);
+      final size = naturalSizeFor(bw.config);
       final scaledW = size.width * bw.scale;
       final scaledH = size.height * bw.scale;
       final r = bw.rotation;
@@ -113,7 +114,7 @@ class _BoardState extends State<Board> {
   // Exact hit test for a rotated rectangle: inverse-rotate the canvas point
   // into the widget's local frame, then do an axis-aligned bounds check.
   bool _isPointOnWidget(Offset canvasPoint, BoardWidget bw) {
-    final size = naturalSizeFor(bw.type);
+    final size = naturalSizeFor(bw.config);
     final dx = canvasPoint.dx - bw.x;
     final dy = canvasPoint.dy - bw.y;
     final cosA = math.cos(-bw.rotation);
@@ -308,7 +309,7 @@ class _BoardState extends State<Board> {
                   ManipulableBoardWidget(
                     key: ValueKey(bw.id),
                     boardWidget: bw,
-                    child: _buildWidgetContent(bw.type),
+                    child: _buildWidgetContent(bw),
                   ),
                 // Selection overlays — inside FittedBox so coords match widget coords.
                 // Sized at boardPixelRatio-scaled canvas units to appear at host scale.
@@ -320,7 +321,11 @@ class _BoardState extends State<Board> {
                         boardWidget: bw,
                         boardPixelRatio: widget.viewModel.boardPixelRatio,
                         onDelete: () => widget.viewModel.removeBoardWidget(bw.id),
-                        onSettings: () {},
+                        settingsBuilder: (context) => descriptorFor(bw.config).settingsMenuItems(
+                          context,
+                          bw.config,
+                          (newConfig) => widget.viewModel.updateBoardWidgetConfig(bw.id, newConfig),
+                        ),
                       ),
                     ),
                 if (_eraseStrokeWidth != null)
@@ -372,4 +377,5 @@ class _BoardState extends State<Board> {
     HardwareKeyboard.instance.removeHandler(_onKeyEvent);
     super.dispose();
   }
+
 }

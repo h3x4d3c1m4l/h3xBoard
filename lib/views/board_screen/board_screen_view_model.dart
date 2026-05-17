@@ -131,6 +131,14 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   void clearSelection() => _selectedWidgetIds.clear();
 
   @action
+  void updateBoardWidgetConfig(String id, BoardWidgetConfig config) {
+    final index = _boardWidgets.indexWhere((w) => w.id == id);
+    if (index != -1) {
+      _boardWidgets[index] = _boardWidgets[index].copyWith(config: config);
+    }
+  }
+
+  @action
   void removeBoardWidget(String id) {
     _boardWidgets.removeWhere((w) => w.id == id);
     _selectedWidgetIds.remove(id);

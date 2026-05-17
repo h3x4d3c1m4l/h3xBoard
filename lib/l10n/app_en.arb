@@ -27,5 +27,15 @@
     "eraserToolButton_erase": "Erase",
     "@eraserToolButton_erase": {},
     "eraserToolButton_stroke": "Stroke:",
-    "@eraserToolButton_stroke": {}
+    "@eraserToolButton_stroke": {},
+    "clockSettingsMenu_24h": "24-hour format",
+    "@clockSettingsMenu_24h": {},
+    "clockSettingsMenu_showSeconds": "Show seconds",
+    "@clockSettingsMenu_showSeconds": {},
+    "trafficLightSettingsMenu_red": "Red",
+    "@trafficLightSettingsMenu_red": {},
+    "trafficLightSettingsMenu_yellow": "Yellow",
+    "@trafficLightSettingsMenu_yellow": {},
+    "trafficLightSettingsMenu_green": "Green",
+    "@trafficLightSettingsMenu_green": {}
 }
