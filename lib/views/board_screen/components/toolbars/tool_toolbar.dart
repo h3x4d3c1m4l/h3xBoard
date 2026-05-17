@@ -3,6 +3,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
+import 'package:h3xboard/views/board_screen/components/buttons/add_widget_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/board_settings_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/eraser_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/pen_tool_button.dart';
@@ -35,7 +36,7 @@ class ToolToolbar extends StatelessWidget {
             buttons: [
               PenToolButton(viewModel: viewModel, controller: controller),
               EraserToolButton(viewModel: viewModel, controller: controller),
-              ToolButton(icon: LucideIcons.ellipsis, title: context.localizations.toolToolbar_widgets, onPressed: null),
+              AddWidgetButton(viewModel: viewModel, controller: controller),
               BoardSettingsButton(viewModel: viewModel, controller: controller),
             ],
           ),

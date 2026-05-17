@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/traffic_light_widget.dart';
@@ -11,6 +12,8 @@ abstract class BoardWidgetDescriptor {
 
   const BoardWidgetDescriptor();
 
+  IconData get icon;
+  String label(AppLocalizations localizations);
   Size get naturalSize;
   BoardWidgetConfig get defaultConfig;
   Widget buildWidget(BoardWidgetConfig config);
@@ -28,6 +31,9 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   ClockConfig: ClockWidgetDescriptor.instance,
   TrafficLightConfig: TrafficLightWidgetDescriptor.instance,
 };
+
+// All registered descriptors, exposed for building the "add widget" menu.
+const widgetRegistry = _registry;
 
 BoardWidgetDescriptor descriptorFor(BoardWidgetConfig config) =>
     _registry[config.runtimeType]!;
