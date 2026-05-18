@@ -32,7 +32,16 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
                 Flexible(child: LayoutBuilder(
                   builder: (context, constraints) {
                     viewModel.updateResizeFactor(constraints);
-                    return Board(drawingController: controller.drawingController, viewModel: viewModel);
+                    return Board(
+                  drawingController: controller.drawingController,
+                  viewModel: viewModel,
+                  onDeleteWidget: controller.onDeleteWidget,
+                  onWidgetConfigChanged: controller.onWidgetConfigChanged,
+                  onWidgetTransformStart: controller.onWidgetTransformStart,
+                  onWidgetTransformEnd: controller.onWidgetTransformEnd,
+                  onDrawingStrokeStart: controller.onDrawingStrokeStart,
+                  onDrawingStrokeEnd: controller.onDrawingStrokeEnd,
+                );
                   }
                 )),
               ],

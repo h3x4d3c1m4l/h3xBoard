@@ -17,8 +17,24 @@ class Board extends StatefulWidget {
 
   final DrawingController drawingController;
   final BoardScreenViewModel viewModel;
+  final void Function(String id) onDeleteWidget;
+  final void Function(String id, BoardWidgetConfig config) onWidgetConfigChanged;
+  final void Function(String id) onWidgetTransformStart;
+  final void Function(String id) onWidgetTransformEnd;
+  final VoidCallback onDrawingStrokeStart;
+  final VoidCallback onDrawingStrokeEnd;
 
-  const Board({super.key, required this.drawingController, required this.viewModel});
+  const Board({
+    super.key,
+    required this.drawingController,
+    required this.viewModel,
+    required this.onDeleteWidget,
+    required this.onWidgetConfigChanged,
+    required this.onWidgetTransformStart,
+    required this.onWidgetTransformEnd,
+    required this.onDrawingStrokeStart,
+    required this.onDrawingStrokeEnd,
+  });
 
   @override
   State<Board> createState() => _BoardState();
@@ -198,6 +214,7 @@ class _BoardState extends State<Board> {
         widget.viewModel
           ..setActiveColor(null)
           ..setActiveTool(SelectableEditTool.pointer);
+        widget.onWidgetTransformStart(bw.id);
         return;
       }
     }
@@ -246,6 +263,9 @@ class _BoardState extends State<Board> {
     // defers onStart until the next move). Keep _activeWidgetId so the upcoming
     // onScaleStart can enter the mid-gesture branch instead of re-detecting.
     if (details.pointerCount == 0) {
+      if (_gestureMovedSignificantly && _activeWidgetId != null) {
+        widget.onWidgetTransformEnd(_activeWidgetId!);
+      }
       if (!_gestureMovedSignificantly && _activeWidgetId != null) {
         final isMultiSelect = HardwareKeyboard.instance.isControlPressed ||
             HardwareKeyboard.instance.isMetaPressed;
@@ -298,9 +318,21 @@ class _BoardState extends State<Board> {
                             )
                           : ColoredBox(color: board.backgroundColor, child: box);
                     }),
-                    onPointerDown: (pde) => setState(() => _pointerPosition = pde.localPosition),
+                    onPointerDown: (pde) {
+                      setState(() => _pointerPosition = pde.localPosition);
+                      final tool = widget.viewModel.drawingTools.activeTool;
+                      if (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser) {
+                        widget.onDrawingStrokeStart();
+                      }
+                    },
                     onPointerMove: (pme) => setState(() => _pointerPosition = pme.localPosition),
-                    onPointerUp: (pue) => setState(() => _pointerPosition = null),
+                    onPointerUp: (pue) {
+                      setState(() => _pointerPosition = null);
+                      final tool = widget.viewModel.drawingTools.activeTool;
+                      if (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser) {
+                        widget.onDrawingStrokeEnd();
+                      }
+                    },
                     boardPanEnabled: false,
                     boardScaleEnabled: false,
                   ),
@@ -320,11 +352,11 @@ class _BoardState extends State<Board> {
                         key: ValueKey('sel_${bw.id}'),
                         boardWidget: bw,
                         boardPixelRatio: widget.viewModel.boardPixelRatio,
-                        onDelete: () => widget.viewModel.removeBoardWidget(bw.id),
+                        onDelete: () => widget.onDeleteWidget(bw.id),
                         settingsBuilder: (context) => descriptorFor(bw.config).settingsMenuItems(
                           context,
                           bw.config,
-                          (newConfig) => widget.viewModel.updateBoardWidgetConfig(bw.id, newConfig),
+                          (newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig),
                         ),
                       ),
                     ),
