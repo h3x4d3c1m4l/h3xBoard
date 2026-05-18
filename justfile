@@ -13,7 +13,7 @@ get-deps:
   fvm flutter pub get
 
 gen-code:
-  fvm dart run build_runner build --delete-conflicting-outputs
+  fvm dart run build_runner build
 
 gen-l10n:
   fvm flutter gen-l10n
@@ -23,7 +23,7 @@ gen-l10n:
 ##
 
 watch-code:
-  fvm dart run build_runner watch --delete-conflicting-outputs
+  fvm dart run build_runner watch
 
 ##
 # Building
