@@ -55,6 +55,7 @@ MenuFlyoutSubItem _boardLinesSubmenu(BuildContext context, BoardScreenViewModel 
                 max: 128,
                 value: viewModel.board.lineSpacing,
                 onChanged: viewModel.board.linePattern != .none ? controller.onBoardLineSpacingSliderMoved : null,
+                onChangeEnd: viewModel.board.linePattern != .none ? controller.onBoardLineSpacingSliderEnd : null,
               ),
             ),
             Icon(LucideIcons.grid2x2),

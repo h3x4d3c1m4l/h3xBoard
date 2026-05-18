@@ -27,8 +27,8 @@ class ToolToolbar extends StatelessWidget {
         children: [
           ToggleButtonToolbar(
             buttons: [
-              ToolButton(icon: LucideIcons.undo, title: context.localizations.toolToolbar_undo, onPressed: null),
-              ToolButton(icon: LucideIcons.redo, title: context.localizations.toolToolbar_redo, onPressed: null),
+              ToolButton(icon: LucideIcons.undo, title: context.localizations.toolToolbar_undo, onPressed: controller.historyManager.canUndo ? controller.historyManager.undo : null),
+              ToolButton(icon: LucideIcons.redo, title: context.localizations.toolToolbar_redo, onPressed: controller.historyManager.canRedo ? controller.historyManager.redo : null),
               ToolButton(icon: LucideIcons.trash2, title: context.localizations.toolToolbar_clear, onPressed: controller.onClearButtonPressed),
             ],
           ),
