@@ -9,7 +9,7 @@ Flutter is managed via FVM (look at `.fvmrc` for pinned version). Use `fvm flutt
 ```bash
 just                    # Full setup: install Flutter, get deps, generate code & l10n
 just get-deps           # fvm flutter pub get
-just gen-code           # dart run build_runner build --delete-conflicting-outputs
+just gen-code           # dart run build_runner build
 just watch-code         # Watch mode for code generation during development
 just gen-l10n           # fvm flutter gen-l10n
 just lint               # fvm flutter analyze
