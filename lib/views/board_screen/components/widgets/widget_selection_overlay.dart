@@ -114,7 +114,10 @@ class _ActionButtonBarState extends State<_ActionButtonBar> {
 
   void _openSettings() {
     _flyoutController.showFlyout(
-      builder: (context) => MenuFlyout(items: widget.settingsBuilder(context)),
+      builder: (context) => MenuFlyout(
+        itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
+        items: widget.settingsBuilder(context),
+      ),
       placementMode: FlyoutPlacementMode.topCenter,
       additionalOffset: 8,
     );
@@ -140,7 +143,14 @@ class _ActionButtonBarState extends State<_ActionButtonBar> {
                 controller: _flyoutController,
                 child: Button(
                   onPressed: _openSettings,
-                  style: const ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsetsDirectional.symmetric(horizontal: 20, vertical: 16))),
+                  style: ButtonStyle(
+                    padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.symmetric(horizontal: 20, vertical: 16)),
+                    backgroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.isPressed) return const Color(0xFFB8B8B8);
+                      if (states.isHovered) return const Color(0xFFD8D8D8);
+                      return Colors.white;
+                    }),
+                  ),
                   child: const Icon(LucideIcons.settings),
                 ),
               ),
@@ -155,7 +165,14 @@ class _ActionButtonBarState extends State<_ActionButtonBar> {
               ),
               child: Button(
                 onPressed: widget.onDelete,
-                style: const ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsetsDirectional.symmetric(horizontal: 20, vertical: 16))),
+                style: ButtonStyle(
+                  padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.symmetric(horizontal: 20, vertical: 16)),
+                  backgroundColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.isPressed) return const Color(0xFFE0E0E0);
+                    if (states.isHovered) return const Color(0xFFF0F0F0);
+                    return Colors.white;
+                  }),
+                ),
                 child: const Icon(LucideIcons.trash2, color: Color(0xFFEF4444)),
               ),
             ),

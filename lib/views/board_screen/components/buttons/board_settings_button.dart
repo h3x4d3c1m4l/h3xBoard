@@ -35,6 +35,7 @@ class _BoardSettingsButtonState extends State<BoardSettingsButton> {
         onPressed: () {},
         flyoutBuilder: (context) => Observer(
           builder: (context) => MenuFlyout(
+            itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
             items: [
               _boardColorSubmenu(context, widget.viewModel, widget.controller),
               _boardLinesSubmenu(context, widget.viewModel, widget.controller),

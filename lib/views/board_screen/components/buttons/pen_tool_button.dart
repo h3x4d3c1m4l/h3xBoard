@@ -21,6 +21,7 @@ class PenToolButton extends StatelessWidget {
       checked: viewModel.drawingTools.activeTool == .pen,
       onPressed: () => controller.onSelectableToolButtonPressed(.pen),
       flyoutBuilder: (context) => FlyoutContent(
+        padding: .symmetric(horizontal: 16, vertical: 8),
         child: Observer(builder: (_) => Row(
           mainAxisSize: MainAxisSize.min,
           spacing: 4,

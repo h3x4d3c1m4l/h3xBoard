@@ -33,6 +33,7 @@ class _BoardAppState extends State<BoardApp> {
         typography: Typography.fromBrightness(
           brightness: Brightness.light,
         ).apply(fontFamily: GoogleFonts.ubuntu().fontFamily),
+        visualDensity: VisualDensity.standard,
       ),
     );
   }
