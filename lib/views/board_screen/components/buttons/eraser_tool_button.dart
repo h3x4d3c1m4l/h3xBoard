@@ -21,6 +21,7 @@ class EraserToolButton extends StatelessWidget {
       checked: viewModel.drawingTools.activeTool == .eraser,
       onPressed: () => controller.onSelectableToolButtonPressed(.eraser),
       flyoutBuilder: (context) => FlyoutContent(
+        padding: .symmetric(horizontal: 16, vertical: 8),
         child: Observer(builder: (_) => Row(
           mainAxisSize: MainAxisSize.min,
           spacing: 4,

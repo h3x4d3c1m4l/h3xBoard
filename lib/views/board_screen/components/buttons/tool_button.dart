@@ -102,7 +102,7 @@ class _ToolButtonContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: hasFlyout ? const EdgeInsets.fromLTRB(8, 8, 0, 8) : const EdgeInsets.all(8),
+      padding: hasFlyout ? const EdgeInsets.fromLTRB(4, 4, 0, 4) : const EdgeInsets.all(4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         spacing: 6,

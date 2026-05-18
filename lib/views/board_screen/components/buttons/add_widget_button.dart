@@ -21,6 +21,7 @@ class AddWidgetButton extends StatelessWidget {
       title: localizations.toolToolbar_widgets,
       onPressed: () {},
       flyoutBuilder: (context) => MenuFlyout(
+        itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
         items: widgetRegistry.values
             .map(
               (descriptor) => MenuFlyoutItem(
