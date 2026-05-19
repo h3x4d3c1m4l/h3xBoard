@@ -22,6 +22,8 @@
     "@addWidgetMenu_clock": {},
     "addWidgetMenu_trafficLight": "Verkeerslicht",
     "@addWidgetMenu_trafficLight": {},
+    "addWidgetMenu_stopwatch": "Stopwatch",
+    "@addWidgetMenu_stopwatch": {},
     "toolButton_actionNotAvailable": "Deze actie is momenteel niet beschikbaar.",
     "@toolButton_actionNotAvailable": {},
     "penToolButton_draw": "Tekenen",
@@ -41,5 +43,7 @@
     "trafficLightSettingsMenu_yellow": "Geel",
     "@trafficLightSettingsMenu_yellow": {},
     "trafficLightSettingsMenu_green": "Groen",
-    "@trafficLightSettingsMenu_green": {}
+    "@trafficLightSettingsMenu_green": {},
+    "stopwatchSettingsMenu_showCentiseconds": "Honderdsten tonen",
+    "@stopwatchSettingsMenu_showCentiseconds": {}
 }
