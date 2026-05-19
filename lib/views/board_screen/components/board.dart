@@ -1,9 +1,10 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
@@ -12,6 +13,7 @@ import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_ba
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_selection_overlay.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class Board extends StatefulWidget {
 
@@ -23,6 +25,10 @@ class Board extends StatefulWidget {
   final void Function(String id) onWidgetTransformEnd;
   final VoidCallback onDrawingStrokeStart;
   final VoidCallback onDrawingStrokeEnd;
+  final void Function(String id) onMoveWidgetToTop;
+  final void Function(String id) onMoveWidgetUp;
+  final void Function(String id) onMoveWidgetDown;
+  final void Function(String id) onMoveWidgetToBottom;
 
   const Board({
     super.key,
@@ -34,6 +40,10 @@ class Board extends StatefulWidget {
     required this.onWidgetTransformEnd,
     required this.onDrawingStrokeStart,
     required this.onDrawingStrokeEnd,
+    required this.onMoveWidgetToTop,
+    required this.onMoveWidgetUp,
+    required this.onMoveWidgetDown,
+    required this.onMoveWidgetToBottom,
   });
 
   @override
@@ -204,7 +214,7 @@ class _BoardState extends State<Board> {
     // Use the Listener-recorded initial touch position (pre-slop) rather than
     // details.localFocalPoint (post-slop) for accurate widget hit-testing.
     final checkPoint = _initialTouchPosition ?? details.localFocalPoint;
-    for (final bw in widget.viewModel.boardWidgets) {
+    for (final bw in widget.viewModel.boardWidgets.reversed) {
       if (_isPointOnWidget(checkPoint, bw)) {
         setState(() => _activeWidgetId = bw.id);
         _currentX = bw.x;
@@ -288,7 +298,7 @@ class _BoardState extends State<Board> {
       return Container(
         decoration: BoxDecoration(
           border: board.backgroundColor == Colors.white
-              ? BoxBorder.all(width: 1, color: Colors.black12, strokeAlign: BorderSide.strokeAlignOutside)
+              ? BoxBorder.all(width: 1, color: Colors.black.withValues(alpha: 0.12), strokeAlign: BorderSide.strokeAlignOutside)
               : null,
           borderRadius: BorderRadius.circular(24),
         ),
@@ -353,11 +363,47 @@ class _BoardState extends State<Board> {
                         boardWidget: bw,
                         boardPixelRatio: widget.viewModel.boardPixelRatio,
                         onDelete: () => widget.onDeleteWidget(bw.id),
-                        settingsBuilder: (context) => descriptorFor(bw.config).settingsMenuItems(
-                          context,
-                          bw.config,
-                          (newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig),
-                        ),
+                        settingsBuilder: (context) {
+                          final typeItems = descriptorFor(bw.config).settingsMenuItems(
+                            context,
+                            bw.config,
+                            (newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig),
+                          );
+                          final currentIndex = widget.viewModel.boardWidgets.indexWhere((w) => w.id == bw.id);
+                          final maxIndex = widget.viewModel.boardWidgets.length - 1;
+                          final isTop = currentIndex == maxIndex;
+                          final isBottom = currentIndex == 0;
+                          return [
+                            ...typeItems,
+                            if (typeItems.isNotEmpty) const MenuFlyoutSeparator(),
+                            MenuFlyoutSubItem(
+                              leading: const Icon(LucideIcons.layers),
+                              text: Text(context.localizations.layerMenu_title),
+                              items: (_) => [
+                                MenuFlyoutItem(
+                                  leading: const Icon(LucideIcons.chevronsUp),
+                                  text: Text(context.localizations.layerMenu_bringToFront),
+                                  onPressed: isTop ? null : () => widget.onMoveWidgetToTop(bw.id),
+                                ),
+                                MenuFlyoutItem(
+                                  leading: const Icon(LucideIcons.chevronUp),
+                                  text: Text(context.localizations.layerMenu_bringForward),
+                                  onPressed: isTop ? null : () => widget.onMoveWidgetUp(bw.id),
+                                ),
+                                MenuFlyoutItem(
+                                  leading: const Icon(LucideIcons.chevronDown),
+                                  text: Text(context.localizations.layerMenu_sendBackward),
+                                  onPressed: isBottom ? null : () => widget.onMoveWidgetDown(bw.id),
+                                ),
+                                MenuFlyoutItem(
+                                  leading: const Icon(LucideIcons.chevronsDown),
+                                  text: Text(context.localizations.layerMenu_sendToBack),
+                                  onPressed: isBottom ? null : () => widget.onMoveWidgetToBottom(bw.id),
+                                ),
+                              ],
+                            ),
+                          ];
+                        },
                       ),
                     ),
                 if (_eraseStrokeWidth != null)

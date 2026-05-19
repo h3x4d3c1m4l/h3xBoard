@@ -45,5 +45,15 @@
     "trafficLightSettingsMenu_green": "Groen",
     "@trafficLightSettingsMenu_green": {},
     "stopwatchSettingsMenu_showCentiseconds": "Honderdsten tonen",
-    "@stopwatchSettingsMenu_showCentiseconds": {}
+    "@stopwatchSettingsMenu_showCentiseconds": {},
+    "layerMenu_title": "Laagvolgorde",
+    "@layerMenu_title": {},
+    "layerMenu_bringToFront": "Naar voren brengen",
+    "@layerMenu_bringToFront": {},
+    "layerMenu_bringForward": "Één laag omhoog",
+    "@layerMenu_bringForward": {},
+    "layerMenu_sendBackward": "Één laag omlaag",
+    "@layerMenu_sendBackward": {},
+    "layerMenu_sendToBack": "Naar achteren sturen",
+    "@layerMenu_sendToBack": {}
 }
