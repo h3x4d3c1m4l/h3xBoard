@@ -16,6 +16,10 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     @Default(TrafficLightColor.red) TrafficLightColor activeLight,
   }) = TrafficLightConfig;
 
+  const factory BoardWidgetConfig.stopwatch({
+    @Default(true) bool showCentiseconds,
+  }) = StopwatchConfig;
+
 }
 
 @freezed

@@ -22,6 +22,8 @@
     "@addWidgetMenu_clock": {},
     "addWidgetMenu_trafficLight": "Traffic light",
     "@addWidgetMenu_trafficLight": {},
+    "addWidgetMenu_stopwatch": "Stopwatch",
+    "@addWidgetMenu_stopwatch": {},
     "toolButton_actionNotAvailable": "This action is not available right now.",
     "@toolButton_actionNotAvailable": {},
     "penToolButton_draw": "Draw",
@@ -41,5 +43,7 @@
     "trafficLightSettingsMenu_yellow": "Yellow",
     "@trafficLightSettingsMenu_yellow": {},
     "trafficLightSettingsMenu_green": "Green",
-    "@trafficLightSettingsMenu_green": {}
+    "@trafficLightSettingsMenu_green": {},
+    "stopwatchSettingsMenu_showCentiseconds": "Show centiseconds",
+    "@stopwatchSettingsMenu_showCentiseconds": {}
 }
