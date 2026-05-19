@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:h3xboard/models/board.dart';
 
 class BackgroundLines extends StatelessWidget {

@@ -145,6 +145,58 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     ));
   }
 
+  void onMoveWidgetToTop(String id) {
+    final originalIndex = viewModel.boardWidgets.indexWhere((w) => w.id == id);
+    if (originalIndex == -1) return;
+    final targetIndex = viewModel.boardWidgets.length - 1;
+    if (originalIndex == targetIndex) return;
+    viewModel.reorderBoardWidget(id, targetIndex);
+    historyManager.push(HistoryEntry(
+      undo: () => viewModel.reorderBoardWidget(id, originalIndex),
+      redo: () => viewModel.reorderBoardWidget(id, viewModel.boardWidgets.length - 1),
+    ));
+  }
+
+  void onMoveWidgetUp(String id) {
+    final originalIndex = viewModel.boardWidgets.indexWhere((w) => w.id == id);
+    if (originalIndex == -1) return;
+    final targetIndex = (originalIndex + 1).clamp(0, viewModel.boardWidgets.length - 1);
+    if (originalIndex == targetIndex) return;
+    viewModel.reorderBoardWidget(id, targetIndex);
+    historyManager.push(HistoryEntry(
+      undo: () => viewModel.reorderBoardWidget(id, originalIndex),
+      redo: () {
+        final idx = viewModel.boardWidgets.indexWhere((w) => w.id == id);
+        viewModel.reorderBoardWidget(id, (idx + 1).clamp(0, viewModel.boardWidgets.length - 1));
+      },
+    ));
+  }
+
+  void onMoveWidgetDown(String id) {
+    final originalIndex = viewModel.boardWidgets.indexWhere((w) => w.id == id);
+    if (originalIndex == -1) return;
+    final targetIndex = (originalIndex - 1).clamp(0, viewModel.boardWidgets.length - 1);
+    if (originalIndex == targetIndex) return;
+    viewModel.reorderBoardWidget(id, targetIndex);
+    historyManager.push(HistoryEntry(
+      undo: () => viewModel.reorderBoardWidget(id, originalIndex),
+      redo: () {
+        final idx = viewModel.boardWidgets.indexWhere((w) => w.id == id);
+        viewModel.reorderBoardWidget(id, (idx - 1).clamp(0, viewModel.boardWidgets.length - 1));
+      },
+    ));
+  }
+
+  void onMoveWidgetToBottom(String id) {
+    final originalIndex = viewModel.boardWidgets.indexWhere((w) => w.id == id);
+    if (originalIndex == -1 || originalIndex == 0) return;
+    viewModel.reorderBoardWidget(id, 0);
+    historyManager.push(HistoryEntry(
+      undo: () => viewModel.reorderBoardWidget(id, originalIndex),
+      redo: () => viewModel.reorderBoardWidget(id, 0),
+    ));
+  }
+
   // Widget transform history callbacks (called by Board)
 
   void onWidgetTransformStart(String id) {

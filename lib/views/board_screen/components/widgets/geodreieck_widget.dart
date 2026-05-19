@@ -1,8 +1,8 @@
 // ignore_for_file: cascade_invocations
 
 import 'dart:math';
-import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
+import 'package:flutter/widgets.dart';
 import 'package:h3xboard/extensions/canvas_extension.dart';
 
 @Preview(name: 'Geodreieck Widget')

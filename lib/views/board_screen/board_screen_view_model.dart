@@ -144,4 +144,12 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
     _selectedWidgetIds.remove(id);
   }
 
+  @action
+  void reorderBoardWidget(String id, int newIndex) {
+    final index = _boardWidgets.indexWhere((w) => w.id == id);
+    if (index == -1) return;
+    final widget = _boardWidgets.removeAt(index);
+    _boardWidgets.insert(newIndex.clamp(0, _boardWidgets.length), widget);
+  }
+
 }

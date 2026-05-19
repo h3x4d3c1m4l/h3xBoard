@@ -45,5 +45,15 @@
     "trafficLightSettingsMenu_green": "Green",
     "@trafficLightSettingsMenu_green": {},
     "stopwatchSettingsMenu_showCentiseconds": "Show centiseconds",
-    "@stopwatchSettingsMenu_showCentiseconds": {}
+    "@stopwatchSettingsMenu_showCentiseconds": {},
+    "layerMenu_title": "Layer order",
+    "@layerMenu_title": {},
+    "layerMenu_bringToFront": "Bring to front",
+    "@layerMenu_bringToFront": {},
+    "layerMenu_bringForward": "Bring forward",
+    "@layerMenu_bringForward": {},
+    "layerMenu_sendBackward": "Send backward",
+    "@layerMenu_sendBackward": {},
+    "layerMenu_sendToBack": "Send to back",
+    "@layerMenu_sendToBack": {}
 }

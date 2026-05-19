@@ -41,6 +41,10 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
                   onWidgetTransformEnd: controller.onWidgetTransformEnd,
                   onDrawingStrokeStart: controller.onDrawingStrokeStart,
                   onDrawingStrokeEnd: controller.onDrawingStrokeEnd,
+                  onMoveWidgetToTop: controller.onMoveWidgetToTop,
+                  onMoveWidgetUp: controller.onMoveWidgetUp,
+                  onMoveWidgetDown: controller.onMoveWidgetDown,
+                  onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
                 );
                   }
                 )),
