@@ -33,19 +33,20 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
                   builder: (context, constraints) {
                     viewModel.updateResizeFactor(constraints);
                     return Board(
-                  drawingController: controller.drawingController,
-                  viewModel: viewModel,
-                  onDeleteWidget: controller.onDeleteWidget,
-                  onWidgetConfigChanged: controller.onWidgetConfigChanged,
-                  onWidgetTransformStart: controller.onWidgetTransformStart,
-                  onWidgetTransformEnd: controller.onWidgetTransformEnd,
-                  onDrawingStrokeStart: controller.onDrawingStrokeStart,
-                  onDrawingStrokeEnd: controller.onDrawingStrokeEnd,
-                  onMoveWidgetToTop: controller.onMoveWidgetToTop,
-                  onMoveWidgetUp: controller.onMoveWidgetUp,
-                  onMoveWidgetDown: controller.onMoveWidgetDown,
-                  onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
-                );
+                      drawingController: controller.drawingController,
+                      viewModel: viewModel,
+                      onDeleteWidget: controller.onDeleteWidget,
+                      onWidgetConfigChanged: controller.onWidgetConfigChanged,
+                      onWidgetTransformStart: controller.onWidgetTransformStart,
+                      onWidgetTransformEnd: controller.onWidgetTransformEnd,
+                      onDrawingStrokeStart: controller.onDrawingStrokeStart,
+                      onDrawingStrokeEnd: controller.onDrawingStrokeEnd,
+                      onMoveWidgetToTop: controller.onMoveWidgetToTop,
+                      onMoveWidgetUp: controller.onMoveWidgetUp,
+                      onMoveWidgetDown: controller.onMoveWidgetDown,
+                      onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
+                      onRestoreDrawingTool: controller.onRestoreDrawingTool,
+                    );
                   }
                 )),
               ],
