@@ -9,8 +9,9 @@ class ToolButton extends StatefulWidget {
   final bool? checked;
   final WidgetBuilder? flyoutBuilder;
   final VoidCallback? onPressed;
+  final Listenable? dismissSignal;
 
-  const ToolButton({super.key, required this.icon, required this.title, this.checked, this.flyoutBuilder, required this.onPressed});
+  const ToolButton({super.key, required this.icon, required this.title, this.checked, this.flyoutBuilder, this.dismissSignal, required this.onPressed});
 
   @override
   State<ToolButton> createState() => _ToolButtonState();
@@ -19,29 +20,52 @@ class ToolButton extends StatefulWidget {
 
 class _ToolButtonState extends State<ToolButton> {
 
-  final FlyoutController _controller = FlyoutController();
+  final OverlayPortalController _popupController = OverlayPortalController();
+  final FlyoutController _errorController = FlyoutController();
+  final LayerLink _layerLink = LayerLink();
+  // Unique group id per button instance so tap-outside of the popup does not
+  // fire when the user taps the button itself (handled via toggle in _onPressed).
+  final Object _tapGroupId = Object();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.dismissSignal?.addListener(_onDismissSignal);
+  }
+
+  @override
+  void didUpdateWidget(ToolButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.dismissSignal != widget.dismissSignal) {
+      oldWidget.dismissSignal?.removeListener(_onDismissSignal);
+      widget.dismissSignal?.addListener(_onDismissSignal);
+    }
+  }
+
+  void _onDismissSignal() {
+    if (_popupController.isShowing) _popupController.hide();
+  }
 
   @override
   Widget build(BuildContext context) {
-    Widget buttonContent = _ToolButtonContent(icon: widget.icon, title: widget.title, hasFlyout: widget.flyoutBuilder != null);
+    final buttonContent = _ToolButtonContent(icon: widget.icon, title: widget.title, hasFlyout: widget.flyoutBuilder != null);
 
-    Widget button;
-    if (widget.checked != null) {
-      button = ToggleButton(
-        checked: widget.checked!,
-        onChanged: widget.onPressed != null ? (_) => _onPressed() : null,
-        child: buttonContent,
-      );
-    } else {
-      button = Button(onPressed: widget.onPressed != null ? _onPressed : null, child: buttonContent);
-    }
+    final button = widget.checked != null
+        ? ToggleButton(checked: widget.checked!, onChanged: widget.onPressed != null ? (_) => _onPressed() : null, child: buttonContent)
+        : Button(onPressed: widget.onPressed != null ? _onPressed : null, child: buttonContent);
 
-    return Stack(
+    final baseTarget = CompositedTransformTarget(
+      link: _layerLink,
+      child: FlyoutTarget(controller: _errorController, child: button),
+    );
+
+    final buttonInGroup = widget.flyoutBuilder != null
+        ? TapRegion(groupId: _tapGroupId, child: baseTarget)
+        : baseTarget;
+
+    final child = Stack(
       children: [
-        FlyoutTarget(
-          controller: _controller,
-          child: button,
-        ),
+        buttonInGroup,
         GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: widget.onPressed == null ? _onDisabledButtonPressed : null,
@@ -55,21 +79,43 @@ class _ToolButtonState extends State<ToolButton> {
         ),
       ],
     );
+
+    if (widget.flyoutBuilder == null) return child;
+
+    return OverlayPortal(
+      controller: _popupController,
+      overlayChildBuilder: (context) => Align(
+        alignment: Alignment.topLeft,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          targetAnchor: Alignment.bottomCenter,
+          followerAnchor: Alignment.topCenter,
+          offset: const Offset(0, 16),
+          showWhenUnlinked: false,
+          child: TapRegion(
+            groupId: _tapGroupId,
+            onTapOutside: (_) => _popupController.hide(),
+            child: widget.flyoutBuilder!(context),
+          ),
+        ),
+      ),
+      child: child,
+    );
   }
 
   void _onPressed() {
     widget.onPressed!();
     if (widget.flyoutBuilder != null) {
-      _controller.showFlyout(
-        builder: widget.flyoutBuilder!,
-        placementMode: FlyoutPlacementMode.bottomCenter,
-        additionalOffset: 16,
-      );
+      if (_popupController.isShowing) {
+        _popupController.hide();
+      } else {
+        _popupController.show();
+      }
     }
-    }
+  }
 
   void _onDisabledButtonPressed() {
-    _controller.showFlyout(
+    _errorController.showFlyout(
       builder: (context) => FlyoutContent(child: Row(
         mainAxisSize: MainAxisSize.min,
         spacing: 4,
@@ -85,7 +131,8 @@ class _ToolButtonState extends State<ToolButton> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    widget.dismissSignal?.removeListener(_onDismissSignal);
+    _errorController.dispose();
     super.dispose();
   }
 
