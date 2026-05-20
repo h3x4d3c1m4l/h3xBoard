@@ -21,6 +21,7 @@ class ToolButton extends StatefulWidget {
 class _ToolButtonState extends State<ToolButton> {
 
   final OverlayPortalController _popupController = OverlayPortalController();
+  final FlyoutController _flyoutController = FlyoutController();
   final FlyoutController _errorController = FlyoutController();
   final LayerLink _layerLink = LayerLink();
   // Unique group id per button instance so tap-outside of the popup does not
@@ -56,7 +57,10 @@ class _ToolButtonState extends State<ToolButton> {
 
     final baseTarget = CompositedTransformTarget(
       link: _layerLink,
-      child: FlyoutTarget(controller: _errorController, child: button),
+      child: FlyoutTarget(
+        controller: _flyoutController,
+        child: FlyoutTarget(controller: _errorController, child: button),
+      ),
     );
 
     final buttonInGroup = widget.flyoutBuilder != null
@@ -82,35 +86,50 @@ class _ToolButtonState extends State<ToolButton> {
 
     if (widget.flyoutBuilder == null) return child;
 
-    return OverlayPortal(
-      controller: _popupController,
-      overlayChildBuilder: (context) => Align(
-        alignment: Alignment.topLeft,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          targetAnchor: Alignment.bottomCenter,
-          followerAnchor: Alignment.topCenter,
-          offset: const Offset(0, 16),
-          showWhenUnlinked: false,
-          child: TapRegion(
-            groupId: _tapGroupId,
-            onTapOutside: (_) => _popupController.hide(),
-            child: widget.flyoutBuilder!(context),
+    // Pen/eraser set dismissSignal → non-blocking OverlayPortal so drawing can continue.
+    if (widget.dismissSignal != null) {
+      return OverlayPortal(
+        controller: _popupController,
+        overlayChildBuilder: (context) => Align(
+          alignment: Alignment.topLeft,
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            targetAnchor: Alignment.bottomCenter,
+            followerAnchor: Alignment.topCenter,
+            offset: const Offset(0, 16),
+            showWhenUnlinked: false,
+            child: TapRegion(
+              groupId: _tapGroupId,
+              onTapOutside: (_) => _popupController.hide(),
+              child: widget.flyoutBuilder!(context),
+            ),
           ),
         ),
-      ),
-      child: child,
-    );
+        child: child,
+      );
+    }
+
+    // Widget/settings menus use FlyoutController so MenuFlyout gets its required
+    // MenuInfoProvider + Flyout ancestors (set up by showFlyout's _FlyoutPage).
+    return child;
   }
 
   void _onPressed() {
     widget.onPressed!();
-    if (widget.flyoutBuilder != null) {
+    if (widget.flyoutBuilder == null) return;
+
+    if (widget.dismissSignal != null) {
       if (_popupController.isShowing) {
         _popupController.hide();
       } else {
         _popupController.show();
       }
+    } else {
+      _flyoutController.showFlyout(
+        builder: widget.flyoutBuilder!,
+        placementMode: FlyoutPlacementMode.bottomCenter,
+        additionalOffset: 16,
+      );
     }
   }
 
@@ -132,6 +151,7 @@ class _ToolButtonState extends State<ToolButton> {
   @override
   void dispose() {
     widget.dismissSignal?.removeListener(_onDismissSignal);
+    _flyoutController.dispose();
     _errorController.dispose();
     super.dispose();
   }
