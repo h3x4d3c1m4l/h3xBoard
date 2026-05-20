@@ -13,6 +13,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   final DrawingController drawingController = DrawingController();
   final HistoryManager historyManager = HistoryManager();
+  final ValueNotifier<int> drawStartSignal = ValueNotifier(0);
 
   // Pending state captured at gesture/stroke boundaries for history recording.
   List<Map<String, dynamic>>? _drawingBefore;
@@ -32,6 +33,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   void dispose() {
     super.dispose();
     drawingController.dispose();
+    drawStartSignal.dispose();
   }
 
   // Drawing tool handlers
@@ -85,6 +87,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onDrawingStrokeStart() {
     _drawingBefore = drawingController.getJsonList();
+    drawStartSignal.value++;
   }
 
   void onDrawingStrokeEnd() {

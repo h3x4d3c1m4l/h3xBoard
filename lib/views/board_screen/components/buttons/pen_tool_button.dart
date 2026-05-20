@@ -20,6 +20,7 @@ class PenToolButton extends StatelessWidget {
       title: context.localizations.penToolButton_draw,
       checked: viewModel.drawingTools.activeTool == .pen,
       onPressed: () => controller.onSelectableToolButtonPressed(.pen),
+      dismissSignal: controller.drawStartSignal,
       flyoutBuilder: (context) => FlyoutContent(
         padding: .symmetric(horizontal: 16, vertical: 8),
         child: Observer(builder: (_) => Row(
