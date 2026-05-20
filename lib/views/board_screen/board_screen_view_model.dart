@@ -53,7 +53,11 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @action
   void setActiveTool(SelectableEditTool tool) {
-    _drawingTools = _drawingTools.copyWith(activeTool: tool);
+    final current = _drawingTools.activeTool;
+    _drawingTools = _drawingTools.copyWith(
+      activeTool: tool,
+      lastActiveTool: (current == .pen || current == .eraser) ? current : _drawingTools.lastActiveTool,
+    );
   }
 
   @action

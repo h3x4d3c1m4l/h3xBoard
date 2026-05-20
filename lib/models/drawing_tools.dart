@@ -14,6 +14,7 @@ abstract class DrawingTools with _$DrawingTools {
     required Color? activeColor,
     required Color lastActiveColor,
     required SelectableEditTool activeTool,
+    @Default(SelectableEditTool.pen) SelectableEditTool lastActiveTool,
     required double penWidth,
     required double eraserWidth,
   }) = _DrawingTools;

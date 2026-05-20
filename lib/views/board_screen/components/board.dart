@@ -31,6 +31,7 @@ class Board extends StatefulWidget {
   final void Function(String id) onMoveWidgetUp;
   final void Function(String id) onMoveWidgetDown;
   final void Function(String id) onMoveWidgetToBottom;
+  final VoidCallback onRestoreDrawingTool;
 
   const Board({
     super.key,
@@ -46,6 +47,7 @@ class Board extends StatefulWidget {
     required this.onMoveWidgetUp,
     required this.onMoveWidgetDown,
     required this.onMoveWidgetToBottom,
+    required this.onRestoreDrawingTool,
   });
 
   @override
@@ -240,6 +242,13 @@ class _BoardState extends State<Board> {
             (bw) => _isPointOnWidget(event.localPosition, bw),
           ) &&
           !_isPointOnAnyButtonBar(event.localPosition);
+
+      // When the user draws on empty canvas while in pointer mode (e.g. after
+      // moving a widget), automatically restore the last drawing tool so the UI
+      // stays in sync with what DrawingBoard will actually draw.
+      if (_tapCandidateOnEmptySpace && widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer) {
+        widget.onRestoreDrawingTool();
+      }
     }
   }
 

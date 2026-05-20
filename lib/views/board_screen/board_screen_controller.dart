@@ -67,6 +67,10 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     viewModel.setActiveTool(value);
   }
 
+  void onRestoreDrawingTool() {
+    onSelectableToolButtonPressed(viewModel.drawingTools.lastActiveTool);
+  }
+
   void onPenWidthSliderMoved(double value) {
     drawingController.setStyle(strokeWidth: value);
     viewModel.setPenWidth(value);
