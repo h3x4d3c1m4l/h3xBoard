@@ -53,6 +53,38 @@ Generated files are excluded from linting (`analysis_options.yaml`) and must not
 
 The app uses **fluent_ui** (Windows Fluent Design) for core widgets (`FilledButton`, `ScaffoldPage`, `Flyout`, etc.) and **lucide_icons_flutter** for icons. Do not mix in Material widgets.
 
+### Widget System
+
+Board widgets (clock, stopwatch, traffic light, etc.) follow a registry-driven pattern. The key files are:
+
+```text
+lib/models/board_widget.dart                              # Data models
+lib/views/board_screen/components/widgets/
+  board_widget_descriptor.dart                            # Abstract descriptor + registry
+  manipulable_board_widget.dart                          # Positioning/scaling/rotation wrapper
+  widget_selection_overlay.dart                          # Selection UI
+  clock_widget.dart, stopwatch_widget.dart, ...          # Concrete widgets
+```
+
+**Data model** (`board_widget.dart`): Two freezed types:
+
+- `BoardWidgetConfig` – sealed union; one subtype per widget (e.g. `ClockConfig`, `StopwatchConfig`)
+- `BoardWidget` – runtime instance with `id`, `config`, `x`, `y`, `rotation`, `scale`; canvas space is 1920×1080
+
+**Descriptor** (`board_widget_descriptor.dart`): Abstract `BoardWidgetDescriptor` exposes `icon`, `label()`, `naturalSize`, `defaultConfig`, `buildWidget(config)`, and `settingsMenuItems(...)`. Concrete descriptors are singletons registered in `widgetRegistry` (a `const` map keyed by config type). Use `descriptorFor(config)` anywhere type-dispatch is needed — no switch statements in rendering code.
+
+**Rendering**: `ManipulableBoardWidget` wraps each widget with `Positioned` (center-based), `Transform.rotate`, and `FittedBox` applied in that order. `Board` iterates `boardWidgets` and calls `descriptorFor(bw.config).buildWidget(bw.config)` — fully generic.
+
+**Adding a new widget type** requires exactly three changes:
+
+1. Add a new `@freezed` subtype to `BoardWidgetConfig` in `board_widget.dart` → run `just gen-code`
+2. Create the widget Flutter class in `lib/views/board_screen/components/widgets/`; declare a static `Size naturalSize`
+3. Implement `BoardWidgetDescriptor` and register it in `widgetRegistry` in `board_widget_descriptor.dart`
+
+No other files need changes. Settings menu items (Fluent UI flyout) are provided by the descriptor's `settingsMenuItems()`.
+
+**Layers**: Widget list order = render order (last = topmost). Layer operations (`moveToTop`, `moveUp`, etc.) reorder the list.
+
 ### Drawing Canvas
 
 `flutter_drawing_board` provides the drawing canvas. A `DrawingController` instance lives on `BoardScreenViewModel` and is passed to components that need to interact with the canvas (tool selection, stroke width/color updates, clear).
@@ -83,5 +115,4 @@ This applies to all classes: widgets, state classes, descriptors, freezed classe
 ## Key Configuration
 
 - **Line length**: 120 characters (`analysis_options.yaml`); not enforced but more as a guideline
-- **Web target with WASM**: CI builds use `--wasm` flag; web is the only target
 - **Linting**: 50+ custom rules enabled on top of `flutter_lints`; run `just lint` before pushing
