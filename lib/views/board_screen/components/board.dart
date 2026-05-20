@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -84,10 +86,17 @@ class _BoardState extends State<Board> {
   // Prevents auto-select from firing on every update frame during a drag.
   bool _autoSelectedForDrag = false;
 
+  // Context menu state: a zero-size FlyoutTarget is placed at the right-click
+  // canvas position so the flyout appears exactly at the cursor.
+  final FlyoutController _contextMenuController = FlyoutController();
+  Offset? _contextMenuCanvasPos;
+  WidgetSettingsBuilder? _contextMenuBuilder;
+
   @override
   void initState() {
     widget.drawingController.drawConfig.addListener(_onDrawConfigChanged);
     HardwareKeyboard.instance.addHandler(_onKeyEvent);
+    if (kIsWeb) BrowserContextMenu.disableContextMenu();
     super.initState();
   }
 
@@ -106,6 +115,48 @@ class _BoardState extends State<Board> {
   }
 
   Widget _buildWidgetContent(BoardWidget bw) => descriptorFor(bw.config).buildWidget(bw.config);
+
+  List<MenuFlyoutItemBase> _buildSettingsItems(BuildContext context, BoardWidget bw) {
+    final typeItems = descriptorFor(bw.config).settingsMenuItems(
+      context,
+      bw.config,
+      (newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig),
+    );
+    final currentIndex = widget.viewModel.boardWidgets.indexWhere((w) => w.id == bw.id);
+    final maxIndex = widget.viewModel.boardWidgets.length - 1;
+    final isTop = currentIndex == maxIndex;
+    final isBottom = currentIndex == 0;
+    return [
+      ...typeItems,
+      if (typeItems.isNotEmpty) const MenuFlyoutSeparator(),
+      MenuFlyoutSubItem(
+        leading: const Icon(LucideIcons.layers),
+        text: Text(context.localizations.layerMenu_title),
+        items: (_) => [
+          MenuFlyoutItem(
+            leading: const Icon(LucideIcons.chevronsUp),
+            text: Text(context.localizations.layerMenu_bringToFront),
+            onPressed: isTop ? null : () => widget.onMoveWidgetToTop(bw.id),
+          ),
+          MenuFlyoutItem(
+            leading: const Icon(LucideIcons.chevronUp),
+            text: Text(context.localizations.layerMenu_bringForward),
+            onPressed: isTop ? null : () => widget.onMoveWidgetUp(bw.id),
+          ),
+          MenuFlyoutItem(
+            leading: const Icon(LucideIcons.chevronDown),
+            text: Text(context.localizations.layerMenu_sendBackward),
+            onPressed: isBottom ? null : () => widget.onMoveWidgetDown(bw.id),
+          ),
+          MenuFlyoutItem(
+            leading: const Icon(LucideIcons.chevronsDown),
+            text: Text(context.localizations.layerMenu_sendToBack),
+            onPressed: isBottom ? null : () => widget.onMoveWidgetToBottom(bw.id),
+          ),
+        ],
+      ),
+    ];
+  }
 
   // Returns true if canvasPoint is inside the action button bar of any currently
   // selected widget's overlay. Must mirror the position math in WidgetSelectionOverlay
@@ -151,6 +202,31 @@ class _BoardState extends State<Board> {
   }
 
   void _onPointerDown(PointerDownEvent event) {
+    if (event.buttons & kSecondaryMouseButton != 0) {
+      for (final bw in widget.viewModel.boardWidgets.reversed) {
+        if (_isPointOnWidget(event.localPosition, bw)) {
+          widget.viewModel.selectWidget(bw.id);
+          _contextMenuCanvasPos = event.localPosition;
+          _contextMenuBuilder = (context) => _buildSettingsItems(context, bw);
+          setState(() {});
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            final builder = _contextMenuBuilder;
+            if (builder == null) return;
+            _contextMenuController.showFlyout(
+              builder: (context) => MenuFlyout(
+                itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
+                items: builder(context),
+              ),
+              placementMode: FlyoutPlacementMode.auto,
+            );
+          });
+          return;
+        }
+      }
+      return;
+    }
+
     // Only capture the very first pointer of a new gesture. Subsequent fingers
     // must not overwrite the initial position used for widget detection.
     if (_firstPointerId == null) {
@@ -363,49 +439,23 @@ class _BoardState extends State<Board> {
                         boardWidget: bw,
                         boardPixelRatio: widget.viewModel.boardPixelRatio,
                         onDelete: () => widget.onDeleteWidget(bw.id),
-                        settingsBuilder: (context) {
-                          final typeItems = descriptorFor(bw.config).settingsMenuItems(
-                            context,
-                            bw.config,
-                            (newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig),
-                          );
-                          final currentIndex = widget.viewModel.boardWidgets.indexWhere((w) => w.id == bw.id);
-                          final maxIndex = widget.viewModel.boardWidgets.length - 1;
-                          final isTop = currentIndex == maxIndex;
-                          final isBottom = currentIndex == 0;
-                          return [
-                            ...typeItems,
-                            if (typeItems.isNotEmpty) const MenuFlyoutSeparator(),
-                            MenuFlyoutSubItem(
-                              leading: const Icon(LucideIcons.layers),
-                              text: Text(context.localizations.layerMenu_title),
-                              items: (_) => [
-                                MenuFlyoutItem(
-                                  leading: const Icon(LucideIcons.chevronsUp),
-                                  text: Text(context.localizations.layerMenu_bringToFront),
-                                  onPressed: isTop ? null : () => widget.onMoveWidgetToTop(bw.id),
-                                ),
-                                MenuFlyoutItem(
-                                  leading: const Icon(LucideIcons.chevronUp),
-                                  text: Text(context.localizations.layerMenu_bringForward),
-                                  onPressed: isTop ? null : () => widget.onMoveWidgetUp(bw.id),
-                                ),
-                                MenuFlyoutItem(
-                                  leading: const Icon(LucideIcons.chevronDown),
-                                  text: Text(context.localizations.layerMenu_sendBackward),
-                                  onPressed: isBottom ? null : () => widget.onMoveWidgetDown(bw.id),
-                                ),
-                                MenuFlyoutItem(
-                                  leading: const Icon(LucideIcons.chevronsDown),
-                                  text: Text(context.localizations.layerMenu_sendToBack),
-                                  onPressed: isBottom ? null : () => widget.onMoveWidgetToBottom(bw.id),
-                                ),
-                              ],
-                            ),
-                          ];
-                        },
+                        settingsBuilder: (context) => _buildSettingsItems(context, bw),
                       ),
                     ),
+                // Zero-size anchor for the right-click context menu flyout.
+                // Positioned at the cursor's canvas coordinates so the flyout
+                // appears exactly where the user right-clicked.
+                if (_contextMenuCanvasPos != null)
+                  Positioned(
+                    left: _contextMenuCanvasPos!.dx,
+                    top: _contextMenuCanvasPos!.dy,
+                    width: 0,
+                    height: 0,
+                    child: FlyoutTarget(
+                      controller: _contextMenuController,
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
                 if (_eraseStrokeWidth != null)
                   Positioned(
                     left: _pointerPosition!.dx - (_eraseStrokeWidth! / 2),
@@ -453,6 +503,8 @@ class _BoardState extends State<Board> {
   void dispose() {
     widget.drawingController.drawConfig.removeListener(_onDrawConfigChanged);
     HardwareKeyboard.instance.removeHandler(_onKeyEvent);
+    _contextMenuController.dispose();
+    if (kIsWeb) BrowserContextMenu.enableContextMenu();
     super.dispose();
   }
 

@@ -1,6 +1,8 @@
-import 'package:flutter/widgets.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+
+typedef WidgetSettingsBuilder = List<MenuFlyoutItemBase> Function(BuildContext context);
 
 Size naturalSizeFor(BoardWidgetConfig config) => descriptorFor(config).naturalSize;
 

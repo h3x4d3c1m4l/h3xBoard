@@ -5,9 +5,6 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-// Callback type: each widget type returns its own list of settings menu items.
-typedef WidgetSettingsBuilder = List<MenuFlyoutItemBase> Function(BuildContext context);
-
 // Renders a selection indicator (dashed border + action buttons) for a single
 // selected widget. Must be placed inside the FittedBox canvas Stack wrapped in
 // Positioned.fill so its children use the same 1920×1080 canvas coordinates as
