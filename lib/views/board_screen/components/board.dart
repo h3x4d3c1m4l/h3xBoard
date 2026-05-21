@@ -85,6 +85,12 @@ class _BoardState extends State<Board> {
   // (no widget hit). Used by _onPointerUp to deselect without waiting for scale.
   bool _tapCandidateOnEmptySpace = false;
 
+  // When a widget is selected, IgnorePointer blocks DrawingBoard for the whole
+  // gesture (the MobX Observer won't rebuild until the next frame). If the user
+  // draws on empty canvas while something is selected, we manually forward the
+  // draw events through the outer Listener so the first stroke is not lost.
+  bool _drawingStartedManually = false;
+
   // Prevents auto-select from firing on every update frame during a drag.
   bool _autoSelectedForDrag = false;
 
@@ -243,12 +249,36 @@ class _BoardState extends State<Board> {
           ) &&
           !_isPointOnAnyButtonBar(event.localPosition);
 
-      // When the user draws on empty canvas while in pointer mode (e.g. after
-      // moving a widget), automatically restore the last drawing tool so the UI
-      // stays in sync with what DrawingBoard will actually draw.
-      if (_tapCandidateOnEmptySpace && widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer) {
-        widget.onRestoreDrawingTool();
+      if (_tapCandidateOnEmptySpace) {
+        final hadSelection = widget.viewModel.selectedWidgetIds.isNotEmpty;
+
+        // When in pointer mode, restore the last drawing tool.
+        if (widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer) {
+          widget.onRestoreDrawingTool();
+        } else if (hadSelection) {
+          // Drawing tool already active but DrawingBoard is blocked by the
+          // selection — clear it now so the Observer can schedule a rebuild.
+          widget.viewModel.clearSelection();
+        }
+
+        // If a widget was selected, IgnorePointer is still blocking DrawingBoard
+        // for this gesture (the MobX Observer hasn't rebuilt yet). Manually start
+        // the drawing stroke so the first touch is not lost.
+        final tool = widget.viewModel.drawingTools.activeTool;
+        if (hadSelection && (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser)) {
+          widget.drawingController.addFingerCount(event.localPosition);
+          widget.drawingController.startDraw(event.localPosition);
+          widget.onDrawingStrokeStart();
+          _drawingStartedManually = true;
+        }
       }
+    }
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (_drawingStartedManually && event.pointer == _firstPointerId) {
+      widget.drawingController.drawing(event.localPosition);
+      setState(() => _pointerPosition = event.localPosition);
     }
   }
 
@@ -259,6 +289,15 @@ class _BoardState extends State<Board> {
       _firstPointerId = null;
       _initialTouchPosition = null;
       _tapCandidateOnEmptySpace = false;
+
+      if (_drawingStartedManually) {
+        _drawingStartedManually = false;
+        setState(() => _pointerPosition = null);
+        widget.drawingController.endDraw();
+        widget.drawingController.reduceFingerCount(event.localPosition);
+        widget.onDrawingStrokeEnd();
+        return;
+      }
 
       // If the touch started on empty canvas and didn't move much, it's a tap
       // to deselect. This handles cases where ScaleGestureRecognizer doesn't
@@ -276,6 +315,12 @@ class _BoardState extends State<Board> {
 
   void _onPointerCancel(PointerCancelEvent event) {
     if (event.pointer == _firstPointerId) {
+      if (_drawingStartedManually) {
+        _drawingStartedManually = false;
+        setState(() => _pointerPosition = null);
+        widget.drawingController.cancelDraw();
+        widget.drawingController.reduceFingerCount(event.localPosition);
+      }
       _firstPointerId = null;
       _initialTouchPosition = null;
       _tapCandidateOnEmptySpace = false;
@@ -465,7 +510,7 @@ class _BoardState extends State<Board> {
                       child: const SizedBox.shrink(),
                     ),
                   ),
-                if (_eraseStrokeWidth != null)
+                if (_eraseStrokeWidth != null && _pointerPosition != null)
                   Positioned(
                     left: _pointerPosition!.dx - (_eraseStrokeWidth! / 2),
                     top: _pointerPosition!.dy - (_eraseStrokeWidth! / 2),
@@ -490,6 +535,7 @@ class _BoardState extends State<Board> {
                   child: Listener(
                     behavior: HitTestBehavior.translucent,
                     onPointerDown: _onPointerDown,
+                    onPointerMove: _onPointerMove,
                     onPointerUp: _onPointerUp,
                     onPointerCancel: _onPointerCancel,
                     child: GestureDetector(
