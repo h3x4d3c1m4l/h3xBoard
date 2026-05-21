@@ -35,7 +35,7 @@ class _InitializationScreenState extends State<InitializationScreen> {
     // Load fonts.
     await pipeline.execute((context) async {
       updateProgress(
-        nowInitializingText: 'Loading fonts',
+        nowInitializingText: 'Loading fonts ...',
         retries: context.attemptNumber,
       );
 
@@ -58,7 +58,8 @@ class _InitializationScreenState extends State<InitializationScreen> {
           spacing: 16,
           children: [
             ProgressRing(),
-            if (nowInitializingText != null) Text(nowInitializingText!),
+            if (nowInitializingText != null)
+              Text(nowInitializingText!, style: TextStyle(fontSize: 18, fontWeight: .bold)),
             if (retries > 0) Text('Tried $retries time(s)'),
           ],
         ),
