@@ -30,6 +30,7 @@ class _BoardAppState extends State<BoardApp> {
       ],
       supportedLocales: [Locale('en'), Locale('nl')],
       theme: FluentThemeData(
+        accentColor: Color(0xFF00FF80).toAccentColor(),
         typography: Typography.fromBrightness(
           brightness: Brightness.light,
         ).apply(fontFamily: GoogleFonts.ubuntu().fontFamily),
