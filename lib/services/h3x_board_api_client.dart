@@ -5,7 +5,7 @@ import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/auth_response.dart';
 import 'package:h3xboard/models/api/board_detail.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
-import 'package:h3xboard/models/api/refresh_token_response.dart';
+import 'package:h3xboard/models/api/reconnect_token_response.dart';
 import 'package:h3xboard/models/api/whoami_response.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -22,10 +22,8 @@ class H3xBoardApiClient {
 
   bool get isConnected => _channel != null;
 
-  Future<void> connect({String? accessToken}) async {
-    final uri = accessToken != null
-        ? Uri.parse('$serverUrl/ws/v1?token=$accessToken')
-        : Uri.parse('$serverUrl/ws/v1');
+  Future<void> connect() async {
+    final uri = Uri.parse('$serverUrl/ws/v1');
     _channel = WebSocketChannel.connect(uri);
     await _channel!.ready;
     _subscription = _channel!.stream.listen(
@@ -42,40 +40,32 @@ class H3xBoardApiClient {
     _channel = null;
   }
 
-  Future<AuthResponse> login({required String username, required String password}) async {
-    final result = await _call('auth.v1.login', {'username': username, 'password': password});
+  Future<AuthResponse> login({required String email, required String password}) async {
+    final result = await _call('auth.v1.login', {'email': email, 'password': password});
     return AuthResponse.fromJson(result as Map<String, dynamic>);
   }
 
-  Future<AuthResponse> register({
-    required String username,
-    required String email,
-    required String password,
-  }) async {
-    final result = await _call('auth.v1.register', {
-      'username': username,
-      'email': email,
-      'password': password,
-    });
+  Future<AuthResponse> register({required String email, required String password}) async {
+    final result = await _call('auth.v1.register', {'email': email, 'password': password});
     return AuthResponse.fromJson(result as Map<String, dynamic>);
   }
 
-  Future<RefreshTokenResponse> refreshToken(String refreshToken) async {
-    final result = await _call('auth.v1.refreshToken', {'refreshToken': refreshToken});
-    return RefreshTokenResponse.fromJson(result as Map<String, dynamic>);
+  Future<ReconnectTokenResponse> reconnect(String reconnectToken) async {
+    final result = await _call('auth.v1.reconnect', {'reconnectToken': reconnectToken});
+    return ReconnectTokenResponse.fromJson(result as Map<String, dynamic>);
   }
 
   Future<void> logout() async {
-    await _call('auth.v1.logout', <String, dynamic>{});
+    await _call('auth.v1.logout');
   }
 
   Future<WhoAmiResponse> whoami() async {
-    final result = await _call('auth.v1.whoami', <String, dynamic>{});
+    final result = await _call('auth.v1.whoami');
     return WhoAmiResponse.fromJson(result as Map<String, dynamic>);
   }
 
   Future<List<BoardSummary>> listBoards() async {
-    final result = await _call('boards.v1.list', <String, dynamic>{});
+    final result = await _call('boards.v1.list');
     return (result as List<dynamic>)
         .map((item) => BoardSummary.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -112,19 +102,24 @@ class H3xBoardApiClient {
   /// Encodes and sends a JSON-RPC 2.0 request over the WebSocket sink, then
   /// returns a [Future] that resolves to the response's `result` value, or
   /// throws an [H3xBoardApiException] if the server returns an error object.
-  Future<dynamic> _call(String method, dynamic params) {
+  ///
+  /// [params] is wrapped in a positional array `[params]` so StreamJsonRpc
+  /// matches it as a single argument to the C# method parameter. Omit [params]
+  /// entirely for zero-parameter server methods.
+  Future<dynamic> _call(String method, [dynamic params]) {
     if (_channel == null) {
       throw const H3xBoardApiException(code: -1, message: 'Not connected');
     }
     final id = _nextRequestId++;
     final completer = Completer<dynamic>();
     _pending[id] = completer;
-    _channel!.sink.add(jsonEncode({
+    final message = <String, dynamic>{
       'jsonrpc': '2.0',
       'method': method,
       'id': id,
-      'params': params,
-    }));
+    };
+    if (params != null) message['params'] = [params];
+    _channel!.sink.add(jsonEncode(message));
     return completer.future;
   }
 
