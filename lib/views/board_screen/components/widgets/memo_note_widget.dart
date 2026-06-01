@@ -31,17 +31,12 @@ class MemoNoteWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 300,
       height: 300,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(2),
-        boxShadow: const [
-          BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(3, 5)),
-          BoxShadow(color: Color(0x14000000), blurRadius: 2, offset: Offset(1, 1)),
-        ],
-      ),
-      child: ClipRRect(
+      child: CustomPaint(
+        painter: const _StickyNoteShadowPainter(),
+        child: ClipRRect(
         borderRadius: BorderRadius.circular(2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -83,8 +78,36 @@ class MemoNoteWidget extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
+
+}
+
+class _StickyNoteShadowPainter extends CustomPainter {
+
+  const _StickyNoteShadowPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0x44000000)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    // Narrow at top (note is glued via the adhesive strip), wide at bottom (free edge lifts off).
+    // The blurred trapezoid produces minimal shadow at the top and a deep shadow at the bottom.
+    final path = Path()
+      ..moveTo(8, 2)
+      ..lineTo(size.width - 8, 2)
+      ..lineTo(size.width + 10, size.height + 14)
+      ..lineTo(-8, size.height + 11)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 
 }
 
