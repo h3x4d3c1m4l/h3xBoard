@@ -4,6 +4,8 @@ part 'board_widget.freezed.dart';
 
 enum TrafficLightColor { red, yellow, green }
 
+enum MemoNoteColor { yellow, green, blue, pink }
+
 @freezed
 sealed class BoardWidgetConfig with _$BoardWidgetConfig {
 
@@ -19,6 +21,11 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
   const factory BoardWidgetConfig.stopwatch({
     @Default(true) bool showCentiseconds,
   }) = StopwatchConfig;
+
+  const factory BoardWidgetConfig.memoNote({
+    @Default('') String text,
+    @Default(MemoNoteColor.yellow) MemoNoteColor color,
+  }) = MemoNoteConfig;
 
 }
 

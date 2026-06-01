@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/memo_note_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/stopwatch_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/traffic_light_widget.dart';
 
@@ -32,6 +33,7 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   ClockConfig: ClockWidgetDescriptor.instance,
   TrafficLightConfig: TrafficLightWidgetDescriptor.instance,
   StopwatchConfig: StopwatchWidgetDescriptor.instance,
+  MemoNoteConfig: MemoNoteWidgetDescriptor.instance,
 };
 
 // All registered descriptors, exposed for building the "add widget" menu.
