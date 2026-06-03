@@ -5,19 +5,67 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-// Renders a selection indicator (dashed border + action buttons) for a single
-// selected widget. Must be placed inside the FittedBox canvas Stack wrapped in
-// Positioned.fill so its children use the same 1920×1080 canvas coordinates as
-// ManipulableBoardWidget.
+// Visual constants (in OS pixels; multiplied by boardPixelRatio to get canvas units).
+// Kept package-visible (no leading underscore) so board.dart can mirror the hit-test math.
+const double kOverlayBorderMargin = 8.0;
+const double kOverlayStemLength = 32.0;
+const double kOverlayHandleRadius = 8.0;
+const double kOverlayCornerSize = 7.0; // half-side of corner square handle
+
+// Computes the canvas-space position of the rotation handle center for a given widget.
+// Exposed so board.dart can mirror the math in _isPointOnAnyHandle.
+Offset rotationHandleCenter(BoardWidget bw, double ratio) {
+  final size = naturalSizeFor(bw.config);
+  final scaledH = size.height * bw.scale;
+  final borderMargin = kOverlayBorderMargin * ratio;
+  final stemLength = kOverlayStemLength * ratio;
+  final handleRadius = kOverlayHandleRadius * ratio;
+  final localDy = -(scaledH / 2 + borderMargin + stemLength + handleRadius);
+  return Offset(
+    bw.x + (-math.sin(bw.rotation) * localDy),
+    bw.y + (math.cos(bw.rotation) * localDy),
+  );
+}
+
+// Computes the four corner handle positions in canvas space.
+// Exposed so board.dart can mirror the math in _isPointOnAnyHandle.
+List<Offset> cornerHandlePositions(BoardWidget bw, double ratio) {
+  final size = naturalSizeFor(bw.config);
+  final scaledW = size.width * bw.scale;
+  final scaledH = size.height * bw.scale;
+  final borderMargin = kOverlayBorderMargin * ratio;
+  final hw = scaledW / 2 + borderMargin;
+  final hh = scaledH / 2 + borderMargin;
+  final cosR = math.cos(bw.rotation);
+  final sinR = math.sin(bw.rotation);
+  Offset rot(Offset local) => Offset(
+    local.dx * cosR - local.dy * sinR,
+    local.dx * sinR + local.dy * cosR,
+  );
+  final center = Offset(bw.x, bw.y);
+  return [
+    center + rot(Offset(-hw, -hh)),
+    center + rot(Offset(hw, -hh)),
+    center + rot(Offset(hw, hh)),
+    center + rot(Offset(-hw, hh)),
+  ];
+}
+
+// Renders a selection indicator (dashed border + rotate/scale handles + action buttons)
+// for a single selected widget. Must be placed inside the FittedBox canvas Stack
+// wrapped in Positioned.fill so its children use the same 1920×1080 canvas coordinates.
 //
-// All visual sizes are multiplied by boardPixelRatio so they appear at host/OS
-// pixel scale after the FittedBox scales them back down.
-class WidgetSelectionOverlay extends StatelessWidget {
+// All visual sizes are multiplied by boardPixelRatio so they appear at host/OS pixel
+// scale after the FittedBox scales them back down.
+class WidgetSelectionOverlay extends StatefulWidget {
 
   final BoardWidget boardWidget;
   final double boardPixelRatio;
   final VoidCallback onDelete;
   final WidgetSettingsBuilder settingsBuilder;
+  final VoidCallback onHandleTransformStart;
+  final void Function(double rotation, double scale) onHandleTransformUpdate;
+  final VoidCallback onHandleTransformEnd;
 
   const WidgetSelectionOverlay({
     super.key,
@@ -25,33 +73,153 @@ class WidgetSelectionOverlay extends StatelessWidget {
     required this.boardPixelRatio,
     required this.onDelete,
     required this.settingsBuilder,
+    required this.onHandleTransformStart,
+    required this.onHandleTransformUpdate,
+    required this.onHandleTransformEnd,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final size = naturalSizeFor(boardWidget.config);
-    final scaledW = size.width * boardWidget.scale;
-    final scaledH = size.height * boardWidget.scale;
-    final r = boardWidget.rotation;
-    final ratio = boardPixelRatio;
+  State<WidgetSelectionOverlay> createState() => _WidgetSelectionOverlayState();
 
-    final borderMargin = 8.0 * ratio;
+}
+
+class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
+
+  // GlobalKey on the full-canvas Stack so we can convert global screen coords to
+  // canvas coords via RenderBox.globalToLocal.
+  final _stackKey = GlobalKey();
+
+  // Which handle is currently being dragged: 'rotate' | 'corner_tl' | 'corner_tr' | 'corner_br' | 'corner_bl'
+  String? _activeDragHandle;
+  Offset _dragStartCenter = Offset.zero;
+  double _dragStartRotation = 0.0;
+  double _dragStartScale = 1.0;
+  // Angle from widget center to pointer at drag start (for rotation handle).
+  double _dragStartHandleAngle = 0.0;
+  // Distance from widget center to pointer at drag start (for corner handles).
+  double _dragStartDistance = 0.0;
+
+  // Converts a global screen position (from PointerEvent.position) to canvas-space
+  // coordinates using the full-canvas Stack's RenderBox transform.
+  Offset _toCanvas(Offset globalPos) {
+    final box = _stackKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return Offset.zero;
+    return box.globalToLocal(globalPos);
+  }
+
+  // ---- Rotation handle ----
+
+  void _onRotateDown(PointerDownEvent e) {
+    final bw = widget.boardWidget;
+    _activeDragHandle = 'rotate';
+    _dragStartCenter = Offset(bw.x, bw.y);
+    _dragStartRotation = bw.rotation;
+    final p = _toCanvas(e.position);
+    _dragStartHandleAngle = math.atan2(p.dy - _dragStartCenter.dy, p.dx - _dragStartCenter.dx);
+    widget.onHandleTransformStart();
+  }
+
+  void _onRotateMove(PointerMoveEvent e) {
+    if (_activeDragHandle != 'rotate') return;
+    final p = _toCanvas(e.position);
+    final angle = math.atan2(p.dy - _dragStartCenter.dy, p.dx - _dragStartCenter.dx);
+    widget.onHandleTransformUpdate(
+      _dragStartRotation + (angle - _dragStartHandleAngle),
+      widget.boardWidget.scale,
+    );
+  }
+
+  void _onRotateUp(PointerUpEvent e) {
+    if (_activeDragHandle != 'rotate') return;
+    _activeDragHandle = null;
+    widget.onHandleTransformEnd();
+  }
+
+  void _onRotateCancel(PointerCancelEvent e) {
+    if (_activeDragHandle != 'rotate') return;
+    _activeDragHandle = null;
+    widget.onHandleTransformEnd();
+  }
+
+  // ---- Corner scale handles ----
+
+  void _onCornerDown(String corner, PointerDownEvent e) {
+    final bw = widget.boardWidget;
+    _activeDragHandle = corner;
+    _dragStartCenter = Offset(bw.x, bw.y);
+    _dragStartRotation = bw.rotation;
+    _dragStartScale = bw.scale;
+    final p = _toCanvas(e.position);
+    _dragStartDistance = (p - _dragStartCenter).distance;
+    widget.onHandleTransformStart();
+  }
+
+  void _onCornerMove(PointerMoveEvent e) {
+    if (_activeDragHandle == null || _activeDragHandle == 'rotate') return;
+    if (_dragStartDistance < 1.0) return;
+    final p = _toCanvas(e.position);
+    final dist = (p - _dragStartCenter).distance;
+    final newScale = (_dragStartScale * dist / _dragStartDistance).clamp(0.2, 5.0);
+    widget.onHandleTransformUpdate(_dragStartRotation, newScale);
+  }
+
+  void _onCornerUp(PointerUpEvent e) {
+    if (_activeDragHandle == null || _activeDragHandle == 'rotate') return;
+    _activeDragHandle = null;
+    widget.onHandleTransformEnd();
+  }
+
+  void _onCornerCancel(PointerCancelEvent e) {
+    if (_activeDragHandle == null || _activeDragHandle == 'rotate') return;
+    _activeDragHandle = null;
+    widget.onHandleTransformEnd();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bw = widget.boardWidget;
+    final size = naturalSizeFor(bw.config);
+    final scaledW = size.width * bw.scale;
+    final scaledH = size.height * bw.scale;
+    final r = bw.rotation;
+    final ratio = widget.boardPixelRatio;
+    final cosR = math.cos(r);
+    final sinR = math.sin(r);
+
+    final borderMargin = kOverlayBorderMargin * ratio;
     final btnBarCanvasH = 64.0 * ratio;
     final gapCanvas = 6.0 * ratio;
     final btnBarCanvasW = 200.0 * ratio;
+    final stemLength = kOverlayStemLength * ratio;
+    final handleRadius = kOverlayHandleRadius * ratio;
+    final cornerSize = kOverlayCornerSize * ratio;
 
+    // Rotation handle: positioned in the widget's local Y-axis (straight above the top edge).
+    final handleCenter = rotationHandleCenter(bw, ratio);
+
+    // Stem: from the top-center of the dashed border to the rotation handle center.
+    final stemStartDy = -(scaledH / 2 + borderMargin);
+    final stemStart = Offset(bw.x + (-sinR * stemStartDy), bw.y + (cosR * stemStartDy));
+
+    // Corner handles.
+    final corners = cornerHandlePositions(bw, ratio);
+    final cornerKeys = ['corner_tl', 'corner_tr', 'corner_br', 'corner_bl'];
+
+    // Button bar: push above the rotation handle when it extends farther than the border AABB.
     final rotBboxHalfH =
-        (scaledH / 2 + borderMargin) * math.cos(r).abs() +
-        (scaledW / 2 + borderMargin) * math.sin(r).abs();
+        (scaledH / 2 + borderMargin) * cosR.abs() + (scaledW / 2 + borderMargin) * sinR.abs();
+    final handleArmTop = scaledH / 2 + borderMargin + stemLength + 2 * handleRadius;
+    final effectiveHalfH = math.max(rotBboxHalfH, handleArmTop * cosR.abs());
 
     return Stack(
+      key: _stackKey,
       clipBehavior: Clip.none,
       children: [
         // Dashed border at the same position/rotation as ManipulableBoardWidget.
         // IgnorePointer lets touch events fall through to lower layers.
         Positioned(
-          left: boardWidget.x - scaledW / 2 - borderMargin,
-          top: boardWidget.y - scaledH / 2 - borderMargin,
+          left: bw.x - scaledW / 2 - borderMargin,
+          top: bw.y - scaledH / 2 - borderMargin,
           width: scaledW + borderMargin * 2,
           height: scaledH + borderMargin * 2,
           child: IgnorePointer(
@@ -62,10 +230,55 @@ class WidgetSelectionOverlay extends StatelessWidget {
             ),
           ),
         ),
-        // Button bar centred above the widget's rotated visual top.
+        // Stem line from dashed border top to rotation handle center.
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(painter: _StemPainter(from: stemStart, to: handleCenter, ratio: ratio)),
+          ),
+        ),
+        // Rotation handle circle.
         Positioned(
-          left: boardWidget.x - btnBarCanvasW / 2,
-          top: boardWidget.y - rotBboxHalfH - gapCanvas - btnBarCanvasH,
+          left: handleCenter.dx - handleRadius,
+          top: handleCenter.dy - handleRadius,
+          width: handleRadius * 2,
+          height: handleRadius * 2,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.grab,
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: _onRotateDown,
+              onPointerMove: _onRotateMove,
+              onPointerUp: _onRotateUp,
+              onPointerCancel: _onRotateCancel,
+              child: CustomPaint(painter: _HandleCirclePainter(ratio)),
+            ),
+          ),
+        ),
+        // Corner scale handles.
+        for (var i = 0; i < corners.length; i++)
+          Positioned(
+            left: corners[i].dx - cornerSize,
+            top: corners[i].dy - cornerSize,
+            width: cornerSize * 2,
+            height: cornerSize * 2,
+            child: MouseRegion(
+              cursor: i == 0 || i == 2
+                  ? SystemMouseCursors.resizeUpLeftDownRight
+                  : SystemMouseCursors.resizeUpRightDownLeft,
+              child: Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (e) => _onCornerDown(cornerKeys[i], e),
+                onPointerMove: _onCornerMove,
+                onPointerUp: _onCornerUp,
+                onPointerCancel: _onCornerCancel,
+                child: CustomPaint(painter: _HandleSquarePainter(ratio)),
+              ),
+            ),
+          ),
+        // Button bar centred above the widget's rotated visual top (or rotation handle, whichever is higher).
+        Positioned(
+          left: bw.x - btnBarCanvasW / 2,
+          top: bw.y - effectiveHalfH - gapCanvas - btnBarCanvasH,
           width: btnBarCanvasW,
           height: btnBarCanvasH,
           child: Center(
@@ -76,7 +289,7 @@ class WidgetSelectionOverlay extends StatelessWidget {
               // buttons appear at their natural host/OS pixel size.
               child: Transform.scale(
                 scale: ratio,
-                child: _ActionButtonBar(onDelete: onDelete, settingsBuilder: settingsBuilder),
+                child: _ActionButtonBar(onDelete: widget.onDelete, settingsBuilder: widget.settingsBuilder),
               ),
             ),
           ),
@@ -239,5 +452,83 @@ class _DashedBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DashedBorderPainter old) => old.boardPixelRatio != boardPixelRatio;
+
+}
+
+class _StemPainter extends CustomPainter {
+
+  final Offset from;
+  final Offset to;
+  final double ratio;
+
+  const _StemPainter({required this.from, required this.to, required this.ratio});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawLine(
+      from,
+      to,
+      Paint()
+        ..color = const Color(0xFF3B82F6)
+        ..strokeWidth = 1.5 * ratio
+        ..style = PaintingStyle.stroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_StemPainter old) =>
+      old.from != from || old.to != to || old.ratio != ratio;
+
+}
+
+class _HandleCirclePainter extends CustomPainter {
+
+  final double ratio;
+
+  const _HandleCirclePainter(this.ratio);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final r = size.width / 2;
+    canvas
+      ..drawCircle(center, r, Paint()..color = Colors.white)
+      ..drawCircle(
+        center,
+        r,
+        Paint()
+          ..color = const Color(0xFF3B82F6)
+          ..strokeWidth = 1.5 * ratio
+          ..style = PaintingStyle.stroke,
+      );
+  }
+
+  @override
+  bool shouldRepaint(_HandleCirclePainter old) => old.ratio != ratio;
+
+}
+
+class _HandleSquarePainter extends CustomPainter {
+
+  final double ratio;
+
+  const _HandleSquarePainter(this.ratio);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    canvas
+      ..drawRect(rect, Paint()..color = Colors.white)
+      ..drawRect(
+        rect,
+        Paint()
+          ..color = const Color(0xFF3B82F6)
+          ..strokeWidth = 1.5 * ratio
+          ..style = PaintingStyle.stroke,
+      );
+  }
+
+  @override
+  bool shouldRepaint(_HandleSquarePainter old) => old.ratio != ratio;
 
 }

@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
+import 'package:flutter/gestures.dart' show PointerScrollEvent, PointerSignalEvent, kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -100,6 +101,13 @@ class _BoardState extends State<Board> {
   Offset? _contextMenuCanvasPos;
   WidgetSettingsBuilder? _contextMenuBuilder;
 
+  // True while a selection-overlay handle (rotate / corner scale) is being dragged.
+  // Prevents the board's ScaleGestureRecognizer from interfering with the handle drag.
+  bool _handleDragActive = false;
+
+  // Debounces scroll-to-scale: groups rapid scroll ticks into a single undo history entry.
+  Timer? _scrollEndTimer;
+
   @override
   void initState() {
     widget.drawingController.drawConfig.addListener(_onDrawConfigChanged);
@@ -182,15 +190,41 @@ class _BoardState extends State<Board> {
       final scaledW = size.width * bw.scale;
       final scaledH = size.height * bw.scale;
       final r = bw.rotation;
-      final halfH = (scaledH / 2 + borderMargin * ratio) * math.cos(r).abs() +
-          (scaledW / 2 + borderMargin * ratio) * math.sin(r).abs();
+      final cosR = math.cos(r).abs();
+      final sinR = math.sin(r).abs();
+      final borderMarginCanvas = borderMargin * ratio;
+      final rotBboxHalfH = (scaledH / 2 + borderMarginCanvas) * cosR +
+          (scaledW / 2 + borderMarginCanvas) * sinR;
+      // Mirror the overlay's effectiveHalfH: push button bar above the rotation handle
+      // when the handle arm extends further up than the border AABB.
+      final stemLength = kOverlayStemLength * ratio;
+      final handleRadius = kOverlayHandleRadius * ratio;
+      final handleArmTop = scaledH / 2 + borderMarginCanvas + stemLength + 2 * handleRadius;
+      final effectiveHalfH = math.max(rotBboxHalfH, handleArmTop * cosR);
       final left = bw.x - btnBarW * ratio / 2;
-      final top = bw.y - halfH - gap * ratio - btnBarH * ratio;
+      final top = bw.y - effectiveHalfH - gap * ratio - btnBarH * ratio;
       if (canvasPoint.dx >= left &&
           canvasPoint.dx <= left + btnBarW * ratio &&
           canvasPoint.dy >= top &&
           canvasPoint.dy <= top + btnBarH * ratio) {
         return true;
+      }
+    }
+    return false;
+  }
+
+  // Returns true if canvasPoint is within a handle (rotation circle or corner scale square)
+  // of any currently selected widget. Mirrors the position math in WidgetSelectionOverlay
+  // so that _onPointerDown can skip clearSelection() when the user clicks a handle.
+  bool _isPointOnAnyHandle(Offset canvasPoint) {
+    final ratio = widget.viewModel.boardPixelRatio;
+    final handleRadius = kOverlayHandleRadius * ratio;
+    final cornerSize = kOverlayCornerSize * ratio;
+    for (final bw in widget.viewModel.boardWidgets) {
+      if (!widget.viewModel.selectedWidgetIds.contains(bw.id)) continue;
+      if ((canvasPoint - rotationHandleCenter(bw, ratio)).distance <= handleRadius * 2) return true;
+      for (final pos in cornerHandlePositions(bw, ratio)) {
+        if ((canvasPoint - pos).distance <= cornerSize * 2) return true;
       }
     }
     return false;
@@ -247,7 +281,8 @@ class _BoardState extends State<Board> {
       _tapCandidateOnEmptySpace = !widget.viewModel.boardWidgets.any(
             (bw) => _isPointOnWidget(event.localPosition, bw),
           ) &&
-          !_isPointOnAnyButtonBar(event.localPosition);
+          !_isPointOnAnyButtonBar(event.localPosition) &&
+          !_isPointOnAnyHandle(event.localPosition);
 
       if (_tapCandidateOnEmptySpace) {
         final hadSelection = widget.viewModel.selectedWidgetIds.isNotEmpty;
@@ -328,6 +363,7 @@ class _BoardState extends State<Board> {
   }
 
   void _onScaleStart(ScaleStartDetails details) {
+    if (_handleDragActive) return;
     _lastFocalPoint = details.localFocalPoint;
     _gestureMovedSignificantly = false;
     _autoSelectedForDrag = false;
@@ -362,6 +398,7 @@ class _BoardState extends State<Board> {
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (_handleDragActive) return;
     final delta = details.localFocalPoint - _lastFocalPoint!;
     _lastFocalPoint = details.localFocalPoint;
     if (delta.distance > 3.0) _gestureMovedSignificantly = true;
@@ -398,6 +435,7 @@ class _BoardState extends State<Board> {
   }
 
   void _onScaleEnd(ScaleEndDetails details) {
+    if (_handleDragActive) return;
     // pointerCount > 0 means fingers are still active: this end was triggered by
     // a finger-count change mid-gesture (ScaleGestureRecognizer calls onEnd then
     // defers onStart until the next move). Keep _activeWidgetId so the upcoming
@@ -419,6 +457,28 @@ class _BoardState extends State<Board> {
       _autoSelectedForDrag = false;
     }
     _lastFocalPoint = null;
+  }
+
+  void _onPointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent) return;
+    final selected = widget.viewModel.selectedWidgetIds;
+    if (selected.length != 1) return;
+    final bwId = selected.first;
+    final matching = widget.viewModel.boardWidgets.where((b) => b.id == bwId);
+    if (matching.isEmpty) return;
+    final bw = matching.first;
+    if (!_isPointOnWidget(event.localPosition, bw)) return;
+
+    const sensitivity = 0.001;
+    final newScale = (bw.scale * (1.0 - event.scrollDelta.dy * sensitivity)).clamp(0.2, 5.0);
+
+    if (_scrollEndTimer == null) widget.onWidgetTransformStart(bwId);
+    _scrollEndTimer?.cancel();
+    _scrollEndTimer = Timer(const Duration(milliseconds: 400), () {
+      widget.onWidgetTransformEnd(bwId);
+      _scrollEndTimer = null;
+    });
+    widget.viewModel.updateBoardWidget(bwId, bw.x, bw.y, bw.rotation, newScale);
   }
 
   @override
@@ -494,6 +554,17 @@ class _BoardState extends State<Board> {
                         boardPixelRatio: widget.viewModel.boardPixelRatio,
                         onDelete: () => widget.onDeleteWidget(bw.id),
                         settingsBuilder: (context) => _buildSettingsItems(context, bw),
+                        onHandleTransformStart: () {
+                          _handleDragActive = true;
+                          widget.onWidgetTransformStart(bw.id);
+                        },
+                        onHandleTransformUpdate: (rotation, scale) {
+                          widget.viewModel.updateBoardWidget(bw.id, bw.x, bw.y, rotation, scale);
+                        },
+                        onHandleTransformEnd: () {
+                          _handleDragActive = false;
+                          widget.onWidgetTransformEnd(bw.id);
+                        },
                       ),
                     ),
                 // Zero-size anchor for the right-click context menu flyout.
@@ -538,6 +609,7 @@ class _BoardState extends State<Board> {
                     onPointerMove: _onPointerMove,
                     onPointerUp: _onPointerUp,
                     onPointerCancel: _onPointerCancel,
+                    onPointerSignal: _onPointerSignal,
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
                       onScaleStart: _onScaleStart,
@@ -559,6 +631,7 @@ class _BoardState extends State<Board> {
     widget.drawingController.drawConfig.removeListener(_onDrawConfigChanged);
     HardwareKeyboard.instance.removeHandler(_onKeyEvent);
     _contextMenuController.dispose();
+    _scrollEndTimer?.cancel();
     if (kIsWeb) BrowserContextMenu.enableContextMenu();
     super.dispose();
   }
