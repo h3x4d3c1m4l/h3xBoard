@@ -12,20 +12,66 @@ const double kOverlayStemLength = 32.0;
 const double kOverlayHandleRadius = 8.0;
 const double kOverlayCornerSize = 7.0; // half-side of corner square handle
 
-// Computes the canvas-space position of the rotation handle center for a given widget.
-// Exposed so board.dart can mirror the math in _isPointOnAnyHandle.
-Offset rotationHandleCenter(BoardWidget bw, double ratio) {
+// Picks the best direction for the rotation handle so it stays on-canvas.
+// Tests all 4 widget-local axis directions and picks the one whose handle circle
+// sits furthest inside the 1920×1080 canvas bounds.
+// Returns canvas-space positions for both the stem start (on the border edge) and
+// the handle center (tip of the stem arm).
+({Offset stemStart, Offset handleCenter}) computeRotationHandle(BoardWidget bw, double ratio) {
   final size = naturalSizeFor(bw.config);
+  final scaledW = size.width * bw.scale;
   final scaledH = size.height * bw.scale;
   final borderMargin = kOverlayBorderMargin * ratio;
   final stemLength = kOverlayStemLength * ratio;
   final handleRadius = kOverlayHandleRadius * ratio;
-  final localDy = -(scaledH / 2 + borderMargin + stemLength + handleRadius);
-  return Offset(
-    bw.x + (-math.sin(bw.rotation) * localDy),
-    bw.y + (math.cos(bw.rotation) * localDy),
+  final cosR = math.cos(bw.rotation);
+  final sinR = math.sin(bw.rotation);
+
+  // Candidate directions in widget-local space: up, down, right, left.
+  // Each is (stemStartLocal, handleCenterLocal).
+  final hH = scaledH / 2 + borderMargin;
+  final hW = scaledW / 2 + borderMargin;
+  final armH = hH + stemLength + handleRadius;
+  final armW = hW + stemLength + handleRadius;
+  final candidates = [
+    (Offset(0, -hH), Offset(0, -armH)),
+    (Offset(0,  hH), Offset(0,  armH)),
+    (Offset( hW, 0), Offset( armW, 0)),
+    (Offset(-hW, 0), Offset(-armW, 0)),
+  ];
+
+  // Rotate a widget-local vector to canvas space.
+  Offset toCanvas(Offset local) => Offset(
+    bw.x + local.dx * cosR - local.dy * sinR,
+    bw.y + local.dx * sinR + local.dy * cosR,
   );
+
+  // Higher score = handle circle sits further from all canvas edges.
+  // Negative score means part of the circle is off-canvas.
+  double score(Offset pos) => math.min(
+    math.min(pos.dx - handleRadius, 1920 - pos.dx - handleRadius),
+    math.min(pos.dy - handleRadius, 1080 - pos.dy - handleRadius),
+  );
+
+  var bestStem   = toCanvas(candidates[0].$1);
+  var bestHandle = toCanvas(candidates[0].$2);
+  var bestScore  = score(bestHandle);
+
+  for (var i = 1; i < candidates.length; i++) {
+    final stem   = toCanvas(candidates[i].$1);
+    final handle = toCanvas(candidates[i].$2);
+    final s      = score(handle);
+    if (s > bestScore) {
+      bestStem = stem; bestHandle = handle; bestScore = s;
+    }
+  }
+  return (stemStart: bestStem, handleCenter: bestHandle);
 }
+
+// Convenience wrapper — returns just the handle center.
+// board.dart uses this for hit-testing in _isPointOnAnyHandle.
+Offset rotationHandleCenter(BoardWidget bw, double ratio) =>
+    computeRotationHandle(bw, ratio).handleCenter;
 
 // Computes the four corner handle positions in canvas space.
 // Exposed so board.dart can mirror the math in _isPointOnAnyHandle.
@@ -190,26 +236,24 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
     final btnBarCanvasH = 64.0 * ratio;
     final gapCanvas = 6.0 * ratio;
     final btnBarCanvasW = 200.0 * ratio;
-    final stemLength = kOverlayStemLength * ratio;
     final handleRadius = kOverlayHandleRadius * ratio;
     final cornerSize = kOverlayCornerSize * ratio;
 
-    // Rotation handle: positioned in the widget's local Y-axis (straight above the top edge).
-    final handleCenter = rotationHandleCenter(bw, ratio);
-
-    // Stem: from the top-center of the dashed border to the rotation handle center.
-    final stemStartDy = -(scaledH / 2 + borderMargin);
-    final stemStart = Offset(bw.x + (-sinR * stemStartDy), bw.y + (cosR * stemStartDy));
+    // Rotation handle: pick the direction (up/down/left/right) that keeps the handle on-canvas.
+    final placement = computeRotationHandle(bw, ratio);
+    final stemStart = placement.stemStart;
+    final handleCenter = placement.handleCenter;
 
     // Corner handles.
     final corners = cornerHandlePositions(bw, ratio);
     final cornerKeys = ['corner_tl', 'corner_tr', 'corner_br', 'corner_bl'];
 
-    // Button bar: push above the rotation handle when it extends farther than the border AABB.
+    // Button bar: push above the border AABB, and further above the rotation handle
+    // if the handle sits above the border AABB (general formula; works for any handle direction).
     final rotBboxHalfH =
         (scaledH / 2 + borderMargin) * cosR.abs() + (scaledW / 2 + borderMargin) * sinR.abs();
-    final handleArmTop = scaledH / 2 + borderMargin + stemLength + 2 * handleRadius;
-    final effectiveHalfH = math.max(rotBboxHalfH, handleArmTop * cosR.abs());
+    final handleHalfH = bw.y - handleCenter.dy + handleRadius;
+    final effectiveHalfH = math.max(rotBboxHalfH, handleHalfH);
 
     return Stack(
       key: _stackKey,

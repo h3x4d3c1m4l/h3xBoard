@@ -195,12 +195,12 @@ class _BoardState extends State<Board> {
       final borderMarginCanvas = borderMargin * ratio;
       final rotBboxHalfH = (scaledH / 2 + borderMarginCanvas) * cosR +
           (scaledW / 2 + borderMarginCanvas) * sinR;
-      // Mirror the overlay's effectiveHalfH: push button bar above the rotation handle
-      // when the handle arm extends further up than the border AABB.
-      final stemLength = kOverlayStemLength * ratio;
+      // Use the actual handle center position (which accounts for smart direction selection)
+      // to determine whether the button bar needs to be pushed further up.
+      final handleCenter = rotationHandleCenter(bw, ratio);
       final handleRadius = kOverlayHandleRadius * ratio;
-      final handleArmTop = scaledH / 2 + borderMarginCanvas + stemLength + 2 * handleRadius;
-      final effectiveHalfH = math.max(rotBboxHalfH, handleArmTop * cosR);
+      final handleHalfH = bw.y - handleCenter.dy + handleRadius;
+      final effectiveHalfH = math.max(rotBboxHalfH, handleHalfH);
       final left = bw.x - btnBarW * ratio / 2;
       final top = bw.y - effectiveHalfH - gap * ratio - btnBarH * ratio;
       if (canvasPoint.dx >= left &&
@@ -404,8 +404,8 @@ class _BoardState extends State<Board> {
     if (delta.distance > 3.0) _gestureMovedSignificantly = true;
 
     if (_activeWidgetId == null) return;
-    _currentX += delta.dx;
-    _currentY += delta.dy;
+    _currentX = (_currentX + delta.dx).clamp(0.0, 1920.0);
+    _currentY = (_currentY + delta.dy).clamp(0.0, 1080.0);
 
     // Auto-select the dragged widget only once significant movement is confirmed
     // (i.e. it's a real drag, not a tap with touchscreen slop). Gating on
@@ -424,7 +424,13 @@ class _BoardState extends State<Board> {
     if (isMultiMove) {
       for (final bw in widget.viewModel.boardWidgets) {
         if (selectedIds.contains(bw.id)) {
-          widget.viewModel.updateBoardWidget(bw.id, bw.x + delta.dx, bw.y + delta.dy, bw.rotation, bw.scale);
+          widget.viewModel.updateBoardWidget(
+            bw.id,
+            (bw.x + delta.dx).clamp(0.0, 1920.0),
+            (bw.y + delta.dy).clamp(0.0, 1080.0),
+            bw.rotation,
+            bw.scale,
+          );
         }
       }
     } else {
