@@ -7,21 +7,21 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-class ClockWidget extends StatefulWidget {
+class DigitalClockWidget extends StatefulWidget {
 
   static const Size naturalSize = Size(300, 100);
 
   final bool use24h;
   final bool showSeconds;
 
-  const ClockWidget({super.key, this.use24h = true, this.showSeconds = true});
+  const DigitalClockWidget({super.key, this.use24h = true, this.showSeconds = true});
 
   @override
-  State<ClockWidget> createState() => _ClockWidgetState();
+  State<DigitalClockWidget> createState() => _DigitalClockWidgetState();
 
 }
 
-class _ClockWidgetState extends State<ClockWidget> {
+class _DigitalClockWidgetState extends State<DigitalClockWidget> {
 
   late Timer _timer;
   late DateTime _now;
@@ -115,27 +115,27 @@ class _ClockWidgetState extends State<ClockWidget> {
 
 }
 
-class ClockWidgetDescriptor extends BoardWidgetDescriptor {
+class DigitalClockWidgetDescriptor extends BoardWidgetDescriptor {
 
-  static const ClockWidgetDescriptor instance = ClockWidgetDescriptor._();
-  const ClockWidgetDescriptor._();
+  static const DigitalClockWidgetDescriptor instance = DigitalClockWidgetDescriptor._();
+  const DigitalClockWidgetDescriptor._();
 
   @override
   IconData get icon => LucideIcons.clock;
 
   @override
-  String label(AppLocalizations localizations) => localizations.addWidgetMenu_clock;
+  String label(AppLocalizations localizations) => localizations.addWidgetMenu_digitalClock;
 
   @override
-  Size get naturalSize => ClockWidget.naturalSize;
+  Size get naturalSize => DigitalClockWidget.naturalSize;
 
   @override
-  BoardWidgetConfig get defaultConfig => const ClockConfig();
+  BoardWidgetConfig get defaultConfig => const DigitalClockConfig();
 
   @override
   Widget buildWidget(BoardWidgetConfig config) {
-    final c = config as ClockConfig;
-    return ClockWidget(use24h: c.use24h, showSeconds: c.showSeconds);
+    final c = config as DigitalClockConfig;
+    return DigitalClockWidget(use24h: c.use24h, showSeconds: c.showSeconds);
   }
 
   @override
@@ -144,7 +144,7 @@ class ClockWidgetDescriptor extends BoardWidgetDescriptor {
     BoardWidgetConfig config,
     void Function(BoardWidgetConfig) onChange,
   ) {
-    final c = config as ClockConfig;
+    final c = config as DigitalClockConfig;
     return [
       ToggleMenuFlyoutItem(
         value: c.use24h,

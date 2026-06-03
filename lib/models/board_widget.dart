@@ -6,13 +6,20 @@ enum TrafficLightColor { red, yellow, green }
 
 enum MemoNoteColor { yellow, green, blue, pink }
 
+enum AnalogClockStyle { trainStation, classic, roman }
+
 @freezed
 sealed class BoardWidgetConfig with _$BoardWidgetConfig {
 
-  const factory BoardWidgetConfig.clock({
+  const factory BoardWidgetConfig.digitalClock({
     @Default(true) bool use24h,
     @Default(true) bool showSeconds,
-  }) = ClockConfig;
+  }) = DigitalClockConfig;
+
+  const factory BoardWidgetConfig.analogClock({
+    @Default(AnalogClockStyle.classic) AnalogClockStyle style,
+    @Default(true) bool showSeconds,
+  }) = AnalogClockConfig;
 
   const factory BoardWidgetConfig.trafficLight({
     @Default(TrafficLightColor.red) TrafficLightColor activeLight,
