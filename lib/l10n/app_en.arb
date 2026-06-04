@@ -91,5 +91,9 @@
     "layerMenu_sendBackward": "Send backward",
     "@layerMenu_sendBackward": {},
     "layerMenu_sendToBack": "Send to back",
-    "@layerMenu_sendToBack": {}
+    "@layerMenu_sendToBack": {},
+    "boardSettingsButton_fullscreen": "Fullscreen",
+    "@boardSettingsButton_fullscreen": {},
+    "boardSettingsButton_exitFullscreen": "Exit fullscreen",
+    "@boardSettingsButton_exitFullscreen": {}
 }

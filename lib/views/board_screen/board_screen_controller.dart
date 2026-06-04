@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
+import 'package:h3xboard/services/fullscreen_service.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
@@ -14,11 +17,14 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   final DrawingController drawingController = DrawingController();
   final HistoryManager historyManager = HistoryManager();
   final ValueNotifier<int> drawStartSignal = ValueNotifier(0);
+  final FullscreenService _fullscreenService = FullscreenService();
 
   // Pending state captured at gesture/stroke boundaries for history recording.
   List<Map<String, dynamic>>? _drawingBefore;
   Map<String, (double, double, double, double)>? _transformBefore;
   double? _lineSpacingBefore;
+
+  StreamSubscription<bool>? _fullscreenSubscription;
 
   // Initialization/Deinitialization
 
@@ -27,13 +33,26 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     required super.contextAccessor,
   }) {
     drawingController.setStyle(color: viewModel.drawingTools.activeColor);
+    _fullscreenSubscription = _fullscreenService.onChange.listen(viewModel.setFullscreen);
   }
 
   @override
   void dispose() {
+    _fullscreenSubscription?.cancel();
+    _fullscreenService.dispose();
     super.dispose();
     drawingController.dispose();
     drawStartSignal.dispose();
+  }
+
+  // Fullscreen handler
+
+  void onFullscreenToggle() {
+    if (_fullscreenService.isFullscreen) {
+      _fullscreenService.exitFullscreen();
+    } else {
+      _fullscreenService.requestFullscreen();
+    }
   }
 
   // Drawing tool handlers

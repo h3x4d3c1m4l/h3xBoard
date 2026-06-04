@@ -91,5 +91,9 @@
     "layerMenu_sendBackward": "Één laag omlaag",
     "@layerMenu_sendBackward": {},
     "layerMenu_sendToBack": "Naar achteren sturen",
-    "@layerMenu_sendToBack": {}
+    "@layerMenu_sendToBack": {},
+    "boardSettingsButton_fullscreen": "Volledig scherm",
+    "@boardSettingsButton_fullscreen": {},
+    "boardSettingsButton_exitFullscreen": "Volledig scherm verlaten",
+    "@boardSettingsButton_exitFullscreen": {}
 }
