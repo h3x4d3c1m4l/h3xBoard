@@ -11,6 +11,7 @@ abstract class Board with _$Board {
   const Board._();
 
   const factory Board({
+    required String id,
     required String title,
     required Color backgroundColor,
     required bool isChalkboard,

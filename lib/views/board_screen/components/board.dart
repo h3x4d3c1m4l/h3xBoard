@@ -24,6 +24,7 @@ class Board extends StatefulWidget {
   final BoardScreenViewModel viewModel;
   final void Function(String id) onDeleteWidget;
   final void Function(String id, BoardWidgetConfig config) onWidgetConfigChanged;
+  final void Function(String id, bool isGlobal) onWidgetVisibilityChanged;
   final void Function(String id) onWidgetTransformStart;
   final void Function(String id) onWidgetTransformEnd;
   final VoidCallback onDrawingStrokeStart;
@@ -40,6 +41,7 @@ class Board extends StatefulWidget {
     required this.viewModel,
     required this.onDeleteWidget,
     required this.onWidgetConfigChanged,
+    required this.onWidgetVisibilityChanged,
     required this.onWidgetTransformStart,
     required this.onWidgetTransformEnd,
     required this.onDrawingStrokeStart,
@@ -138,10 +140,12 @@ class _BoardState extends State<Board> {
       bw.config,
       (newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig),
     );
-    final currentIndex = widget.viewModel.boardWidgets.indexWhere((w) => w.id == bw.id);
-    final maxIndex = widget.viewModel.boardWidgets.length - 1;
+    final visible = widget.viewModel.visibleBoardWidgets;
+    final currentIndex = visible.indexWhere((w) => w.id == bw.id);
+    final maxIndex = visible.length - 1;
     final isTop = currentIndex == maxIndex;
     final isBottom = currentIndex == 0;
+    final isGlobal = bw.isVisibleOnAllBoards;
     return [
       ...typeItems,
       if (typeItems.isNotEmpty) const MenuFlyoutSeparator(),
@@ -171,6 +175,23 @@ class _BoardState extends State<Board> {
           ),
         ],
       ),
+      const MenuFlyoutSeparator(),
+      MenuFlyoutSubItem(
+        leading: const Icon(LucideIcons.eye),
+        text: Text(context.localizations.boardVisibilityMenu_title),
+        items: (_) => [
+          MenuFlyoutItem(
+            leading: Icon(isGlobal ? LucideIcons.checkCircle : LucideIcons.circle),
+            text: Text(context.localizations.boardVisibilityMenu_allBoards),
+            onPressed: isGlobal ? null : () => widget.onWidgetVisibilityChanged(bw.id, true),
+          ),
+          MenuFlyoutItem(
+            leading: Icon(!isGlobal ? LucideIcons.checkCircle : LucideIcons.circle),
+            text: Text(context.localizations.boardVisibilityMenu_thisBoard),
+            onPressed: !isGlobal ? null : () => widget.onWidgetVisibilityChanged(bw.id, false),
+          ),
+        ],
+      ),
     ];
   }
 
@@ -184,7 +205,7 @@ class _BoardState extends State<Board> {
     const btnBarH = 64.0;
     const btnBarW = 200.0;
     const gap = 6.0;
-    for (final bw in widget.viewModel.boardWidgets) {
+    for (final bw in widget.viewModel.visibleBoardWidgets) {
       if (!widget.viewModel.selectedWidgetIds.contains(bw.id)) continue;
       final size = naturalSizeFor(bw.config);
       final scaledW = size.width * bw.scale;
@@ -220,7 +241,7 @@ class _BoardState extends State<Board> {
     final ratio = widget.viewModel.boardPixelRatio;
     final handleRadius = kOverlayHandleRadius * ratio;
     final cornerSize = kOverlayCornerSize * ratio;
-    for (final bw in widget.viewModel.boardWidgets) {
+    for (final bw in widget.viewModel.visibleBoardWidgets) {
       if (!widget.viewModel.selectedWidgetIds.contains(bw.id)) continue;
       if ((canvasPoint - rotationHandleCenter(bw, ratio)).distance <= handleRadius * 2) return true;
       for (final pos in cornerHandlePositions(bw, ratio)) {
@@ -245,7 +266,7 @@ class _BoardState extends State<Board> {
 
   void _onPointerDown(PointerDownEvent event) {
     if (event.buttons & kSecondaryMouseButton != 0) {
-      for (final bw in widget.viewModel.boardWidgets.reversed) {
+      for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
         if (_isPointOnWidget(event.localPosition, bw)) {
           widget.viewModel.selectWidget(bw.id);
           _contextMenuCanvasPos = event.localPosition;
@@ -278,7 +299,7 @@ class _BoardState extends State<Board> {
       // the touch landed on empty canvas. Used in _onPointerUp for deselection.
       // ScaleGestureRecognizer only fires after slop, so stationary taps never
       // reach _onScaleEnd — the Listener is more reliable for this case.
-      _tapCandidateOnEmptySpace = !widget.viewModel.boardWidgets.any(
+      _tapCandidateOnEmptySpace = !widget.viewModel.visibleBoardWidgets.any(
             (bw) => _isPointOnWidget(event.localPosition, bw),
           ) &&
           !_isPointOnAnyButtonBar(event.localPosition) &&
@@ -380,7 +401,7 @@ class _BoardState extends State<Board> {
     // Use the Listener-recorded initial touch position (pre-slop) rather than
     // details.localFocalPoint (post-slop) for accurate widget hit-testing.
     final checkPoint = _initialTouchPosition ?? details.localFocalPoint;
-    for (final bw in widget.viewModel.boardWidgets.reversed) {
+    for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
       if (_isPointOnWidget(checkPoint, bw)) {
         setState(() => _activeWidgetId = bw.id);
         _currentX = bw.x;
@@ -422,7 +443,7 @@ class _BoardState extends State<Board> {
     final isMultiMove = selectedIds.length > 1 && selectedIds.contains(_activeWidgetId);
 
     if (isMultiMove) {
-      for (final bw in widget.viewModel.boardWidgets) {
+      for (final bw in widget.viewModel.visibleBoardWidgets) {
         if (selectedIds.contains(bw.id)) {
           widget.viewModel.updateBoardWidget(
             bw.id,
@@ -470,7 +491,7 @@ class _BoardState extends State<Board> {
     final selected = widget.viewModel.selectedWidgetIds;
     if (selected.length != 1) return;
     final bwId = selected.first;
-    final matching = widget.viewModel.boardWidgets.where((b) => b.id == bwId);
+    final matching = widget.viewModel.visibleBoardWidgets.where((b) => b.id == bwId);
     if (matching.isEmpty) return;
     final bw = matching.first;
     if (!_isPointOnWidget(event.localPosition, bw)) return;
@@ -543,7 +564,7 @@ class _BoardState extends State<Board> {
                     boardScaleEnabled: false,
                   ),
                 ),
-                for (final bw in widget.viewModel.boardWidgets)
+                for (final bw in widget.viewModel.visibleBoardWidgets)
                   ManipulableBoardWidget(
                     key: ValueKey(bw.id),
                     boardWidget: bw,
@@ -551,7 +572,7 @@ class _BoardState extends State<Board> {
                   ),
                 // Selection overlays — inside FittedBox so coords match widget coords.
                 // Sized at boardPixelRatio-scaled canvas units to appear at host scale.
-                for (final bw in widget.viewModel.boardWidgets)
+                for (final bw in widget.viewModel.visibleBoardWidgets)
                   if (widget.viewModel.selectedWidgetIds.contains(bw.id))
                     Positioned.fill(
                       child: WidgetSelectionOverlay(

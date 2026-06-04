@@ -5,6 +5,7 @@ import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/board.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/drawing_toolbar.dart';
+import 'package:h3xboard/views/board_screen/components/toolbars/sub_board_tab_bar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dart';
 
 class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenController> {
@@ -19,6 +20,16 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
         mainAxisAlignment: .center,
         children: [
           ToolToolbar(controller: controller, viewModel: viewModel),
+          Observer(
+            builder: (_) => SubBoardTabBar(
+              subBoards: viewModel.subBoards,
+              activeSubBoardId: viewModel.activeSubBoardId,
+              onSwitchSubBoard: controller.onSwitchSubBoard,
+              onAddSubBoard: controller.onAddSubBoard,
+              onRemoveSubBoard: controller.onRemoveSubBoard,
+              onRenameSubBoard: controller.onRenameSubBoard,
+            ),
+          ),
           Flexible(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -38,6 +49,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
                       viewModel: viewModel,
                       onDeleteWidget: controller.onDeleteWidget,
                       onWidgetConfigChanged: controller.onWidgetConfigChanged,
+                      onWidgetVisibilityChanged: controller.onWidgetVisibilityChanged,
                       onWidgetTransformStart: controller.onWidgetTransformStart,
                       onWidgetTransformEnd: controller.onWidgetTransformEnd,
                       onDrawingStrokeStart: controller.onDrawingStrokeStart,

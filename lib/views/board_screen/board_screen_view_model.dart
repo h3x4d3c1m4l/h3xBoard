@@ -12,14 +12,23 @@ class BoardScreenViewModel = BoardScreenViewModelBase with _$BoardScreenViewMode
 abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @readonly
-  Board _board = Board(
-    title: 'Board of ${DateTime.now()}',
-    backgroundColor: Colors.white,
-    isChalkboard: false,
-    linePattern: BoardLinePattern.none,
-    lineSpacing: 64,
-    lineColor: Colors.grey[100],
-  );
+  ObservableList<Board> _subBoards = ObservableList.of([
+    Board(
+      id: 'board_1',
+      title: 'Board 1',
+      backgroundColor: Colors.white,
+      isChalkboard: false,
+      linePattern: BoardLinePattern.none,
+      lineSpacing: 64,
+      lineColor: Colors.grey[100],
+    ),
+  ]);
+
+  @readonly
+  String _activeSubBoardId = 'board_1';
+
+  @readonly
+  ObservableMap<String, List<Map<String, dynamic>>> _subBoardDrawings = ObservableMap();
 
   @readonly
   DrawingTools _drawingTools = DrawingTools(
@@ -41,6 +50,17 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @readonly
   bool _isFullscreen = false;
+
+  @computed
+  Board get board => _subBoards.firstWhere(
+    (b) => b.id == _activeSubBoardId,
+    orElse: () => _subBoards.first,
+  );
+
+  @computed
+  List<BoardWidget> get visibleBoardWidgets => _boardWidgets
+      .where((w) => w.isVisibleOnAllBoards || w.visibleOnBoardIds.contains(_activeSubBoardId))
+      .toList();
 
   BoardScreenViewModelBase({
     required super.contextAccessor,
@@ -90,27 +110,73 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @action
   void setBoardColorAndType(Color color, bool isChalkboard) {
-    _board = _board.copyWith(backgroundColor: color, isChalkboard: isChalkboard);
+    _updateActiveSubBoard((b) => b.copyWith(backgroundColor: color, isChalkboard: isChalkboard));
   }
 
   @action
   void setBoardLineColor(Color color) {
-    _board = _board.copyWith(lineColor: color);
+    _updateActiveSubBoard((b) => b.copyWith(lineColor: color));
   }
 
   @action
   void setBoardLinePattern(BoardLinePattern pattern) {
-    _board = _board.copyWith(linePattern: pattern);
+    _updateActiveSubBoard((b) => b.copyWith(linePattern: pattern));
   }
 
   @action
   void setBoardLineSpacing(double spacing) {
-    _board = _board.copyWith(lineSpacing: spacing);
+    _updateActiveSubBoard((b) => b.copyWith(lineSpacing: spacing));
   }
 
   @action
   void setFullscreen(bool value) {
     _isFullscreen = value;
+  }
+
+  @action
+  void addSubBoard(Board subBoard) {
+    _subBoards.add(subBoard);
+  }
+
+  @action
+  void removeSubBoard(String id) {
+    _subBoards.removeWhere((b) => b.id == id);
+    _subBoardDrawings.remove(id);
+    _boardWidgets.removeWhere((w) {
+      if (w.isVisibleOnAllBoards) return false;
+      final remaining = w.visibleOnBoardIds.where((bid) => bid != id).toList();
+      return remaining.isEmpty;
+    });
+    _boardWidgets
+        .where((w) => !w.isVisibleOnAllBoards && w.visibleOnBoardIds.contains(id))
+        .toList()
+        .forEach((w) {
+      final idx = _boardWidgets.indexWhere((bw) => bw.id == w.id);
+      if (idx != -1) {
+        _boardWidgets[idx] = w.copyWith(
+          visibleOnBoardIds: w.visibleOnBoardIds.where((bid) => bid != id).toList(),
+        );
+      }
+    });
+  }
+
+  @action
+  void renameSubBoard(String id, String title) {
+    final index = _subBoards.indexWhere((b) => b.id == id);
+    if (index != -1) {
+      _subBoards[index] = _subBoards[index].copyWith(title: title);
+    }
+  }
+
+  @action
+  void setActiveSubBoardId(String id) {
+    _activeSubBoardId = id;
+    _selectedWidgetIds.clear();
+  }
+
+  @action
+  void saveSubBoardDrawing(String id, List<Map<String, dynamic>> data) {
+    _subBoardDrawings[id] = data;
   }
 
   @action
@@ -151,6 +217,17 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   }
 
   @action
+  void updateBoardWidgetVisibility(String id, bool isVisibleOnAllBoards, List<String> boardIds) {
+    final index = _boardWidgets.indexWhere((w) => w.id == id);
+    if (index != -1) {
+      _boardWidgets[index] = _boardWidgets[index].copyWith(
+        isVisibleOnAllBoards: isVisibleOnAllBoards,
+        visibleOnBoardIds: boardIds,
+      );
+    }
+  }
+
+  @action
   void removeBoardWidget(String id) {
     _boardWidgets.removeWhere((w) => w.id == id);
     _selectedWidgetIds.remove(id);
@@ -162,6 +239,17 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
     if (index == -1) return;
     final widget = _boardWidgets.removeAt(index);
     _boardWidgets.insert(newIndex.clamp(0, _boardWidgets.length), widget);
+  }
+
+  void _updateActiveSubBoard(Board Function(Board) update) {
+    final index = _subBoards.indexWhere((b) => b.id == _activeSubBoardId);
+    if (index != -1) {
+      _subBoards[index] = update(_subBoards[index]);
+    }
+  }
+
+  List<Map<String, dynamic>> restoreSubBoardDrawing(String id) {
+    return _subBoardDrawings[id] ?? [];
   }
 
 }
