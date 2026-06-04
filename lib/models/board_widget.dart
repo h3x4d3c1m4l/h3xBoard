@@ -48,6 +48,8 @@ abstract class BoardWidget with _$BoardWidget {
     required double y,
     @Default(0.0) double rotation,
     @Default(1.0) double scale,
+    @Default(false) bool isVisibleOnAllBoards,
+    @Default(<String>[]) List<String> visibleOnBoardIds,
   }) = _BoardWidget;
 
 }

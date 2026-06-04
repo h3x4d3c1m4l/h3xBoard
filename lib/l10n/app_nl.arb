@@ -95,5 +95,17 @@
     "boardSettingsButton_fullscreen": "Volledig scherm",
     "@boardSettingsButton_fullscreen": {},
     "boardSettingsButton_exitFullscreen": "Volledig scherm verlaten",
-    "@boardSettingsButton_exitFullscreen": {}
+    "@boardSettingsButton_exitFullscreen": {},
+    "subBoardTabBar_addBoard": "Bord toevoegen",
+    "@subBoardTabBar_addBoard": {},
+    "subBoardTabBar_rename": "Hernoemen",
+    "@subBoardTabBar_rename": {},
+    "subBoardTabBar_delete": "Verwijderen",
+    "@subBoardTabBar_delete": {},
+    "boardVisibilityMenu_title": "Bordzichtbaarheid",
+    "@boardVisibilityMenu_title": {},
+    "boardVisibilityMenu_allBoards": "Zichtbaar op alle borden",
+    "@boardVisibilityMenu_allBoards": {},
+    "boardVisibilityMenu_thisBoard": "Alleen zichtbaar op dit bord",
+    "@boardVisibilityMenu_thisBoard": {}
 }

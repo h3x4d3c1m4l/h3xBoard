@@ -12,6 +12,9 @@ import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
 
+// Matches 'Board N' titles to pick the next auto-number.
+final _boardTitleRegex = RegExp(r'^Board (\d+)$');
+
 class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   final DrawingController drawingController = DrawingController();
@@ -145,11 +148,111 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onAddWidget(BoardWidgetConfig config) {
     final id = '${config.runtimeType}_${DateTime.now().millisecondsSinceEpoch}';
-    final widget = BoardWidget(id: id, config: config, x: 960, y: 540);
+    final widget = BoardWidget(
+      id: id,
+      config: config,
+      x: 960,
+      y: 540,
+      visibleOnBoardIds: [viewModel.activeSubBoardId],
+    );
     viewModel.addBoardWidget(widget);
     historyManager.push(HistoryEntry(
       undo: () => viewModel.removeBoardWidget(id),
       redo: () => viewModel.addBoardWidget(widget),
+    ));
+  }
+
+  void onAddSubBoard() {
+    final previousId = viewModel.activeSubBoardId;
+    final existingNumbers = viewModel.subBoards
+        .map((b) => _boardTitleRegex.firstMatch(b.title)?.group(1))
+        .whereType<String>()
+        .map(int.parse)
+        .toList();
+    final nextNumber = (existingNumbers.isEmpty ? 0 : existingNumbers.reduce((a, b) => a > b ? a : b)) + 1;
+    final id = 'board_${DateTime.now().millisecondsSinceEpoch}';
+    final board = Board(
+      id: id,
+      title: 'Board $nextNumber',
+      backgroundColor: Colors.white,
+      isChalkboard: false,
+      linePattern: BoardLinePattern.none,
+      lineSpacing: 64,
+      lineColor: Colors.grey[100],
+    );
+    viewModel.addSubBoard(board);
+    onSwitchSubBoard(id);
+    historyManager.push(HistoryEntry(
+      undo: () {
+        onSwitchSubBoard(previousId);
+        viewModel.removeSubBoard(id);
+      },
+      redo: () {
+        viewModel.addSubBoard(board);
+        onSwitchSubBoard(id);
+      },
+    ));
+  }
+
+  void onRemoveSubBoard(String id) {
+    if (viewModel.subBoards.length <= 1) return;
+    final boards = viewModel.subBoards;
+    final idx = boards.indexWhere((b) => b.id == id);
+    final removedBoard = boards[idx];
+    final removedWidgets = viewModel.boardWidgets
+        .where((w) => !w.isVisibleOnAllBoards && w.visibleOnBoardIds.every((bid) => bid == id))
+        .toList();
+    final switchTargetId = idx > 0 ? boards[idx - 1].id : boards[idx + 1].id;
+    if (viewModel.activeSubBoardId == id) {
+      onSwitchSubBoard(switchTargetId);
+    }
+    viewModel.removeSubBoard(id);
+    historyManager.push(HistoryEntry(
+      undo: () {
+        viewModel.addSubBoard(removedBoard);
+        for (final w in removedWidgets) {
+          viewModel.addBoardWidget(w);
+        }
+        onSwitchSubBoard(id);
+      },
+      redo: () {
+        if (viewModel.activeSubBoardId == id) onSwitchSubBoard(switchTargetId);
+        viewModel.removeSubBoard(id);
+      },
+    ));
+  }
+
+  void onRenameSubBoard(String id, String newTitle) {
+    final oldTitle = viewModel.subBoards.firstWhere((b) => b.id == id).title;
+    if (oldTitle == newTitle) return;
+    viewModel.renameSubBoard(id, newTitle);
+    historyManager.push(HistoryEntry(
+      undo: () => viewModel.renameSubBoard(id, oldTitle),
+      redo: () => viewModel.renameSubBoard(id, newTitle),
+    ));
+  }
+
+  void onSwitchSubBoard(String id) {
+    final currentId = viewModel.activeSubBoardId;
+    if (currentId == id) return;
+    viewModel.saveSubBoardDrawing(currentId, drawingController.getJsonList());
+    drawingController.clear();
+    viewModel.setActiveSubBoardId(id);
+    final saved = viewModel.restoreSubBoardDrawing(id);
+    if (saved.isNotEmpty) {
+      drawingController.addContents(_restoreDrawingContents(saved));
+    }
+  }
+
+  void onWidgetVisibilityChanged(String widgetId, bool isGlobal) {
+    final widget = viewModel.boardWidgets.firstWhere((w) => w.id == widgetId);
+    final oldIsGlobal = widget.isVisibleOnAllBoards;
+    final oldBoardIds = widget.visibleOnBoardIds;
+    final newBoardIds = isGlobal ? <String>[] : [viewModel.activeSubBoardId];
+    viewModel.updateBoardWidgetVisibility(widgetId, isGlobal, newBoardIds);
+    historyManager.push(HistoryEntry(
+      undo: () => viewModel.updateBoardWidgetVisibility(widgetId, oldIsGlobal, oldBoardIds),
+      redo: () => viewModel.updateBoardWidgetVisibility(widgetId, isGlobal, newBoardIds),
     ));
   }
 
