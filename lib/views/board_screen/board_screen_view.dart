@@ -16,6 +16,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
       padding: const EdgeInsets.all(8),
       child: Column(
         spacing: 8,
+        mainAxisAlignment: .center,
         children: [
           ToolToolbar(controller: controller, viewModel: viewModel),
           Flexible(
