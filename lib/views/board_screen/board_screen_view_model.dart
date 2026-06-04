@@ -39,6 +39,9 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @readonly
   ObservableSet<String> _selectedWidgetIds = ObservableSet();
 
+  @readonly
+  bool _isFullscreen = false;
+
   BoardScreenViewModelBase({
     required super.contextAccessor,
   });
@@ -103,6 +106,11 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @action
   void setBoardLineSpacing(double spacing) {
     _board = _board.copyWith(lineSpacing: spacing);
+  }
+
+  @action
+  void setFullscreen(bool value) {
+    _isFullscreen = value;
   }
 
   @action

@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 part '../menus/board_color_submenu.dart';
 part '../menus/board_lines_submenu.dart';
+part '../menus/board_fullscreen_menu_item.dart';
 
 class BoardSettingsButton extends StatefulWidget {
 
@@ -39,6 +40,8 @@ class _BoardSettingsButtonState extends State<BoardSettingsButton> {
             items: [
               _boardColorSubmenu(context, widget.viewModel, widget.controller),
               _boardLinesSubmenu(context, widget.viewModel, widget.controller),
+              const MenuFlyoutSeparator(),
+              _fullscreenMenuItem(context, widget.viewModel, widget.controller),
             ],
           ),
         ),
