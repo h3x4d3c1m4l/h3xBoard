@@ -25,6 +25,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   // Pending state captured at gesture/stroke boundaries for history recording.
   List<Map<String, dynamic>>? _drawingBefore;
   Map<String, (double, double, double, double)>? _transformBefore;
+  String? _transformBoardId;
   double? _lineSpacingBefore;
 
   StreamSubscription<bool>? _fullscreenSubscription;
@@ -118,12 +119,15 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     if (before == null) return;
     final after = drawingController.getJsonList();
     if (after.length == before.length) return;
+    final boardId = viewModel.activeSubBoardId;
     historyManager.push(HistoryEntry(
       undo: () {
+        _ensureActiveBoard(boardId);
         drawingController.clear();
         if (before.isNotEmpty) drawingController.addContents(_restoreDrawingContents(before));
       },
       redo: () {
+        _ensureActiveBoard(boardId);
         drawingController.clear();
         if (after.isNotEmpty) drawingController.addContents(_restoreDrawingContents(after));
       },
@@ -132,15 +136,20 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onClearButtonPressed() {
     final before = drawingController.getJsonList();
-    drawingController.clear();
     if (before.isEmpty) return;
+    final boardId = viewModel.activeSubBoardId;
+    drawingController.clear();
     historyManager.push(HistoryEntry(
       undo: () {
+        _ensureActiveBoard(boardId);
         drawingController
           ..clear()
           ..addContents(_restoreDrawingContents(before));
       },
-      redo: drawingController.clear,
+      redo: () {
+        _ensureActiveBoard(boardId);
+        drawingController.clear();
+      },
     ));
   }
 
@@ -148,17 +157,24 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onAddWidget(BoardWidgetConfig config) {
     final id = '${config.runtimeType}_${DateTime.now().millisecondsSinceEpoch}';
+    final boardId = viewModel.activeSubBoardId;
     final widget = BoardWidget(
       id: id,
       config: config,
       x: 960,
       y: 540,
-      visibleOnBoardIds: [viewModel.activeSubBoardId],
+      visibleOnBoardIds: [boardId],
     );
     viewModel.addBoardWidget(widget);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.removeBoardWidget(id),
-      redo: () => viewModel.addBoardWidget(widget),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.removeBoardWidget(id);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.addBoardWidget(widget);
+      },
     ));
   }
 
@@ -246,55 +262,88 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onWidgetVisibilityChanged(String widgetId, bool isGlobal) {
     final widget = viewModel.boardWidgets.firstWhere((w) => w.id == widgetId);
+    final boardId = viewModel.activeSubBoardId;
     final oldIsGlobal = widget.isVisibleOnAllBoards;
     final oldBoardIds = widget.visibleOnBoardIds;
-    final newBoardIds = isGlobal ? <String>[] : [viewModel.activeSubBoardId];
+    final newBoardIds = isGlobal ? <String>[] : [boardId];
     viewModel.updateBoardWidgetVisibility(widgetId, isGlobal, newBoardIds);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.updateBoardWidgetVisibility(widgetId, oldIsGlobal, oldBoardIds),
-      redo: () => viewModel.updateBoardWidgetVisibility(widgetId, isGlobal, newBoardIds),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.updateBoardWidgetVisibility(widgetId, oldIsGlobal, oldBoardIds);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.updateBoardWidgetVisibility(widgetId, isGlobal, newBoardIds);
+      },
     ));
   }
 
   void onDeleteWidget(String id) {
+    final boardId = viewModel.activeSubBoardId;
     final widget = viewModel.boardWidgets.firstWhere((w) => w.id == id);
     viewModel.removeBoardWidget(id);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.addBoardWidget(widget),
-      redo: () => viewModel.removeBoardWidget(id),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.addBoardWidget(widget);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.removeBoardWidget(id);
+      },
     ));
   }
 
   void onWidgetConfigChanged(String id, BoardWidgetConfig newConfig) {
+    final boardId = viewModel.activeSubBoardId;
     final oldConfig = viewModel.boardWidgets.firstWhere((w) => w.id == id).config;
     viewModel.updateBoardWidgetConfig(id, newConfig);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.updateBoardWidgetConfig(id, oldConfig),
-      redo: () => viewModel.updateBoardWidgetConfig(id, newConfig),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.updateBoardWidgetConfig(id, oldConfig);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.updateBoardWidgetConfig(id, newConfig);
+      },
     ));
   }
 
   void onMoveWidgetToTop(String id) {
+    final boardId = viewModel.activeSubBoardId;
     final originalIndex = viewModel.boardWidgets.indexWhere((w) => w.id == id);
     if (originalIndex == -1) return;
     final targetIndex = viewModel.boardWidgets.length - 1;
     if (originalIndex == targetIndex) return;
     viewModel.reorderBoardWidget(id, targetIndex);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.reorderBoardWidget(id, originalIndex),
-      redo: () => viewModel.reorderBoardWidget(id, viewModel.boardWidgets.length - 1),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.reorderBoardWidget(id, originalIndex);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.reorderBoardWidget(id, viewModel.boardWidgets.length - 1);
+      },
     ));
   }
 
   void onMoveWidgetUp(String id) {
+    final boardId = viewModel.activeSubBoardId;
     final originalIndex = viewModel.boardWidgets.indexWhere((w) => w.id == id);
     if (originalIndex == -1) return;
     final targetIndex = (originalIndex + 1).clamp(0, viewModel.boardWidgets.length - 1);
     if (originalIndex == targetIndex) return;
     viewModel.reorderBoardWidget(id, targetIndex);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.reorderBoardWidget(id, originalIndex),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.reorderBoardWidget(id, originalIndex);
+      },
       redo: () {
+        _ensureActiveBoard(boardId);
         final idx = viewModel.boardWidgets.indexWhere((w) => w.id == id);
         viewModel.reorderBoardWidget(id, (idx + 1).clamp(0, viewModel.boardWidgets.length - 1));
       },
@@ -302,14 +351,19 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   }
 
   void onMoveWidgetDown(String id) {
+    final boardId = viewModel.activeSubBoardId;
     final originalIndex = viewModel.boardWidgets.indexWhere((w) => w.id == id);
     if (originalIndex == -1) return;
     final targetIndex = (originalIndex - 1).clamp(0, viewModel.boardWidgets.length - 1);
     if (originalIndex == targetIndex) return;
     viewModel.reorderBoardWidget(id, targetIndex);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.reorderBoardWidget(id, originalIndex),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.reorderBoardWidget(id, originalIndex);
+      },
       redo: () {
+        _ensureActiveBoard(boardId);
         final idx = viewModel.boardWidgets.indexWhere((w) => w.id == id);
         viewModel.reorderBoardWidget(id, (idx - 1).clamp(0, viewModel.boardWidgets.length - 1));
       },
@@ -317,12 +371,19 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   }
 
   void onMoveWidgetToBottom(String id) {
+    final boardId = viewModel.activeSubBoardId;
     final originalIndex = viewModel.boardWidgets.indexWhere((w) => w.id == id);
     if (originalIndex == -1 || originalIndex == 0) return;
     viewModel.reorderBoardWidget(id, 0);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.reorderBoardWidget(id, originalIndex),
-      redo: () => viewModel.reorderBoardWidget(id, 0),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.reorderBoardWidget(id, originalIndex);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.reorderBoardWidget(id, 0);
+      },
     ));
   }
 
@@ -333,6 +394,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     final idsToCapture = selectedIds.contains(id) && selectedIds.length > 1
         ? Set<String>.from(selectedIds)
         : {id};
+    _transformBoardId = viewModel.activeSubBoardId;
     _transformBefore = {
       for (final bw in viewModel.boardWidgets)
         if (idsToCapture.contains(bw.id)) bw.id: (bw.x, bw.y, bw.rotation, bw.scale),
@@ -341,19 +403,23 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onWidgetTransformEnd(String id) {
     final before = _transformBefore;
+    final boardId = _transformBoardId;
     _transformBefore = null;
-    if (before == null) return;
+    _transformBoardId = null;
+    if (before == null || boardId == null) return;
     final after = {
       for (final bw in viewModel.boardWidgets)
         if (before.containsKey(bw.id)) bw.id: (bw.x, bw.y, bw.rotation, bw.scale),
     };
     historyManager.push(HistoryEntry(
       undo: () {
+        _ensureActiveBoard(boardId);
         for (final e in before.entries) {
           viewModel.updateBoardWidget(e.key, e.value.$1, e.value.$2, e.value.$3, e.value.$4);
         }
       },
       redo: () {
+        _ensureActiveBoard(boardId);
         for (final e in after.entries) {
           viewModel.updateBoardWidget(e.key, e.value.$1, e.value.$2, e.value.$3, e.value.$4);
         }
@@ -365,19 +431,33 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onBoardBackgroundColorPicked(Color color, bool isChalkboard) {
     final oldBoard = viewModel.board;
+    final boardId = viewModel.activeSubBoardId;
     viewModel.setBoardColorAndType(color, isChalkboard);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.setBoardColorAndType(oldBoard.backgroundColor, oldBoard.isChalkboard),
-      redo: () => viewModel.setBoardColorAndType(color, isChalkboard),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardColorAndType(oldBoard.backgroundColor, oldBoard.isChalkboard);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardColorAndType(color, isChalkboard);
+      },
     ));
   }
 
   void onBoardLinePatternPicked(BoardLinePattern pattern) {
     final oldPattern = viewModel.board.linePattern;
+    final boardId = viewModel.activeSubBoardId;
     viewModel.setBoardLinePattern(pattern);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.setBoardLinePattern(oldPattern),
-      redo: () => viewModel.setBoardLinePattern(pattern),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardLinePattern(oldPattern);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardLinePattern(pattern);
+      },
     ));
   }
 
@@ -390,19 +470,37 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     final before = _lineSpacingBefore;
     _lineSpacingBefore = null;
     if (before == null || before == value) return;
+    final boardId = viewModel.activeSubBoardId;
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.setBoardLineSpacing(before),
-      redo: () => viewModel.setBoardLineSpacing(value),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardLineSpacing(before);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardLineSpacing(value);
+      },
     ));
   }
 
   void onBoardLineColorPicked(Color color) {
     final oldColor = viewModel.board.lineColor;
+    final boardId = viewModel.activeSubBoardId;
     viewModel.setBoardLineColor(color);
     historyManager.push(HistoryEntry(
-      undo: () => viewModel.setBoardLineColor(oldColor),
-      redo: () => viewModel.setBoardLineColor(color),
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardLineColor(oldColor);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardLineColor(color);
+      },
     ));
+  }
+
+  void _ensureActiveBoard(String boardId) {
+    if (viewModel.activeSubBoardId != boardId) onSwitchSubBoard(boardId);
   }
 
   // Drawing restore helper
