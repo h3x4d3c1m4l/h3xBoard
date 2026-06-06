@@ -22,7 +22,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
           ToolToolbar(controller: controller, viewModel: viewModel),
           Observer(
             builder: (_) => SubBoardTabBar(
-              subBoards: viewModel.subBoards,
+              subBoards: viewModel.subBoards.toList(),
               activeSubBoardId: viewModel.activeSubBoardId,
               onSwitchSubBoard: controller.onSwitchSubBoard,
               onAddSubBoard: controller.onAddSubBoard,
