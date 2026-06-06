@@ -95,5 +95,17 @@
     "boardSettingsButton_fullscreen": "Fullscreen",
     "@boardSettingsButton_fullscreen": {},
     "boardSettingsButton_exitFullscreen": "Exit fullscreen",
-    "@boardSettingsButton_exitFullscreen": {}
+    "@boardSettingsButton_exitFullscreen": {},
+    "subBoardTabBar_addBoard": "Add board",
+    "@subBoardTabBar_addBoard": {},
+    "subBoardTabBar_rename": "Rename",
+    "@subBoardTabBar_rename": {},
+    "subBoardTabBar_delete": "Delete",
+    "@subBoardTabBar_delete": {},
+    "boardVisibilityMenu_title": "Board visibility",
+    "@boardVisibilityMenu_title": {},
+    "boardVisibilityMenu_allBoards": "Visible on all boards",
+    "@boardVisibilityMenu_allBoards": {},
+    "boardVisibilityMenu_thisBoard": "Only visible on this board",
+    "@boardVisibilityMenu_thisBoard": {}
 }
