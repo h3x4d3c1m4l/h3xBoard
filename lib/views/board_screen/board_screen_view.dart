@@ -32,7 +32,8 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
           ),
           Flexible(
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: .center,
+              crossAxisAlignment: .center,
               spacing: 8,
               children: [
                 Observer(
