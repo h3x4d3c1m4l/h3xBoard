@@ -119,7 +119,17 @@ class _BoardState extends State<Board> {
   }
 
   bool _onKeyEvent(KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      widget.viewModel.clearSelection();
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.delete || event.logicalKey == LogicalKeyboardKey.backspace) {
+      final ids = widget.viewModel.selectedWidgetIds.toList();
+      if (ids.isEmpty) return false;
+      for (final id in ids) {
+        widget.onDeleteWidget(id);
+      }
       widget.viewModel.clearSelection();
       return true;
     }
