@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:chopper/chopper.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/auth_response.dart';
+import 'package:h3xboard/models/api/server_info.dart';
 import 'package:h3xboard/models/api/whoami_response.dart';
 import 'package:http/browser_client.dart';
 
@@ -25,6 +26,9 @@ abstract class _H3xBoardAuthChopperService extends ChopperService {
 
   @GET(path: '/api/v1/auth/whoami')
   Future<Response> whoami();
+
+  @GET(path: '/api/v1/server/info')
+  Future<Response> serverInfo();
 
 }
 
@@ -67,6 +71,14 @@ class H3xBoardAuthService {
     if (response.statusCode == 401) return null;
     _requireSuccess(response);
     return WhoAmiResponse.fromJson(response.body as Map<String, dynamic>);
+  }
+
+  /// Fetches unauthenticated server capabilities (e.g. whether registration is
+  /// open). Designed to grow over time alongside the server's `ServerInfo`.
+  Future<ServerInfo> serverInfo() async {
+    final response = await _service.serverInfo();
+    _requireSuccess(response);
+    return ServerInfo.fromJson(response.body as Map<String, dynamic>);
   }
 
   void _requireSuccess(Response<dynamic> response) {

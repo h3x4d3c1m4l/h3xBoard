@@ -67,15 +67,16 @@ class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenCo
                               : localizations.loginScreen_signInButton,
                         ),
                 ),
-                Button(
-                  onPressed: viewModel.isLoading ? null : controller.toggleMode,
-                  child: Text(
-                    viewModel.isRegisterMode
-                        ? localizations.loginScreen_switchToLogin
-                        : localizations.loginScreen_switchToRegister,
-                    textAlign: TextAlign.center,
+                if (viewModel.registrationAllowed)
+                  Button(
+                    onPressed: viewModel.isLoading ? null : controller.toggleMode,
+                    child: Text(
+                      viewModel.isRegisterMode
+                          ? localizations.loginScreen_switchToLogin
+                          : localizations.loginScreen_switchToRegister,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

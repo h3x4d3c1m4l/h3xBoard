@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
@@ -26,6 +28,16 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
       );
       _session.consumeReason();
     }
+    unawaited(_loadServerInfo());
+  }
+
+  /// Asks the server whether sign-ups are open so we can hide the register UI
+  /// when they are disabled. Failures leave the optimistic default (allowed).
+  Future<void> _loadServerInfo() async {
+    try {
+      final info = await _auth.serverInfo();
+      viewModel.setRegistrationAllowed(info.registrationAllowed);
+    } catch (_) {}
   }
 
   void toggleMode() => viewModel.toggleMode();

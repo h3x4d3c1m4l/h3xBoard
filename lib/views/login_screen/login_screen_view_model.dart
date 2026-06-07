@@ -23,10 +23,18 @@ abstract class LoginScreenViewModelBase extends ScreenViewModelBase with Store {
   @readonly
   bool _isRegisterMode = false;
 
+  /// Whether the server accepts new registrations. Optimistically `true` until
+  /// the unauthenticated `serverInfo` capabilities call says otherwise.
+  @readonly
+  bool _registrationAllowed = true;
+
   LoginScreenViewModelBase({required super.contextAccessor});
 
   @action
   void setIsLoading(bool value) => _isLoading = value;
+
+  @action
+  void setRegistrationAllowed(bool value) => _registrationAllowed = value;
 
   @action
   void setErrorMessage(String? value) => _errorMessage = value;
