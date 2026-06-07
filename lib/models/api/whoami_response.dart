@@ -7,7 +7,7 @@ part 'whoami_response.g.dart';
 abstract class WhoAmiResponse with _$WhoAmiResponse {
 
   const factory WhoAmiResponse({
-    required int userId,
+    required String userId,
     required String email,
   }) = _WhoAmiResponse;
 

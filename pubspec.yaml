@@ -29,6 +29,9 @@ dependencies:
   polly_dart: 0.0.9
   flutter_svg: 2.3.0
   web_socket_channel: 3.0.3
+  chopper: 8.6.0
+  http: 1.6.0
+  envied: 1.3.5
   flutter_markdown_plus: ^1.0.7
   web: 1.1.1
 
@@ -41,6 +44,8 @@ dev_dependencies:
   json_serializable: 6.14.0
   auto_route_generator: 10.5.0
   mobx_codegen: 2.7.7
+  chopper_generator: 8.6.2
+  envied_generator: 1.3.5
 
 flutter:
   uses-material-design: true

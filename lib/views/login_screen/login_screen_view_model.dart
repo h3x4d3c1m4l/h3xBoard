@@ -18,6 +18,9 @@ abstract class LoginScreenViewModelBase extends ScreenViewModelBase with Store {
   String? _errorMessage;
 
   @readonly
+  String? _infoMessage;
+
+  @readonly
   bool _isRegisterMode = false;
 
   LoginScreenViewModelBase({required super.contextAccessor});
@@ -29,9 +32,13 @@ abstract class LoginScreenViewModelBase extends ScreenViewModelBase with Store {
   void setErrorMessage(String? value) => _errorMessage = value;
 
   @action
+  void setInfoMessage(String? value) => _infoMessage = value;
+
+  @action
   void toggleMode() {
     _isRegisterMode = !_isRegisterMode;
     _errorMessage = null;
+    _infoMessage = null;
     emailController.clear();
     passwordController.clear();
   }

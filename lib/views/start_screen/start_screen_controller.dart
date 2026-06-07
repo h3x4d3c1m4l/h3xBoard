@@ -5,12 +5,16 @@ import 'package:h3xboard/app_router.gr.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
+import 'package:h3xboard/services/h3x_board_auth_service.dart';
+import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/start_screen/start_screen_view_model.dart';
 
 class StartScreenController extends ScreenControllerBase<StartScreenViewModel> {
 
-  final _client = GetIt.I<H3xBoardApiClient>();
+  final _wsClient = GetIt.I<H3xBoardApiClient>();
+  final _auth = GetIt.I<H3xBoardAuthService>();
+  final _session = GetIt.I<SessionController>();
 
   StartScreenController({
     required super.viewModel,
@@ -21,16 +25,16 @@ class StartScreenController extends ScreenControllerBase<StartScreenViewModel> {
   }
 
   Future<void> loadBoards() async {
-    final router = contextAccessor.buildContext.router;
     viewModel
       ..setIsLoading(true)
       ..setErrorMessage(null);
     try {
-      final boards = await _client.listBoards();
+      final boards = await _wsClient.listBoards();
       viewModel.setBoards(boards);
     } on H3xBoardApiException catch (e) {
       if (e.isUnauthenticated) {
-        await router.replace(LoginRoute());
+        // Session is gone — flip the status; the guard redirects us to Login.
+        _session.markUnauthenticated(reason: UnauthReason.expired);
       } else {
         viewModel.setErrorMessage(e.message);
       }
@@ -46,11 +50,14 @@ class StartScreenController extends ScreenControllerBase<StartScreenViewModel> {
   }
 
   Future<void> logout() async {
-    final router = contextAccessor.buildContext.router;
     try {
-      await _client.logout();
+      await _auth.logout();
     } catch (_) {}
-    await router.replace(LoginRoute());
+    try {
+      await _wsClient.disconnect();
+    } catch (_) {}
+    // Flipping the status drives navigation: the guard redirects us to Login.
+    _session.markUnauthenticated();
   }
 
 }

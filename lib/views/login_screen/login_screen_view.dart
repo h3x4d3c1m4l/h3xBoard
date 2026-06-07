@@ -43,6 +43,11 @@ class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenCo
                   enabled: !viewModel.isLoading,
                   onSubmitted: (_) => controller.submit(),
                 ),
+                if (viewModel.infoMessage != null)
+                  InfoBar(
+                    title: Text(viewModel.infoMessage!),
+                    severity: InfoBarSeverity.warning,
+                  ),
                 if (viewModel.errorMessage != null)
                   InfoBar(
                     title: Text(viewModel.errorMessage!),
