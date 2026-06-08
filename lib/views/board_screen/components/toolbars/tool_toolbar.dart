@@ -40,6 +40,41 @@ class ToolToolbar extends StatelessWidget {
               BoardSettingsButton(viewModel: viewModel, controller: controller),
             ],
           ),
+          _SaveStatusIndicator(status: viewModel.saveStatus),
+        ],
+      ),
+    );
+  }
+
+}
+
+class _SaveStatusIndicator extends StatelessWidget {
+
+  final BoardSaveStatus status;
+
+  const _SaveStatusIndicator({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final loc = context.localizations;
+
+    final (IconData icon, String label, Color color) = switch (status) {
+      BoardSaveStatus.idle => (LucideIcons.cloud, '', theme.inactiveColor),
+      BoardSaveStatus.saving => (LucideIcons.cloud, loc.boardScreen_saving, theme.inactiveColor),
+      BoardSaveStatus.saved => (LucideIcons.cloudCheck, loc.boardScreen_saved, theme.inactiveColor),
+      BoardSaveStatus.error => (LucideIcons.cloudAlert, loc.boardScreen_saveError, Colors.red),
+    };
+
+    return AnimatedOpacity(
+      opacity: status == BoardSaveStatus.idle ? 0 : 1,
+      duration: const Duration(milliseconds: 150),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 6,
+        children: [
+          Icon(icon, size: 16, color: color),
+          Text(label, style: theme.typography.caption?.copyWith(color: color)),
         ],
       ),
     );

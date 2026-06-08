@@ -34,6 +34,28 @@
     "@startScreen_retry": {},
     "startScreen_createBoard": "Bord aanmaken",
     "@startScreen_createBoard": {},
+    "startScreen_delete": "Verwijderen",
+    "@startScreen_delete": {},
+    "startScreen_deleteConfirmTitle": "Bord verwijderen?",
+    "@startScreen_deleteConfirmTitle": {},
+    "startScreen_deleteConfirmMessage": "\"{title}\" wordt permanent verwijderd. Dit kan niet ongedaan worden gemaakt.",
+    "@startScreen_deleteConfirmMessage": {
+        "placeholders": {
+            "title": { "type": "String" }
+        }
+    },
+    "startScreen_deleteConfirm": "Verwijderen",
+    "@startScreen_deleteConfirm": {},
+    "startScreen_deleteCancel": "Annuleren",
+    "@startScreen_deleteCancel": {},
+    "boardScreen_retry": "Opnieuw proberen",
+    "@boardScreen_retry": {},
+    "boardScreen_saving": "Opslaan…",
+    "@boardScreen_saving": {},
+    "boardScreen_saved": "Opgeslagen",
+    "@boardScreen_saved": {},
+    "boardScreen_saveError": "Opslaan mislukt",
+    "@boardScreen_saveError": {},
     "boardSettingsButton_settings": "Instellingen",
     "@boardSettingsButton_settings": {},
     "boardColorSubmenu_title": "Bordkleur:",

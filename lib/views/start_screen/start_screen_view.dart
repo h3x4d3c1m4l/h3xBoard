@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/start_screen/start_screen_controller.dart';
@@ -68,7 +69,9 @@ class StartScreenView extends ScreenViewBase<StartScreenViewModel, StartScreenCo
             itemBuilder: (context, index) => _BoardCard(
               board: viewModel.boards[index],
               onOpen: () => controller.openBoard(viewModel.boards[index]),
+              onDelete: () => controller.onDeleteBoard(viewModel.boards[index]),
               openLabel: localizations.startScreen_open,
+              deleteLabel: localizations.startScreen_delete,
               lastUpdatedLabel: localizations.startScreen_lastUpdated,
             ),
           );
@@ -83,15 +86,41 @@ class _BoardCard extends StatelessWidget {
 
   final BoardSummary board;
   final VoidCallback onOpen;
+  final VoidCallback onDelete;
   final String openLabel;
+  final String deleteLabel;
   final String lastUpdatedLabel;
 
   const _BoardCard({
     required this.board,
     required this.onOpen,
+    required this.onDelete,
     required this.openLabel,
+    required this.deleteLabel,
     required this.lastUpdatedLabel,
   });
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final loc = context.localizations;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => ContentDialog(
+        title: Text(loc.startScreen_deleteConfirmTitle),
+        content: Text(loc.startScreen_deleteConfirmMessage(board.title)),
+        actions: [
+          Button(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(loc.startScreen_deleteCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(loc.startScreen_deleteConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) onDelete();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,9 +145,21 @@ class _BoardCard extends StatelessWidget {
                 ],
               ),
             ),
-            Button(
-              onPressed: onOpen,
-              child: Text(openLabel),
+            Row(
+              spacing: 8,
+              children: [
+                Button(
+                  onPressed: onOpen,
+                  child: Text(openLabel),
+                ),
+                Tooltip(
+                  message: deleteLabel,
+                  child: IconButton(
+                    icon: const Icon(LucideIcons.trash2),
+                    onPressed: () => _confirmDelete(context),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

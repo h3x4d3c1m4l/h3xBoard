@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'board_widget.freezed.dart';
+part 'board_widget.g.dart';
 
 enum TrafficLightColor { red, yellow, green }
 
@@ -34,6 +35,8 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     @Default(MemoNoteColor.yellow) MemoNoteColor color,
   }) = MemoNoteConfig;
 
+  factory BoardWidgetConfig.fromJson(Map<String, dynamic> json) => _$BoardWidgetConfigFromJson(json);
+
 }
 
 @freezed
@@ -51,5 +54,7 @@ abstract class BoardWidget with _$BoardWidget {
     @Default(false) bool isVisibleOnAllBoards,
     @Default(<String>[]) List<String> visibleOnBoardIds,
   }) = _BoardWidget;
+
+  factory BoardWidget.fromJson(Map<String, dynamic> json) => _$BoardWidgetFromJson(json);
 
 }

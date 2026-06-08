@@ -1,7 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:h3xboard/models/converters/color_converter.dart';
 
 part 'board.freezed.dart';
+part 'board.g.dart';
 
 enum BoardLinePattern { none, horizontal, grid }
 
@@ -13,11 +15,13 @@ abstract class Board with _$Board {
   const factory Board({
     required String id,
     required String title,
-    required Color backgroundColor,
+    @ColorConverter() required Color backgroundColor,
     required bool isChalkboard,
     required BoardLinePattern linePattern,
     required double lineSpacing,
-    required Color lineColor,
+    @ColorConverter() required Color lineColor,
   }) = _Board;
+
+  factory Board.fromJson(Map<String, dynamic> json) => _$BoardFromJson(json);
 
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
@@ -13,6 +13,34 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
 
   @override
   Widget get body {
+    return Observer(
+      builder: (context) {
+        if (viewModel.isLoading) {
+          return const Center(child: ProgressRing());
+        }
+
+        if (viewModel.loadError != null) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: InfoBar(
+                title: Text(viewModel.loadError!),
+                severity: InfoBarSeverity.error,
+                action: Button(
+                  onPressed: controller.retryLoad,
+                  child: Text(localizations.boardScreen_retry),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return _buildBoard();
+      },
+    );
+  }
+
+  Widget _buildBoard() {
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Column(

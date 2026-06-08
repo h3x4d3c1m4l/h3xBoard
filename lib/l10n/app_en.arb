@@ -34,6 +34,28 @@
     "@startScreen_retry": {},
     "startScreen_createBoard": "Create board",
     "@startScreen_createBoard": {},
+    "startScreen_delete": "Delete",
+    "@startScreen_delete": {},
+    "startScreen_deleteConfirmTitle": "Delete board?",
+    "@startScreen_deleteConfirmTitle": {},
+    "startScreen_deleteConfirmMessage": "\"{title}\" will be permanently deleted. This cannot be undone.",
+    "@startScreen_deleteConfirmMessage": {
+        "placeholders": {
+            "title": { "type": "String" }
+        }
+    },
+    "startScreen_deleteConfirm": "Delete",
+    "@startScreen_deleteConfirm": {},
+    "startScreen_deleteCancel": "Cancel",
+    "@startScreen_deleteCancel": {},
+    "boardScreen_retry": "Retry",
+    "@boardScreen_retry": {},
+    "boardScreen_saving": "Saving…",
+    "@boardScreen_saving": {},
+    "boardScreen_saved": "Saved",
+    "@boardScreen_saved": {},
+    "boardScreen_saveError": "Save failed",
+    "@boardScreen_saveError": {},
     "boardSettingsButton_settings": "Settings",
     "@boardSettingsButton_settings": {},
     "boardColorSubmenu_title": "Board color:",

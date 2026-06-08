@@ -3,10 +3,14 @@ import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
+import 'package:get_it/get_it.dart';
+import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/board.dart';
+import 'package:h3xboard/models/board_content.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/services/fullscreen_service.dart';
+import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
@@ -15,12 +19,18 @@ import 'package:h3xboard/views/board_screen/history/history_manager.dart';
 // Matches 'Board N' titles to pick the next auto-number.
 final _boardTitleRegex = RegExp(r'^Board (\d+)$');
 
+// How long to wait after the last change before persisting the board.
+const _autosaveDebounce = Duration(seconds: 1);
+
 class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
+
+  final String boardId;
 
   final DrawingController drawingController = DrawingController();
   final HistoryManager historyManager = HistoryManager();
   final ValueNotifier<int> drawStartSignal = ValueNotifier(0);
   final FullscreenService _fullscreenService = FullscreenService();
+  final _wsClient = GetIt.I<H3xBoardApiClient>();
 
   // Pending state captured at gesture/stroke boundaries for history recording.
   List<Map<String, dynamic>>? _drawingBefore;
@@ -28,25 +38,105 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   String? _transformBoardId;
   double? _lineSpacingBefore;
 
+  // Autosave bookkeeping.
+  Timer? _saveTimer;
+  bool _saveInFlight = false;
+  bool _saveDirty = false;
+
   StreamSubscription<bool>? _fullscreenSubscription;
 
   // Initialization/Deinitialization
 
   BoardScreenController({
+    required this.boardId,
     required super.viewModel,
     required super.contextAccessor,
   }) {
     drawingController.setStyle(color: viewModel.drawingTools.activeColor);
     _fullscreenSubscription = _fullscreenService.onChange.listen(viewModel.setFullscreen);
+    // Every undoable step is also a save point, mirroring the undo history.
+    historyManager.onChange = _scheduleSave;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadBoard());
   }
 
   @override
   void dispose() {
+    _saveTimer?.cancel();
+    // Flush a final save while the drawing controller is still alive.
+    if (_saveDirty && !_saveInFlight) {
+      unawaited(_wsClient.updateBoard(id: boardId, data: _buildContent().toJson()));
+    }
     _fullscreenSubscription?.cancel();
     _fullscreenService.dispose();
     super.dispose();
     drawingController.dispose();
     drawStartSignal.dispose();
+  }
+
+  // Persistence
+
+  Future<void> _loadBoard() async {
+    viewModel
+      ..setIsLoading(true)
+      ..setLoadError(null);
+    try {
+      final detail = await _wsClient.getBoard(boardId);
+      final content = detail.data.isEmpty ? const BoardContent() : BoardContent.fromJson(detail.data);
+      viewModel.setInitialContent(content);
+      drawingController.clear();
+      final saved = viewModel.restoreSubBoardDrawing(viewModel.activeSubBoardId);
+      if (saved.isNotEmpty) {
+        drawingController.addContents(_restoreDrawingContents(saved));
+      }
+    } on H3xBoardApiException catch (e) {
+      viewModel.setLoadError(e.message);
+    } catch (e) {
+      viewModel.setLoadError(e.toString());
+    } finally {
+      viewModel.setIsLoading(false);
+    }
+  }
+
+  void retryLoad() => unawaited(_loadBoard());
+
+  void _scheduleSave() {
+    _saveDirty = true;
+    _saveTimer?.cancel();
+    _saveTimer = Timer(_autosaveDebounce, () => unawaited(_save()));
+  }
+
+  Future<void> _save() async {
+    if (_saveInFlight) return;
+    if (!_saveDirty) return;
+    _saveDirty = false;
+    _saveInFlight = true;
+    viewModel.setSaveStatus(BoardSaveStatus.saving);
+    try {
+      await _wsClient.updateBoard(id: boardId, data: _buildContent().toJson());
+      viewModel.setSaveStatus(_saveDirty ? BoardSaveStatus.saving : BoardSaveStatus.saved);
+    } catch (_) {
+      _saveDirty = true;
+      viewModel.setSaveStatus(BoardSaveStatus.error);
+    } finally {
+      _saveInFlight = false;
+      // A change landed mid-save (or the save failed); try again.
+      if (_saveDirty) _scheduleSave();
+    }
+  }
+
+  /// Snapshots the current editor state, folding the live drawing on the active
+  /// board (which only lands in the view model on board switch) into the map.
+  BoardContent _buildContent() {
+    final drawings = <String, List<Map<String, dynamic>>>{
+      for (final e in viewModel.subBoardDrawings.entries) e.key: e.value,
+    };
+    drawings[viewModel.activeSubBoardId] = drawingController.getJsonList();
+    return BoardContent(
+      subBoards: viewModel.subBoards.toList(),
+      activeSubBoardId: viewModel.activeSubBoardId,
+      widgets: viewModel.boardWidgets.toList(),
+      drawings: drawings,
+    );
   }
 
   // Fullscreen handler

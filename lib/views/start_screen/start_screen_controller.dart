@@ -44,7 +44,24 @@ class StartScreenController extends ScreenControllerBase<StartScreenViewModel> {
   }
 
   Future<void> openBoard(BoardSummary board) async {
-    await contextAccessor.buildContext.pushRoute(BoardRoute());
+    await contextAccessor.buildContext.pushRoute(BoardRoute(boardId: board.id));
+  }
+
+  Future<void> onDeleteBoard(BoardSummary board) async {
+    viewModel
+      ..setIsLoading(true)
+      ..setErrorMessage(null);
+    try {
+      await _wsClient.deleteBoard(board.id);
+      final boards = await _wsClient.listBoards();
+      viewModel.setBoards(boards);
+    } on H3xBoardApiException catch (e) {
+      viewModel.setErrorMessage(e.message);
+    } catch (e) {
+      viewModel.setErrorMessage(e.toString());
+    } finally {
+      viewModel.setIsLoading(false);
+    }
   }
 
   Future<void> onCreateBoardPressed() async {

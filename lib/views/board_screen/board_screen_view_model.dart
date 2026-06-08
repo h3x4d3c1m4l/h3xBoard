@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/models/board.dart';
+import 'package:h3xboard/models/board_content.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/views/base/screen_view_model_base.dart';
@@ -7,25 +8,38 @@ import 'package:mobx/mobx.dart';
 
 part 'board_screen_view_model.g.dart';
 
+enum BoardSaveStatus { idle, saving, saved, error }
+
+/// A blank starter board, used both as the initial state and when a board is
+/// opened that has no persisted sub-boards yet.
+Board _defaultBoard() => Board(
+  id: 'board_1',
+  title: 'Board 1',
+  backgroundColor: Colors.white,
+  isChalkboard: false,
+  linePattern: BoardLinePattern.none,
+  lineSpacing: 64,
+  lineColor: Colors.grey[100],
+);
+
 class BoardScreenViewModel = BoardScreenViewModelBase with _$BoardScreenViewModel;
 
 abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @readonly
-  ObservableList<Board> _subBoards = ObservableList.of([
-    Board(
-      id: 'board_1',
-      title: 'Board 1',
-      backgroundColor: Colors.white,
-      isChalkboard: false,
-      linePattern: BoardLinePattern.none,
-      lineSpacing: 64,
-      lineColor: Colors.grey[100],
-    ),
-  ]);
+  ObservableList<Board> _subBoards = ObservableList.of([_defaultBoard()]);
 
   @readonly
   String _activeSubBoardId = 'board_1';
+
+  @readonly
+  bool _isLoading = true;
+
+  @readonly
+  String? _loadError;
+
+  @readonly
+  BoardSaveStatus _saveStatus = BoardSaveStatus.idle;
 
   @readonly
   ObservableMap<String, List<Map<String, dynamic>>> _subBoardDrawings = ObservableMap();
@@ -65,6 +79,35 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   BoardScreenViewModelBase({
     required super.contextAccessor,
   });
+
+  @action
+  void setIsLoading(bool value) {
+    _isLoading = value;
+  }
+
+  @action
+  void setLoadError(String? value) {
+    _loadError = value;
+  }
+
+  @action
+  void setSaveStatus(BoardSaveStatus value) {
+    _saveStatus = value;
+  }
+
+  /// Replaces the entire board state with the persisted [content]. Falls back to
+  /// a single blank board when nothing has been saved yet.
+  @action
+  void setInitialContent(BoardContent content) {
+    final boards = content.subBoards.isEmpty ? [_defaultBoard()] : content.subBoards;
+    _subBoards = ObservableList.of(boards);
+    _boardWidgets = ObservableList.of(content.widgets);
+    _subBoardDrawings = ObservableMap.of(content.drawings);
+    _selectedWidgetIds = ObservableSet();
+    _activeSubBoardId = boards.any((b) => b.id == content.activeSubBoardId)
+        ? content.activeSubBoardId
+        : boards.first.id;
+  }
 
   @action
   void setActiveColor(Color? color) {
