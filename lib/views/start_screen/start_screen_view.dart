@@ -5,6 +5,7 @@ import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/start_screen/start_screen_controller.dart';
 import 'package:h3xboard/views/start_screen/start_screen_view_model.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class StartScreenView extends ScreenViewBase<StartScreenViewModel, StartScreenController> {
 
@@ -19,9 +20,20 @@ class StartScreenView extends ScreenViewBase<StartScreenViewModel, StartScreenCo
     return ScaffoldPage(
       header: PageHeader(
         title: Text(localizations.startScreen_title),
-        commandBar: Button(
-          onPressed: controller.logout,
-          child: Text(localizations.startScreen_signOut),
+        commandBar: CommandBar(
+          mainAxisAlignment: .end,
+          primaryItems: [
+            CommandBarButton(
+              onPressed: controller.onCreateBoardPressed,
+              icon: Icon(LucideIcons.plus),
+              label: Text(localizations.startScreen_createBoard),
+            ),
+            CommandBarButton(
+              onPressed: controller.onLogoutPressed,
+              icon: Icon(LucideIcons.logOut),
+              label: Text(localizations.startScreen_signOut),
+            ),
+          ],
         ),
       ),
       content: Observer(

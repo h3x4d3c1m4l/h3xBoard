@@ -32,6 +32,8 @@
     "@startScreen_signOut": {},
     "startScreen_retry": "Retry",
     "@startScreen_retry": {},
+    "startScreen_createBoard": "Create board",
+    "@startScreen_createBoard": {},
     "dashboardScreen_title_welcome": "Welcome",
     "@dashboardScreen_title_welcome": {},
     "dashboardScreen_goToBoard": "Go to board",

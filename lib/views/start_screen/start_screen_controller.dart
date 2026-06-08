@@ -10,6 +10,9 @@ import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/start_screen/start_screen_view_model.dart';
 
+// Matches 'Board N' titles to pick the next auto-number for a new board.
+final _boardTitleRegex = RegExp(r'^Board (\d+)$');
+
 class StartScreenController extends ScreenControllerBase<StartScreenViewModel> {
 
   final _wsClient = GetIt.I<H3xBoardApiClient>();
@@ -32,12 +35,7 @@ class StartScreenController extends ScreenControllerBase<StartScreenViewModel> {
       final boards = await _wsClient.listBoards();
       viewModel.setBoards(boards);
     } on H3xBoardApiException catch (e) {
-      if (e.isUnauthenticated) {
-        // Session is gone — flip the status; the guard redirects us to Login.
-        _session.markUnauthenticated(reason: UnauthReason.expired);
-      } else {
-        viewModel.setErrorMessage(e.message);
-      }
+      viewModel.setErrorMessage(e.message);
     } catch (e) {
       viewModel.setErrorMessage(e.toString());
     } finally {
@@ -49,7 +47,35 @@ class StartScreenController extends ScreenControllerBase<StartScreenViewModel> {
     await contextAccessor.buildContext.pushRoute(BoardRoute());
   }
 
-  Future<void> logout() async {
+  Future<void> onCreateBoardPressed() async {
+    viewModel
+      ..setIsLoading(true)
+      ..setErrorMessage(null);
+    try {
+      await _wsClient.createBoard(title: _nextBoardTitle());
+      final boards = await _wsClient.listBoards();
+      viewModel.setBoards(boards);
+    } on H3xBoardApiException catch (e) {
+      viewModel.setErrorMessage(e.message);
+    } catch (e) {
+      viewModel.setErrorMessage(e.toString());
+    } finally {
+      viewModel.setIsLoading(false);
+    }
+  }
+
+  /// Picks the next free 'Board N' title from the boards already loaded.
+  String _nextBoardTitle() {
+    final existingNumbers = viewModel.boards
+        .map((b) => _boardTitleRegex.firstMatch(b.title)?.group(1))
+        .whereType<String>()
+        .map(int.parse)
+        .toList();
+    final nextNumber = (existingNumbers.isEmpty ? 0 : existingNumbers.reduce((a, b) => a > b ? a : b)) + 1;
+    return 'Board $nextNumber';
+  }
+
+  Future<void> onLogoutPressed() async {
     try {
       await _auth.logout();
     } catch (_) {}

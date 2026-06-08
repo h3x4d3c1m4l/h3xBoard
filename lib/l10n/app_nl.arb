@@ -32,6 +32,8 @@
     "@startScreen_signOut": {},
     "startScreen_retry": "Opnieuw proberen",
     "@startScreen_retry": {},
+    "startScreen_createBoard": "Bord aanmaken",
+    "@startScreen_createBoard": {},
     "dashboardScreen_title_welcome": "Welkom",
     "@dashboardScreen_title_welcome": {},
     "dashboardScreen_goToBoard": "Ga naar het bord",
