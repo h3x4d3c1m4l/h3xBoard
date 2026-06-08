@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
@@ -58,6 +59,8 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
               password: viewModel.passwordController.text,
             );
       await _wsClient.connect();
+      // Credentials were accepted: let the platform/browser offer to save them.
+      TextInput.finishAutofillContext();
       // Flipping the status drives navigation: the guard redirects Login → Start.
       _session.markAuthenticated(result.userId, result.email);
     } on H3xBoardApiException catch (e) {
