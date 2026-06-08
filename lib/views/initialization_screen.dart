@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get_it/get_it.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
+import 'package:h3xboard/app_router.gr.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/session_controller.dart';
@@ -33,9 +34,10 @@ class _InitializationScreenState extends State<InitializationScreen> {
     initializeApp();
   }
 
-  /// Bootstraps the app, then hands navigation to the router guards: setting the
-  /// session status notifies the `reevaluateListenable`, and [AuthGuard]
-  /// redirects this one-time route to Start (authenticated) or Login (not).
+  /// Bootstraps the app, then navigates to Start (authenticated) or Login (not).
+  /// Navigation is driven explicitly via [replaceAll] rather than the guard's
+  /// `reevaluateListenable` redirect, which does not fire reliably when a
+  /// deep-link route from a web reload is still pending.
   Future<void> initializeApp() async {
     await pipeline.execute((context) async {
       updateProgress(
@@ -61,6 +63,10 @@ class _InitializationScreenState extends State<InitializationScreen> {
 
     if (user == null) {
       session.markUnauthenticated();
+      // Drive navigation explicitly: a web reload funnels here with the original
+      // protected route still pending, so relying on the guard's reevaluate +
+      // redirectUntil chain leaves us stranded. replaceAll resets the stack.
+      if (mounted) await context.router.replaceAll([LoginRoute()]);
       return;
     }
 
@@ -73,6 +79,7 @@ class _InitializationScreenState extends State<InitializationScreen> {
       await wsClient.connect();
     });
     session.markAuthenticated(user.userId, user.email);
+    if (mounted) await context.router.replaceAll([StartRoute()]);
   }
 
   @override

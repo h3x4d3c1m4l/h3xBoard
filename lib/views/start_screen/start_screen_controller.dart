@@ -82,8 +82,12 @@ class StartScreenController extends ScreenControllerBase<StartScreenViewModel> {
     try {
       await _wsClient.disconnect();
     } catch (_) {}
-    // Flipping the status drives navigation: the guard redirects us to Login.
     _session.markUnauthenticated();
+    // Navigate explicitly rather than leaning on the guard's reevaluate
+    // redirect, which is unreliable while a deep-link route is still pending.
+    if (contextAccessor.buildContext.mounted) {
+      await contextAccessor.buildContext.router.replaceAll([LoginRoute()]);
+    }
   }
 
 }

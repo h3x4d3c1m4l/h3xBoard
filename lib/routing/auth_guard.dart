@@ -26,13 +26,22 @@ class AuthGuard extends AutoRouteGuard {
           resolver.redirectUntil(LoginRoute());
         }
       case LoginRoute.name:
-        if (session.isAuthenticated) {
+        if (session.status == SessionStatus.unknown) {
+          // Reloaded straight onto Login before the session was resolved — run
+          // the bootstrap first so a still-valid session is restored.
+          resolver.redirectUntil(InitializationRoute());
+        } else if (session.isAuthenticated) {
           resolver.redirectUntil(StartRoute());
         } else {
           resolver.next(true);
         }
       default:
-        if (session.isAuthenticated) {
+        if (session.status == SessionStatus.unknown) {
+          // Web reload lands directly on a protected route, bypassing the
+          // one-time InitializationScreen. Funnel through it so the session is
+          // checked (and the socket reconnected) instead of bouncing to Login.
+          resolver.redirectUntil(InitializationRoute());
+        } else if (session.isAuthenticated) {
           resolver.next(true);
         } else {
           resolver.redirectUntil(LoginRoute());

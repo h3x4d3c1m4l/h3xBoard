@@ -18,7 +18,7 @@ class BoardApp extends StatefulWidget {
 
 class _BoardAppState extends State<BoardApp> {
 
-  final _appRouter = AppRouter();
+  final _appRouter = GetIt.I<AppRouter>();
 
   @override
   Widget build(BuildContext context) {

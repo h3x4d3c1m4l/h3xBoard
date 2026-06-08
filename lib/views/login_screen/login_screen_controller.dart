@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
+import 'package:h3xboard/app_router.gr.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/auth_response.dart';
@@ -61,8 +63,12 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
       await _wsClient.connect();
       // Credentials were accepted: let the platform/browser offer to save them.
       TextInput.finishAutofillContext();
-      // Flipping the status drives navigation: the guard redirects Login → Start.
       _session.markAuthenticated(result.userId, result.email);
+      // Navigate explicitly rather than leaning on the guard's reevaluate
+      // redirect, which is unreliable while a deep-link route is still pending.
+      if (contextAccessor.buildContext.mounted) {
+        await contextAccessor.buildContext.router.replaceAll([StartRoute()]);
+      }
     } on H3xBoardApiException catch (e) {
       viewModel.setErrorMessage(e.message);
     } catch (e) {
