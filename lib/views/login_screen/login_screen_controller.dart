@@ -9,6 +9,7 @@ import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/auth_response.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
+import 'package:h3xboard/services/pending_navigation_service.dart';
 import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/login_screen/login_screen_view_model.dart';
@@ -67,7 +68,8 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
       // Navigate explicitly rather than leaning on the guard's reevaluate
       // redirect, which is unreliable while a deep-link route is still pending.
       if (contextAccessor.buildContext.mounted) {
-        await contextAccessor.buildContext.router.replaceAll([BoardsRoute()]);
+        final pending = GetIt.I<PendingNavigationService>().consumePendingRoute();
+        await contextAccessor.buildContext.router.replaceAll([pending ?? const BoardsRoute()]);
       }
     } on H3xBoardApiException catch (e) {
       viewModel.setErrorMessage(e.message);

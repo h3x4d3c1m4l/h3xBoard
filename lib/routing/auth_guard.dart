@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/app_router.gr.dart';
+import 'package:h3xboard/services/pending_navigation_service.dart';
 import 'package:h3xboard/services/session_controller.dart';
 
 /// Global navigation guard driven by [SessionController].
@@ -38,8 +39,16 @@ class AuthGuard extends AutoRouteGuard {
       default:
         if (session.status == SessionStatus.unknown) {
           // Web reload lands directly on a protected route, bypassing the
-          // one-time InitializationScreen. Funnel through it so the session is
-          // checked (and the socket reconnected) instead of bouncing to Login.
+          // one-time InitializationScreen. Save the intended destination so
+          // initialization (or login) can restore it after auth resolves.
+          GetIt.I<PendingNavigationService>().setPendingRoute(
+            PageRouteInfo(
+              resolver.route.name,
+              args: resolver.route.args,
+              rawPathParams: resolver.route.params.rawMap,
+              rawQueryParams: resolver.route.queryParams.rawMap,
+            ),
+          );
           resolver.redirectUntil(InitializationRoute());
         } else if (session.isAuthenticated) {
           resolver.next(true);
