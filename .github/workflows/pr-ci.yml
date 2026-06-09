@@ -3,13 +3,13 @@ name: PR CI App - Web
 on:
   pull_request:
     branches: [ main ]
-    paths-ignore: [ .github/workflows/build-and-deploy-to-pages.yml, README.md ]
+    paths-ignore: [ .github/workflows/build-and-push-image.yml, README.md ]
 
 jobs:
   build:
     name: Build
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
 
     steps:
     - name: Checkout
