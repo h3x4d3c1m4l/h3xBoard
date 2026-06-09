@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
-import 'package:h3xboard/models/api/auth_response.dart';
 import 'package:h3xboard/models/api/board_detail.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
-import 'package:h3xboard/models/api/refresh_token_response.dart';
-import 'package:h3xboard/models/api/whoami_response.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+enum H3xConnectionState { connected, reconnecting, disconnected }
 
 class H3xBoardApiClient {
 
@@ -18,64 +18,61 @@ class H3xBoardApiClient {
   int _nextRequestId = 1;
   final Map<int, Completer<dynamic>> _pending = {};
 
+  bool _intentionalDisconnect = false;
+  bool _reconnecting = false;
+
+  /// Validates the session out-of-band (via REST `whoami`) to tell a transient
+  /// network failure apart from a confirmed expiry. Returns `true` when the
+  /// session is valid, `false` when it is definitively invalid (HTTP 401), and
+  /// `null` when it could not be determined (network error → treat as transient).
+  Future<bool?> Function()? sessionValidator;
+
+  /// Called once a reconnect attempt establishes that the session is no longer
+  /// valid; the app uses this to send the user back to the login screen.
+  void Function()? onSessionExpired;
+
+  /// Observable connection state, used to drive the "Reconnecting…" banner.
+  final ValueNotifier<H3xConnectionState> connectionState =
+      ValueNotifier(H3xConnectionState.disconnected);
+
   H3xBoardApiClient({required this.serverUrl});
 
   bool get isConnected => _channel != null;
 
-  Future<void> connect({String? accessToken}) async {
-    final uri = accessToken != null
-        ? Uri.parse('$serverUrl/ws/v1?token=$accessToken')
-        : Uri.parse('$serverUrl/ws/v1');
-    _channel = WebSocketChannel.connect(uri);
-    await _channel!.ready;
-    _subscription = _channel!.stream.listen(
+  Future<void> connect() async {
+    _intentionalDisconnect = false;
+    await _open();
+    connectionState.value = H3xConnectionState.connected;
+  }
+
+  Future<void> disconnect() async {
+    _intentionalDisconnect = true;
+    await _subscription?.cancel();
+    _subscription = null;
+    await _channel?.sink.close();
+    _channel = null;
+    connectionState.value = H3xConnectionState.disconnected;
+  }
+
+  /// Opens the WebSocket channel and starts listening. Throws if the handshake
+  /// fails (the caller decides whether to retry).
+  Future<void> _open() async {
+    final wsUrl = serverUrl
+        .replaceFirst('https://', 'wss://')
+        .replaceFirst('http://', 'ws://');
+    final uri = Uri.parse('$wsUrl/ws/v1');
+    final channel = WebSocketChannel.connect(uri);
+    await channel.ready;
+    _channel = channel;
+    _subscription = channel.stream.listen(
       _onMessage,
       onError: _onError,
       onDone: _onDone,
     );
   }
 
-  Future<void> disconnect() async {
-    await _subscription?.cancel();
-    _subscription = null;
-    await _channel?.sink.close();
-    _channel = null;
-  }
-
-  Future<AuthResponse> login({required String username, required String password}) async {
-    final result = await _call('auth.v1.login', {'username': username, 'password': password});
-    return AuthResponse.fromJson(result as Map<String, dynamic>);
-  }
-
-  Future<AuthResponse> register({
-    required String username,
-    required String email,
-    required String password,
-  }) async {
-    final result = await _call('auth.v1.register', {
-      'username': username,
-      'email': email,
-      'password': password,
-    });
-    return AuthResponse.fromJson(result as Map<String, dynamic>);
-  }
-
-  Future<RefreshTokenResponse> refreshToken(String refreshToken) async {
-    final result = await _call('auth.v1.refreshToken', {'refreshToken': refreshToken});
-    return RefreshTokenResponse.fromJson(result as Map<String, dynamic>);
-  }
-
-  Future<void> logout() async {
-    await _call('auth.v1.logout', <String, dynamic>{});
-  }
-
-  Future<WhoAmiResponse> whoami() async {
-    final result = await _call('auth.v1.whoami', <String, dynamic>{});
-    return WhoAmiResponse.fromJson(result as Map<String, dynamic>);
-  }
-
   Future<List<BoardSummary>> listBoards() async {
-    final result = await _call('boards.v1.list', <String, dynamic>{});
+    final result = await _call('boards.v1.list');
     return (result as List<dynamic>)
         .map((item) => BoardSummary.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -109,28 +106,23 @@ class H3xBoardApiClient {
     await _call('boards.v1.delete', id);
   }
 
-  /// Encodes and sends a JSON-RPC 2.0 request over the WebSocket sink, then
-  /// returns a [Future] that resolves to the response's `result` value, or
-  /// throws an [H3xBoardApiException] if the server returns an error object.
-  Future<dynamic> _call(String method, dynamic params) {
+  Future<dynamic> _call(String method, [dynamic params]) {
     if (_channel == null) {
       throw const H3xBoardApiException(code: -1, message: 'Not connected');
     }
     final id = _nextRequestId++;
     final completer = Completer<dynamic>();
     _pending[id] = completer;
-    _channel!.sink.add(jsonEncode({
+    final message = <String, dynamic>{
       'jsonrpc': '2.0',
       'method': method,
       'id': id,
-      'params': params,
-    }));
+    };
+    if (params != null) message['params'] = [params];
+    _channel!.sink.add(jsonEncode(message));
     return completer.future;
   }
 
-  /// Parses an incoming JSON-RPC 2.0 response and completes the matching
-  /// [Completer] from [_pending]: with the `result` value on success, or with
-  /// an [H3xBoardApiException] when the response contains an `error` object.
   void _onMessage(dynamic raw) {
     final response = jsonDecode(raw as String) as Map<String, dynamic>;
     final id = response['id'] as int?;
@@ -148,26 +140,63 @@ class H3xBoardApiClient {
     }
   }
 
-  /// Forwards a WebSocket stream error to every in-flight [Completer] in
-  /// [_pending], clears the map, and nulls out [_channel].
   void _onError(Object error, StackTrace stackTrace) {
+    _failPending(error, stackTrace);
+    _channel = null;
+    _maybeReconnect();
+  }
+
+  void _onDone() {
+    const error = H3xBoardApiException(code: -1, message: 'WebSocket connection closed');
+    _failPending(error);
+    _channel = null;
+    _maybeReconnect();
+  }
+
+  void _failPending(Object error, [StackTrace? stackTrace]) {
     for (final completer in _pending.values) {
       completer.completeError(error, stackTrace);
     }
     _pending.clear();
-    _channel = null;
   }
 
-  /// Called when the WebSocket stream closes. Rejects every in-flight
-  /// [Completer] in [_pending] with a connection-closed
-  /// [H3xBoardApiException], clears the map, and nulls out [_channel].
-  void _onDone() {
-    final error = const H3xBoardApiException(code: -1, message: 'WebSocket connection closed');
-    for (final completer in _pending.values) {
-      completer.completeError(error);
+  /// Kicks off a background reconnect loop after an *unexpected* disconnect.
+  void _maybeReconnect() {
+    if (_intentionalDisconnect || _reconnecting) return;
+    connectionState.value = H3xConnectionState.reconnecting;
+    unawaited(_reconnect());
+  }
+
+  /// Retries the connection with exponential backoff (capped at 15s) for as long
+  /// as the failures look transient. When [sessionValidator] reports the session
+  /// is definitively invalid, stops and fires [onSessionExpired].
+  Future<void> _reconnect() async {
+    _reconnecting = true;
+    var attempt = 0;
+    try {
+      while (!_intentionalDisconnect && _channel == null) {
+        try {
+          await _open();
+          connectionState.value = H3xConnectionState.connected;
+          return;
+        } catch (_) {
+          final valid = await sessionValidator?.call();
+          if (valid == false) {
+            connectionState.value = H3xConnectionState.disconnected;
+            onSessionExpired?.call();
+            return;
+          }
+          await Future<void>.delayed(_backoff(attempt++));
+        }
+      }
+    } finally {
+      _reconnecting = false;
     }
-    _pending.clear();
-    _channel = null;
+  }
+
+  Duration _backoff(int attempt) {
+    final seconds = 1 << attempt; // 1, 2, 4, 8, 16, ...
+    return Duration(seconds: seconds > 15 ? 15 : seconds);
   }
 
 }

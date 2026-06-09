@@ -1,10 +1,11 @@
-import 'package:flutter/widgets.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/board.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/drawing_toolbar.dart';
+import 'package:h3xboard/views/board_screen/components/toolbars/sub_board_tab_bar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dart';
 
 class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenController> {
@@ -12,6 +13,34 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
 
   @override
   Widget get body {
+    return Observer(
+      builder: (context) {
+        if (viewModel.isLoading) {
+          return const Center(child: ProgressRing());
+        }
+
+        if (viewModel.loadError != null) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: InfoBar(
+                title: Text(viewModel.loadError!),
+                severity: InfoBarSeverity.error,
+                action: Button(
+                  onPressed: controller.retryLoad,
+                  child: Text(localizations.boardScreen_retry),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return _buildBoard();
+      },
+    );
+  }
+
+  Widget _buildBoard() {
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Column(
@@ -19,9 +48,20 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
         mainAxisAlignment: .center,
         children: [
           ToolToolbar(controller: controller, viewModel: viewModel),
+          Observer(
+            builder: (_) => SubBoardTabBar(
+              subBoards: viewModel.subBoards.toList(),
+              activeSubBoardId: viewModel.activeSubBoardId,
+              onSwitchSubBoard: controller.onSwitchSubBoard,
+              onAddSubBoard: controller.onAddSubBoard,
+              onRemoveSubBoard: controller.onRemoveSubBoard,
+              onRenameSubBoard: controller.onRenameSubBoard,
+            ),
+          ),
           Flexible(
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: .center,
+              crossAxisAlignment: .center,
               spacing: 8,
               children: [
                 Observer(
@@ -38,6 +78,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
                       viewModel: viewModel,
                       onDeleteWidget: controller.onDeleteWidget,
                       onWidgetConfigChanged: controller.onWidgetConfigChanged,
+                      onWidgetVisibilityChanged: controller.onWidgetVisibilityChanged,
                       onWidgetTransformStart: controller.onWidgetTransformStart,
                       onWidgetTransformEnd: controller.onWidgetTransformEnd,
                       onDrawingStrokeStart: controller.onDrawingStrokeStart,

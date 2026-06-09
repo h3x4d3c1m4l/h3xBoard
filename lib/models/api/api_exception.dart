@@ -5,12 +5,9 @@ class H3xBoardApiException implements Exception {
 
   const H3xBoardApiException({required this.code, required this.message});
 
-  bool get isUnauthenticated => code == 4001;
-  bool get isInvalidCredentials => code == 4002;
   bool get isNotFound => code == 4004;
-  bool get isConflict => code == 4009;
   bool get isValidation => code == 4022;
-  bool get isInternal => code == 5000;
+  bool get isInternal => code == -32000;
 
   @override
   String toString() => 'H3xBoardApiException($code): $message';

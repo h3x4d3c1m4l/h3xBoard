@@ -7,8 +7,8 @@ part 'whoami_response.g.dart';
 abstract class WhoAmiResponse with _$WhoAmiResponse {
 
   const factory WhoAmiResponse({
-    required int userId,
-    required String username,
+    required String userId,
+    required String email,
   }) = _WhoAmiResponse;
 
   factory WhoAmiResponse.fromJson(Map<String, dynamic> json) => _$WhoAmiResponseFromJson(json);

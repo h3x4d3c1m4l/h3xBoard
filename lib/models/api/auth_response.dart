@@ -7,11 +7,8 @@ part 'auth_response.g.dart';
 abstract class AuthResponse with _$AuthResponse {
 
   const factory AuthResponse({
-    required String accessToken,
-    required String refreshToken,
-    required int accessTokenExpiresInSeconds,
-    required int userId,
-    required String username,
+    required String userId,
+    required String email,
   }) = _AuthResponse;
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) => _$AuthResponseFromJson(json);

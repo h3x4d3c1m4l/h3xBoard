@@ -8,11 +8,13 @@ import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 @RoutePage()
 class BoardScreen extends ScreenBase<BoardScreenViewModel, BoardScreenController, BoardScreenView> {
 
-  const BoardScreen({super.key});
+  final String boardId;
+
+  const BoardScreen({super.key, @pathParam required this.boardId});
 
   @override
   BoardScreenController createController({required BoardScreenViewModel viewModel, required BuildContextAccessor contextAccessor}) {
-    return BoardScreenController(viewModel: viewModel, contextAccessor: contextAccessor);
+    return BoardScreenController(boardId: boardId, viewModel: viewModel, contextAccessor: contextAccessor);
   }
 
   @override

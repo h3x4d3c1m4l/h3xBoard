@@ -1,7 +1,12 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:get_it/get_it.dart';
+import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:h3xboard/app_router.gr.dart';
+import 'package:h3xboard/services/h3x_board_api_client.dart';
+import 'package:h3xboard/services/h3x_board_auth_service.dart';
+import 'package:h3xboard/services/pending_navigation_service.dart';
+import 'package:h3xboard/services/session_controller.dart';
 import 'package:polly_dart/polly_dart.dart';
 
 @RoutePage()
@@ -16,7 +21,7 @@ class InitializationScreen extends StatefulWidget {
 
 class _InitializationScreenState extends State<InitializationScreen> {
 
-  // Create a resilience pipeline with exponential backoff with max 15 seconds wait time and infinite tries.
+  // Exponential backoff with max 15 seconds wait time and infinite tries.
   static final ResiliencePipeline pipeline = ResiliencePipelineBuilder()
       .addRetry(RetryStrategyOptions.infinite(maxDelay: Duration(seconds: 15)))
       .build();
@@ -27,43 +32,75 @@ class _InitializationScreenState extends State<InitializationScreen> {
   @override
   void initState() {
     super.initState();
-
     initializeApp();
   }
 
+  /// Bootstraps the app, then navigates to Start (authenticated) or Login (not).
+  /// Navigation is driven explicitly via [replaceAll] rather than the guard's
+  /// `reevaluateListenable` redirect, which does not fire reliably when a
+  /// deep-link route from a web reload is still pending.
   Future<void> initializeApp() async {
-    // Load fonts.
     await pipeline.execute((context) async {
       updateProgress(
         nowInitializingText: 'Loading fonts ...',
         retries: context.attemptNumber,
       );
-
-      await GoogleFonts.pendingFonts([
-        GoogleFonts.ubuntu(),
-      ]);
+      await GoogleFonts.pendingFonts([GoogleFonts.ubuntu()]);
     });
 
+    final session = GetIt.I<SessionController>();
+    final authService = GetIt.I<H3xBoardAuthService>();
+    final wsClient = GetIt.I<H3xBoardApiClient>();
+
+    // whoami() returns null on a 401 (definitively unauthenticated, not retried);
+    // a network failure throws and is retried by the pipeline.
+    final user = await pipeline.execute((context) async {
+      updateProgress(
+        nowInitializingText: 'Checking session ...',
+        retries: context.attemptNumber,
+      );
+      return authService.whoami();
+    });
+
+    if (user == null) {
+      session.markUnauthenticated();
+      // Drive navigation explicitly: a web reload funnels here with the original
+      // protected route still pending, so relying on the guard's reevaluate +
+      // redirectUntil chain leaves us stranded. replaceAll resets the stack.
+      if (mounted) await context.router.replaceAll([LoginRoute()]);
+      return;
+    }
+
+    // Establish the socket before flipping the status, so Start lands ready.
+    await pipeline.execute((context) async {
+      updateProgress(
+        nowInitializingText: 'Connecting to server ...',
+        retries: context.attemptNumber,
+      );
+      await wsClient.connect();
+    });
+    session.markAuthenticated(user.userId, user.email);
     if (mounted) {
-      await context.replaceRoute(DashboardRoute());
+      final pending = GetIt.I<PendingNavigationService>().consumePendingRoute();
+      await context.router.replaceAll([pending ?? const BoardsRoute()]);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: 16,
-          children: [
-            ProgressRing(),
-            if (nowInitializingText != null)
-              Text(nowInitializingText!, style: TextStyle(fontSize: 18, fontWeight: .bold)),
-            if (retries > 0) Text('Tried $retries time(s)'),
-          ],
-        ),
-      );
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: 16,
+        children: [
+          ProgressRing(),
+          if (nowInitializingText != null)
+            Text(nowInitializingText!, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          if (retries > 0) Text('Tried $retries time(s)'),
+        ],
+      ),
+    );
   }
 
   void updateProgress({required String nowInitializingText, required int retries}) {

@@ -55,3 +55,6 @@ app.*.map.json
 
 # l10n
 lib/l10n/generated/
+
+# Environment variables (use .env.example as template)
+.env

@@ -12,6 +12,10 @@ abstract class HistoryManagerBase with Store {
   final _undoStack = <HistoryEntry>[];
   final _redoStack = <HistoryEntry>[];
 
+  /// Fired whenever the board state changes through a step (push/undo/redo).
+  /// Used to trigger autosave at the same granularity as undo steps.
+  void Function()? onChange;
+
   @readonly
   bool _canUndo = false;
 
@@ -25,6 +29,7 @@ abstract class HistoryManagerBase with Store {
     _redoStack.clear();
     _canUndo = true;
     _canRedo = false;
+    onChange?.call();
   }
 
   @action
@@ -35,6 +40,7 @@ abstract class HistoryManagerBase with Store {
     _redoStack.add(entry);
     _canUndo = _undoStack.isNotEmpty;
     _canRedo = true;
+    onChange?.call();
   }
 
   @action
@@ -45,6 +51,7 @@ abstract class HistoryManagerBase with Store {
     _undoStack.add(entry);
     _canUndo = true;
     _canRedo = _redoStack.isNotEmpty;
+    onChange?.call();
   }
 
 }
