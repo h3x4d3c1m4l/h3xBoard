@@ -67,7 +67,7 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
       // Navigate explicitly rather than leaning on the guard's reevaluate
       // redirect, which is unreliable while a deep-link route is still pending.
       if (contextAccessor.buildContext.mounted) {
-        await contextAccessor.buildContext.router.replaceAll([StartRoute()]);
+        await contextAccessor.buildContext.router.replaceAll([BoardsRoute()]);
       }
     } on H3xBoardApiException catch (e) {
       viewModel.setErrorMessage(e.message);

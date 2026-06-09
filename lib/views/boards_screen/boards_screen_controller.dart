@@ -8,18 +8,18 @@ import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
-import 'package:h3xboard/views/start_screen/start_screen_view_model.dart';
+import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
 
 // Matches 'Board N' titles to pick the next auto-number for a new board.
 final _boardTitleRegex = RegExp(r'^Board (\d+)$');
 
-class StartScreenController extends ScreenControllerBase<StartScreenViewModel> {
+class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel> {
 
   final _wsClient = GetIt.I<H3xBoardApiClient>();
   final _auth = GetIt.I<H3xBoardAuthService>();
   final _session = GetIt.I<SessionController>();
 
-  StartScreenController({
+  BoardsScreenController({
     required super.viewModel,
     required super.contextAccessor,
   }) {

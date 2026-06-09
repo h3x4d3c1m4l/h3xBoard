@@ -10,7 +10,7 @@ class BoardScreen extends ScreenBase<BoardScreenViewModel, BoardScreenController
 
   final String boardId;
 
-  const BoardScreen({super.key, required this.boardId});
+  const BoardScreen({super.key, @pathParam required this.boardId});
 
   @override
   BoardScreenController createController({required BoardScreenViewModel viewModel, required BuildContextAccessor contextAccessor}) {

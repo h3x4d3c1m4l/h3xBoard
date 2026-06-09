@@ -79,7 +79,7 @@ class _InitializationScreenState extends State<InitializationScreen> {
       await wsClient.connect();
     });
     session.markAuthenticated(user.userId, user.email);
-    if (mounted) await context.router.replaceAll([StartRoute()]);
+    if (mounted) await context.router.replaceAll([BoardsRoute()]);
   }
 
   @override

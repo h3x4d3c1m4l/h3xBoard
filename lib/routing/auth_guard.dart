@@ -21,7 +21,7 @@ class AuthGuard extends AutoRouteGuard {
         if (session.status == SessionStatus.unknown) {
           resolver.next(true);
         } else if (session.isAuthenticated) {
-          resolver.redirectUntil(StartRoute());
+          resolver.redirectUntil(BoardsRoute());
         } else {
           resolver.redirectUntil(LoginRoute());
         }
@@ -31,7 +31,7 @@ class AuthGuard extends AutoRouteGuard {
           // the bootstrap first so a still-valid session is restored.
           resolver.redirectUntil(InitializationRoute());
         } else if (session.isAuthenticated) {
-          resolver.redirectUntil(StartRoute());
+          resolver.redirectUntil(BoardsRoute());
         } else {
           resolver.next(true);
         }
