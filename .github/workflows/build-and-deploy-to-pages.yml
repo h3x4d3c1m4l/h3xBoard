@@ -53,15 +53,6 @@ jobs:
       - name: Flutter analyze
         run: flutter analyze
 
-      # --- GH Pages build (with base-href) ---
-      - name: Build web (GH Pages)
-        run: flutter build web --release --wasm --base-href '/h3xBoard/'
-
-      - name: Upload artifact for Pages
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: 'build/web'
-
       # --- Docker build (no base-href) ---
       - name: Build web (Docker)
         run: |
@@ -74,22 +65,8 @@ jobs:
           name: web-build
           path: build/web
 
-  Deploy-GHPages:
-    name: Deploy-GHPages
-    needs: build
-    runs-on: ubuntu-latest
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
-
-  Deploy-Docker:
-    name: Deploy-Docker
+  Push-GHCR:
+    name: Push-GHCR
     needs: build
     runs-on: ubuntu-latest
 
