@@ -58,3 +58,6 @@ lib/l10n/generated/
 
 # Environment variables (use .env.example as template)
 .env
+
+# Docker build context (web build is copied in by CI / local build)
+docker/html/

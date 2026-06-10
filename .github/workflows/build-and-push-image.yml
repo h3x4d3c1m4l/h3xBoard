@@ -79,6 +79,9 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Download web build
         uses: actions/download-artifact@v8
         with:
@@ -86,49 +89,7 @@ jobs:
           path: build/web
 
       - name: Prepare Docker context
-        run: |
-          mkdir docker
-          cp -r build/web docker/html
-          cat <<'EOF' > docker/nginx.conf
-          # Inspired by: https://dev.to/it-wibrc/guide-to-containerizing-a-modern-javascript-spa-vuevitereact-with-a-multi-stage-nginx-build-1lma
-          events {}
-          http {
-            include       /etc/nginx/mime.types;
-            default_type  application/octet-stream;
-
-            types {
-              application/javascript mjs;
-            }
-
-            server {
-              listen 80;
-              root /usr/share/nginx/html;
-              index index.html;
-
-              # Security: Hides the Nginx version
-              server_tokens off;
-
-              # SPA Routing: Directs all unmatched requests to index.html
-              location / {
-                  try_files $uri $uri/ /index.html;
-              }
-
-              # Security: Block access to hidden files
-              location ~ /\. {
-                  deny all;
-              }
-
-              add_header Cross-Origin-Embedder-Policy credentialless;
-              add_header Cross-Origin-Opener-Policy same-origin;
-            }
-          }
-          EOF
-
-          cat <<'EOF' > docker/Dockerfile
-          FROM nginx:alpine
-          COPY nginx.conf /etc/nginx/nginx.conf
-          COPY html /usr/share/nginx/html
-          EOF
+        run: cp -r build/web docker/html
 
       - name: Set lowercase image name
         run: echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
