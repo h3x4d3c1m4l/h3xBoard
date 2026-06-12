@@ -4,6 +4,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/widgets/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class MemoNoteWidget extends StatelessWidget {
@@ -213,7 +214,7 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
 
     showDialog<void>(
       context: context,
-      builder: (ctx) => ContentDialog(
+      builder: (ctx) => ThemableContentDialog(
         title: Text(loc.memoNoteSettingsMenu_markdownCheatsheetDialogTitle),
         constraints: const BoxConstraints(maxWidth: 520),
         content: Column(
@@ -267,7 +268,7 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
 
     showDialog<void>(
       context: context,
-      builder: (ctx) => ContentDialog(
+      builder: (ctx) => ThemableContentDialog(
         title: Text(loc.memoNoteSettingsMenu_editTextDialogTitle),
         constraints: const BoxConstraints(maxWidth: 520),
         content: TextBox(

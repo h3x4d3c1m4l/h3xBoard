@@ -5,6 +5,7 @@ import 'package:h3xboard/models/api/board_summary.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
+import 'package:h3xboard/widgets/themable_content_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -104,7 +105,7 @@ class _BoardCard extends StatelessWidget {
     final loc = context.localizations;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => ContentDialog(
+      builder: (ctx) => ThemableContentDialog(
         title: Text(loc.boardsScreen_deleteConfirmTitle),
         content: Text(loc.boardsScreen_deleteConfirmMessage(board.title)),
         actions: [

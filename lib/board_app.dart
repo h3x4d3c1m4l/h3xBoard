@@ -24,6 +24,13 @@ class _BoardAppState extends State<BoardApp> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentThemeData(
+      accentColor: Color(0xFF00FF80).toAccentColor(),
+      typography: Typography.fromBrightness(
+        brightness: Brightness.light,
+      ).apply(fontFamily: GoogleFonts.ubuntu().fontFamily),
+      visualDensity: VisualDensity.standard,
+    );
     return FluentApp.router(
       routerConfig: _appRouter.config(
         reevaluateListenable: GetIt.I<SessionController>(),
@@ -40,12 +47,36 @@ class _BoardAppState extends State<BoardApp> {
         FluentLocalizations.delegate,
       ],
       supportedLocales: [Locale('en'), Locale('nl')],
-      theme: FluentThemeData(
-        accentColor: Color(0xFF00FF80).toAccentColor(),
-        typography: Typography.fromBrightness(
-          brightness: Brightness.light,
-        ).apply(fontFamily: GoogleFonts.ubuntu().fontFamily),
-        visualDensity: VisualDensity.standard,
+      theme: theme.copyWith(
+        dialogTheme: ContentDialogThemeData(
+          decoration: ShapeDecoration(
+            // Subtle accent tint over the dialog surface. Bump the alpha for a
+            // stronger wash; the white background pattern reads against it.
+            color: Color.alphaBlend(
+              theme.accentColor.withValues(alpha: 0.12),
+              theme.menuColor,
+            ),
+            shape: ContinuousRectangleBorder(
+              borderRadius: .circular(64),
+              side: BorderSide(color: theme.accentColor, width: 2),
+            ),
+            shadows: kElevationToShadow[6],
+          ),
+          // Buttons share the dialog's continuous-rectangle shape, but with a
+          // concentric (smaller) radius: innerRadius = outerRadius − padding
+          // = 64 − 20 = 44. ThemableContentDialog applies this dialog-wide.
+          actionThemeData: ButtonThemeData.all(
+            ButtonStyle(
+              padding: WidgetStatePropertyAll(.symmetric(vertical: 12, horizontal: 24)),
+              shape: WidgetStatePropertyAll(
+                ContinuousRectangleBorder(borderRadius: BorderRadius.circular(44)),
+              ),
+            ),
+          ),
+          // Note: actionsDecoration is intentionally omitted. ThemableContentDialog
+          // ignores it and fills the actions area with micaBackgroundColor, clipped
+          // to the decoration shape above.
+        ),
       ),
     );
   }

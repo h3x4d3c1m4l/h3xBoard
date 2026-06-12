@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/app_router.dart';
+import 'package:h3xboard/widgets/themable_content_dialog.dart';
 
 /// Wraps the whole app and listens for Alt+D to pop up a developer-only debug
 /// panel from anywhere in the application. The panel is just a list of buttons
@@ -63,7 +64,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
   Future<void> _showSampleDialog(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => ContentDialog(
+      builder: (ctx) => ThemableContentDialog(
         title: const Text('Sample dialog'),
         content: const Text('This is a sample debug dialog. Confirm or cancel?'),
         actions: [
@@ -110,7 +111,7 @@ class _DebugPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ContentDialog(
+    return ThemableContentDialog(
       title: const Text('Debug menu'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
