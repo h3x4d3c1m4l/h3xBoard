@@ -4,6 +4,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/widgets/continuous_text_box.dart';
 import 'package:h3xboard/widgets/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -271,7 +272,7 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
       builder: (ctx) => ThemableContentDialog(
         title: Text(loc.memoNoteSettingsMenu_editTextDialogTitle),
         constraints: const BoxConstraints(maxWidth: 520),
-        content: TextBox(
+        content: ContinuousTextBox(
           controller: controller,
           maxLines: null,
           minLines: 8,

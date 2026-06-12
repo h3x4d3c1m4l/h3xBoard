@@ -3,6 +3,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/login_screen/login_screen_controller.dart';
 import 'package:h3xboard/views/login_screen/login_screen_view_model.dart';
+import 'package:h3xboard/widgets/continuous_text_box.dart';
 
 class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenController> {
 
@@ -32,14 +33,14 @@ class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenCo
                     style: FluentTheme.of(context).typography.title,
                     textAlign: TextAlign.center,
                   ),
-                  TextBox(
+                  ContinuousTextBox(
                     controller: viewModel.emailController,
                     placeholder: localizations.loginScreen_email,
                     enabled: !viewModel.isLoading,
                     keyboardType: TextInputType.emailAddress,
                     autofillHints: const [AutofillHints.username, AutofillHints.email],
                   ),
-                  TextBox(
+                  ContinuousTextBox(
                     controller: viewModel.passwordController,
                     placeholder: localizations.loginScreen_password,
                     obscureText: true,

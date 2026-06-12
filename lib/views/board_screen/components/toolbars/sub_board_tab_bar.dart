@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/board.dart';
+import 'package:h3xboard/widgets/continuous_text_box.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SubBoardTabBar extends StatefulWidget {
@@ -215,7 +216,7 @@ class _SubBoardTabState extends State<_SubBoardTab> {
                 height: 32,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: TextBox(
+                  child: ContinuousTextBox(
                     controller: widget.editController,
                     focusNode: widget.editFocus,
                     style: const TextStyle(fontSize: 13),

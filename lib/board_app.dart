@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:h3xboard/app_router.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/services/session_controller.dart';
+import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/connection_banner.dart';
 import 'package:h3xboard/views/debug/debug_overlay.dart';
 
@@ -49,12 +50,13 @@ class _BoardAppState extends State<BoardApp> {
       supportedLocales: [Locale('en'), Locale('nl')],
       theme: theme.copyWith(
         // Apply the continuous-rectangle button shape app-wide (every fluent
-        // button, not just dialog actions).
+        // button, not just dialog actions). Radius is concentric to the dialog
+        // (see shape_metrics.dart).
         buttonTheme: ButtonThemeData.all(
           ButtonStyle(
-            padding: WidgetStatePropertyAll(.symmetric(vertical: 12, horizontal: 24)),
+            padding: WidgetStatePropertyAll(kControlPadding),
             shape: WidgetStatePropertyAll(
-              ContinuousRectangleBorder(borderRadius: BorderRadius.circular(44)),
+              ContinuousRectangleBorder(borderRadius: BorderRadius.circular(kControlCornerRadius)),
             ),
           ),
         ),
@@ -67,7 +69,7 @@ class _BoardAppState extends State<BoardApp> {
               theme.menuColor,
             ),
             shape: ContinuousRectangleBorder(
-              borderRadius: .circular(64),
+              borderRadius: .circular(kDialogCornerRadius),
               side: BorderSide(color: theme.accentColor, width: 2),
             ),
             shadows: kElevationToShadow[6],
