@@ -48,6 +48,16 @@ class _BoardAppState extends State<BoardApp> {
       ],
       supportedLocales: [Locale('en'), Locale('nl')],
       theme: theme.copyWith(
+        // Apply the continuous-rectangle button shape app-wide (every fluent
+        // button, not just dialog actions).
+        buttonTheme: ButtonThemeData.all(
+          ButtonStyle(
+            padding: WidgetStatePropertyAll(.symmetric(vertical: 12, horizontal: 24)),
+            shape: WidgetStatePropertyAll(
+              ContinuousRectangleBorder(borderRadius: BorderRadius.circular(44)),
+            ),
+          ),
+        ),
         dialogTheme: ContentDialogThemeData(
           decoration: ShapeDecoration(
             // Subtle accent tint over the dialog surface. Bump the alpha for a
@@ -61,17 +71,6 @@ class _BoardAppState extends State<BoardApp> {
               side: BorderSide(color: theme.accentColor, width: 2),
             ),
             shadows: kElevationToShadow[6],
-          ),
-          // Buttons share the dialog's continuous-rectangle shape, but with a
-          // concentric (smaller) radius: innerRadius = outerRadius − padding
-          // = 64 − 20 = 44. ThemableContentDialog applies this dialog-wide.
-          actionThemeData: ButtonThemeData.all(
-            ButtonStyle(
-              padding: WidgetStatePropertyAll(.symmetric(vertical: 12, horizontal: 24)),
-              shape: WidgetStatePropertyAll(
-                ContinuousRectangleBorder(borderRadius: BorderRadius.circular(44)),
-              ),
-            ),
           ),
           // Note: actionsDecoration is intentionally omitted. ThemableContentDialog
           // ignores it and fills the actions area with micaBackgroundColor, clipped
