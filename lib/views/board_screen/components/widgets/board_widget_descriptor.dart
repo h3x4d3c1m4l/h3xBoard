@@ -4,6 +4,7 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/analog_clock_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/memo_note_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/piano_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/stopwatch_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/traffic_light_widget.dart';
 
@@ -17,7 +18,7 @@ abstract class BoardWidgetDescriptor {
 
   IconData get icon;
   String label(AppLocalizations localizations);
-  Size get naturalSize;
+  Size naturalSize(BoardWidgetConfig config);
   BoardWidgetConfig get defaultConfig;
   Widget buildWidget(BoardWidgetConfig config);
   List<MenuFlyoutItemBase> settingsMenuItems(
@@ -36,6 +37,7 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   TrafficLightConfig: TrafficLightWidgetDescriptor.instance,
   StopwatchConfig: StopwatchWidgetDescriptor.instance,
   MemoNoteConfig: MemoNoteWidgetDescriptor.instance,
+  PianoConfig: PianoWidgetDescriptor.instance,
 };
 
 // All registered descriptors, exposed for building the "add widget" menu.

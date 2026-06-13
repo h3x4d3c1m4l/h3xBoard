@@ -83,7 +83,7 @@ class TrafficLightWidgetDescriptor extends BoardWidgetDescriptor {
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_trafficLight;
 
   @override
-  Size get naturalSize => TrafficLightWidget.naturalSize;
+  Size naturalSize(BoardWidgetConfig config) => TrafficLightWidget.naturalSize;
 
   @override
   BoardWidgetConfig get defaultConfig => const TrafficLightConfig();

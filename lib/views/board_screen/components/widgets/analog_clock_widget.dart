@@ -394,7 +394,7 @@ class AnalogClockWidgetDescriptor extends BoardWidgetDescriptor {
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_analogClock;
 
   @override
-  Size get naturalSize => _AnalogClockWidget.naturalSize;
+  Size naturalSize(BoardWidgetConfig config) => _AnalogClockWidget.naturalSize;
 
   @override
   BoardWidgetConfig get defaultConfig => const AnalogClockConfig();

@@ -132,7 +132,7 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_memoNote;
 
   @override
-  Size get naturalSize => MemoNoteWidget.naturalSize;
+  Size naturalSize(BoardWidgetConfig config) => MemoNoteWidget.naturalSize;
 
   @override
   BoardWidgetConfig get defaultConfig => const MemoNoteConfig();

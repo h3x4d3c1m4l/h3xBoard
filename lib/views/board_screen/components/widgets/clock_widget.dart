@@ -127,7 +127,7 @@ class DigitalClockWidgetDescriptor extends BoardWidgetDescriptor {
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_digitalClock;
 
   @override
-  Size get naturalSize => DigitalClockWidget.naturalSize;
+  Size naturalSize(BoardWidgetConfig config) => DigitalClockWidget.naturalSize;
 
   @override
   BoardWidgetConfig get defaultConfig => const DigitalClockConfig();

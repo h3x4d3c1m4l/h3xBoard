@@ -35,6 +35,10 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     @Default(MemoNoteColor.yellow) MemoNoteColor color,
   }) = MemoNoteConfig;
 
+  const factory BoardWidgetConfig.piano({
+    @Default(1) int octaves,
+  }) = PianoConfig;
+
   factory BoardWidgetConfig.fromJson(Map<String, dynamic> json) => _$BoardWidgetConfigFromJson(json);
 
 }

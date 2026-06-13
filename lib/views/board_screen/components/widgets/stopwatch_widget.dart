@@ -159,7 +159,7 @@ class StopwatchWidgetDescriptor extends BoardWidgetDescriptor {
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_stopwatch;
 
   @override
-  Size get naturalSize => StopwatchWidget.naturalSize;
+  Size naturalSize(BoardWidgetConfig config) => StopwatchWidget.naturalSize;
 
   @override
   BoardWidgetConfig get defaultConfig => const StopwatchConfig();

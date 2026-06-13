@@ -4,7 +4,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/board_widget_desc
 
 typedef WidgetSettingsBuilder = List<MenuFlyoutItemBase> Function(BuildContext context);
 
-Size naturalSizeFor(BoardWidgetConfig config) => descriptorFor(config).naturalSize;
+Size naturalSizeFor(BoardWidgetConfig config) => descriptorFor(config).naturalSize(config);
 
 class ManipulableBoardWidget extends StatelessWidget {
 
