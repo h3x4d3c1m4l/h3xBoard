@@ -55,17 +55,19 @@ class _DebugOverlayState extends State<DebugOverlay> {
 
   /// Add new debug buttons here — each entry becomes a button in the panel.
   List<_DebugAction> _debugActions(BuildContext dialogContext) => [
-    _DebugAction(
-      label: 'Show sample dialog',
-      onPressed: () => _showSampleDialog(dialogContext),
-    ),
+    for (final severity in ThemableDialogSeverity.values)
+      _DebugAction(
+        label: 'Show sample dialog (${severity.name})',
+        onPressed: () => _showSampleDialog(dialogContext, severity),
+      ),
   ];
 
-  Future<void> _showSampleDialog(BuildContext context) async {
+  Future<void> _showSampleDialog(BuildContext context, ThemableDialogSeverity severity) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => ThemableContentDialog(
-        title: const Text('Sample dialog'),
+        severity: severity,
+        title: Text('Sample dialog (${severity.name})'),
         content: const Text('This is a sample debug dialog. Confirm or cancel?'),
         actions: [
           Button(

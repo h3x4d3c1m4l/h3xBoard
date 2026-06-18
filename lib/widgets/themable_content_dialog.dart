@@ -29,6 +29,34 @@ const int _kPatternDriftY = 0;
 /// rotates the entire pattern (the drift direction rotates with it).
 const double _kPatternTiltDegrees = -20;
 
+/// The semantic tone of a [ThemableContentDialog], driving its tint and border
+/// color. [normal] keeps the ambient [ContentDialogTheme] (accent) styling;
+/// [warning] and [error] recolor the surface with Fluent UI's status colors.
+enum ThemableDialogSeverity {
+
+  normal,
+  warning,
+  error;
+
+  /// The Fluent status color that tints the surface and paints the border, or
+  /// `null` for [normal] (which defers to the ambient accent-based theme).
+  Color? get primaryColor => switch (this) {
+    ThemableDialogSeverity.normal => null,
+    // Fluent's warningPrimaryColor is an orange-red; use the amber-gold from
+    // Fluent's yellow swatch so warnings read distinctly yellow against errors.
+    ThemableDialogSeverity.warning => Colors.yellow.darkest,
+    ThemableDialogSeverity.error => Colors.errorPrimaryColor,
+  };
+
+  /// The status glyph shown beside the title, or `null` for [normal].
+  IconData? get icon => switch (this) {
+    ThemableDialogSeverity.normal => null,
+    ThemableDialogSeverity.warning => LucideIcons.triangleAlert,
+    ThemableDialogSeverity.error => LucideIcons.octagonAlert,
+  };
+
+}
+
 /// A near drop-in clone of fluent_ui's [ContentDialog], reworked for better
 /// themability.
 ///
@@ -55,6 +83,7 @@ class ThemableContentDialog extends StatelessWidget {
     this.content,
     this.actions,
     this.style,
+    this.severity = ThemableDialogSeverity.normal,
     this.actionsBackgroundColor,
     this.showBackgroundPattern = true,
     this.constraints = kDefaultContentDialogConstraints,
@@ -76,6 +105,12 @@ class ThemableContentDialog extends StatelessWidget {
   /// [actionsBackgroundColor] to color the actions area instead.
   final ContentDialogThemeData? style;
 
+  /// The semantic tone of the dialog. Defaults to [ThemableDialogSeverity.normal]
+  /// (accent-themed); [ThemableDialogSeverity.warning] and
+  /// [ThemableDialogSeverity.error] recolor the surface tint and border with
+  /// Fluent UI's status colors.
+  final ThemableDialogSeverity severity;
+
   /// The background color of the actions area.
   ///
   /// Defaults to [FluentThemeData.micaBackgroundColor] when null.
@@ -95,8 +130,26 @@ class ThemableContentDialog extends StatelessWidget {
     assert(debugCheckHasFluentTheme(context), 'A FluentTheme ancestor is required.');
     final theme = FluentTheme.of(context);
     final style = ContentDialogTheme.of(context).merge(this.style);
-    final actionsColor = actionsBackgroundColor ?? theme.micaBackgroundColor;
-    final decoration = style.decoration;
+    final severityColor = severity.primaryColor;
+    final decoration = _severityDecoration(style.decoration, severityColor, theme);
+    // Wash the actions bar with the status color too, so it reads cohesively
+    // with the recolored surface (a touch stronger than the body tint).
+    final actionsColor =
+        actionsBackgroundColor ??
+        (severityColor == null
+            ? theme.micaBackgroundColor
+            : Color.alphaBlend(severityColor.withValues(alpha: 0.16), theme.micaBackgroundColor));
+    // Recolor the primary (filled) action to the status color in severity modes;
+    // the plain [Button] (e.g. Cancel) stays neutral. Layer the color override
+    // onto the ambient filled style so the app-wide shape/padding survive.
+    final actionThemeData = severityColor == null
+        ? (style.actionThemeData ?? const ButtonThemeData())
+        : (style.actionThemeData ?? const ButtonThemeData()).merge(
+            ButtonThemeData(
+              filledButtonStyle: (ButtonTheme.of(context).filledButtonStyle ?? const ButtonStyle())
+                  .merge(_severityFilledButtonStyle(severityColor)),
+            ),
+          );
 
     final body = Column(
       mainAxisSize: MainAxisSize.min,
@@ -114,7 +167,18 @@ class ThemableContentDialog extends StatelessWidget {
                     padding: style.titlePadding ?? EdgeInsetsDirectional.zero,
                     child: DefaultTextStyle.merge(
                       style: style.titleStyle,
-                      child: title!,
+                      child: severityColor == null || severity.icon == null
+                          ? title!
+                          : Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsetsDirectional.only(end: 10),
+                                  child: Icon(severity.icon, color: severityColor),
+                                ),
+                                Expanded(child: title!),
+                              ],
+                            ),
                     ),
                   ),
                 if (content != null)
@@ -138,7 +202,7 @@ class ThemableContentDialog extends StatelessWidget {
             color: actionsColor,
             padding: style.actionsPadding,
             child: ButtonTheme.merge(
-              data: style.actionThemeData ?? const ButtonThemeData(),
+              data: actionThemeData,
               child: _buildActions(style),
             ),
           ),
@@ -148,7 +212,7 @@ class ThemableContentDialog extends StatelessWidget {
     // Apply the action button theme dialog-wide so content-area buttons share
     // the same shape as the action row (the actions row re-merges it above).
     final themedBody = ButtonTheme.merge(
-      data: style.actionThemeData ?? const ButtonThemeData(),
+      data: actionThemeData,
       child: body,
     );
 
@@ -178,6 +242,53 @@ class ThemableContentDialog extends StatelessWidget {
                 ),
                 child: layered,
               ),
+      ),
+    );
+  }
+
+  /// Recolors [base] (the ambient dialog decoration) to [severityColor],
+  /// preserving its shape, radius, border width and shadows. Returns [base]
+  /// unchanged when [severityColor] is `null` (the [ThemableDialogSeverity.normal]
+  /// case) or when the decoration isn't a recognized shape.
+  Decoration? _severityDecoration(Decoration? base, Color? severityColor, FluentThemeData theme) {
+    if (severityColor == null) return base;
+    final tint = Color.alphaBlend(severityColor.withValues(alpha: 0.12), theme.menuColor);
+    if (base is ShapeDecoration) {
+      final shape = base.shape;
+      return ShapeDecoration(
+        color: tint,
+        shape: shape is OutlinedBorder ? shape.copyWith(side: shape.side.copyWith(color: severityColor)) : shape,
+        shadows: base.shadows,
+        image: base.image,
+        gradient: base.gradient,
+      );
+    }
+    if (base is BoxDecoration) {
+      return base.copyWith(
+        color: tint,
+        border: Border.all(color: severityColor, width: 2),
+      );
+    }
+    return base;
+  }
+
+  /// A [FilledButton] style that paints the primary action in [color] instead
+  /// of the theme accent, darkening on hover/press and choosing a black or
+  /// white label for best contrast against the (possibly light) status color.
+  ButtonStyle _severityFilledButtonStyle(Color color) {
+    // Below this relative-luminance crossover white text wins for contrast
+    // (WCAG-derived); above it black wins — so light amber warnings get dark
+    // labels while dark-red errors keep white ones.
+    final onColor = color.computeLuminance() < 0.179 ? Colors.white : Colors.black;
+    return ButtonStyle(
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) return color.withValues(alpha: 0.4);
+        if (states.contains(WidgetState.pressed)) return Color.alphaBlend(Colors.black.withValues(alpha: 0.16), color);
+        if (states.contains(WidgetState.hovered)) return Color.alphaBlend(Colors.black.withValues(alpha: 0.08), color);
+        return color;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled) ? onColor.withValues(alpha: 0.5) : onColor,
       ),
     );
   }
@@ -251,8 +362,7 @@ class _AnimatedIconPattern extends StatefulWidget {
 
 }
 
-class _AnimatedIconPatternState extends State<_AnimatedIconPattern>
-    with SingleTickerProviderStateMixin {
+class _AnimatedIconPatternState extends State<_AnimatedIconPattern> with SingleTickerProviderStateMixin {
 
   late final AnimationController _controller = AnimationController(vsync: this);
 
@@ -285,7 +395,6 @@ class _AnimatedIconPatternState extends State<_AnimatedIconPattern>
 
   @override
   void dispose() {
-
     _controller.dispose();
     super.dispose();
   }
@@ -313,7 +422,6 @@ class _IconPatternPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-
     final shiftX = progress * _kPatternCellSize * _kPatternDriftX * _loopCells;
     final shiftY = progress * _kPatternCellSize * _kPatternDriftY * _loopCells;
 

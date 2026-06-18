@@ -106,6 +106,7 @@ class _BoardCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => ThemableContentDialog(
+        severity: ThemableDialogSeverity.error,
         title: Text(loc.boardsScreen_deleteConfirmTitle),
         content: Text(loc.boardsScreen_deleteConfirmMessage(board.title)),
         actions: [
