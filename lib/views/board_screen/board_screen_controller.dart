@@ -15,6 +15,7 @@ import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
+import 'package:h3xboard/widgets/themable_loading_dialog.dart';
 
 // Matches 'Board N' titles to pick the next auto-number.
 final _boardTitleRegex = RegExp(r'^Board (\d+)$');
@@ -40,7 +41,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   // Autosave bookkeeping.
   Timer? _saveTimer;
-  bool _saveInFlight = false;
+  Future<void>? _activeSave;
   bool _saveDirty = false;
 
   StreamSubscription<bool>? _fullscreenSubscription;
@@ -62,10 +63,6 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   @override
   void dispose() {
     _saveTimer?.cancel();
-    // Flush a final save while the drawing controller is still alive.
-    if (_saveDirty && !_saveInFlight) {
-      unawaited(_wsClient.updateBoard(id: boardId, data: _buildContent().toJson()));
-    }
     _fullscreenSubscription?.cancel();
     _fullscreenService.dispose();
     super.dispose();
@@ -102,14 +99,20 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   void _scheduleSave() {
     _saveDirty = true;
     _saveTimer?.cancel();
-    _saveTimer = Timer(_autosaveDebounce, () => unawaited(_save()));
+    _saveTimer = Timer(_autosaveDebounce, _save);
   }
 
-  Future<void> _save() async {
-    if (_saveInFlight) return;
+  /// Kicks off a save if one isn't already running. Coalesces with any active
+  /// save: changes landing mid-save are flushed by a follow-up scheduled in the
+  /// `finally` block.
+  void _save() {
+    if (_activeSave != null) return;
     if (!_saveDirty) return;
+    _activeSave = _runSave().whenComplete(() => _activeSave = null);
+  }
+
+  Future<void> _runSave() async {
     _saveDirty = false;
-    _saveInFlight = true;
     viewModel.setSaveStatus(BoardSaveStatus.saving);
     try {
       await _wsClient.updateBoard(id: boardId, data: _buildContent().toJson());
@@ -118,10 +121,22 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       _saveDirty = true;
       viewModel.setSaveStatus(BoardSaveStatus.error);
     } finally {
-      _saveInFlight = false;
       // A change landed mid-save (or the save failed); try again.
       if (_saveDirty) _scheduleSave();
     }
+  }
+
+  /// Forces any unsaved changes to disk and waits for the write to land.
+  /// Returns `true` once everything is persisted, `false` if the save failed.
+  Future<bool> _flushPendingSave() async {
+    _saveTimer?.cancel();
+    // Let an in-flight save settle, then drain whatever it didn't include.
+    if (_activeSave != null) await _activeSave;
+    if (_saveDirty) {
+      _save();
+      await _activeSave;
+    }
+    return !_saveDirty;
   }
 
   /// Snapshots the current editor state, folding the live drawing on the active
@@ -137,6 +152,47 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       widgets: viewModel.boardWidgets.toList(),
       drawings: drawings,
     );
+  }
+
+  // Navigation
+
+  // Guards against re-entrancy: the close button, system/browser back and the
+  // imperative pop below all funnel through requestClose.
+  bool _isClosing = false;
+
+  /// Handles a request to leave the board (close button or system/browser back).
+  /// Flushes pending changes — showing a spinner while they persist — then pops
+  /// back to the boards overview. Stays on the board if the save fails so no
+  /// work is silently lost.
+  Future<void> requestClose() async {
+    if (_isClosing) return;
+    _isClosing = true;
+    try {
+      final context = contextAccessor.buildContext;
+      final navigator = Navigator.of(context);
+
+      if (_saveDirty || _activeSave != null) {
+        BuildContext? dialogContext;
+        unawaited(showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            dialogContext = ctx;
+            return ThemableLoadingDialog(message: localizations.boardScreen_closing);
+          },
+        ));
+        final saved = await _flushPendingSave();
+        if (dialogContext != null && dialogContext!.mounted) {
+          Navigator.of(dialogContext!).pop();
+        }
+        // Keep the user on the board so they can retry rather than lose work.
+        if (!saved) return;
+      }
+
+      if (navigator.mounted) navigator.pop();
+    } finally {
+      _isClosing = false;
+    }
   }
 
   // Fullscreen handler

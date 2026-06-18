@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
@@ -25,6 +27,11 @@ class ToolToolbar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: 32,
         children: [
+          ToolButton(
+            icon: LucideIcons.x,
+            title: context.localizations.toolToolbar_close,
+            onPressed: () => unawaited(controller.requestClose()),
+          ),
           ToggleButtonToolbar(
             buttons: [
               ToolButton(icon: LucideIcons.undo, title: context.localizations.toolToolbar_undo, onPressed: controller.historyManager.canUndo ? controller.historyManager.undo : null),

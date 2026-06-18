@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
@@ -13,6 +15,19 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
 
   @override
   Widget get body {
+    // canPop is always false: every exit (close button, system/browser back)
+    // is routed through the controller so pending changes are flushed first.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        unawaited(controller.requestClose());
+      },
+      child: _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
     return Observer(
       builder: (context) {
         if (viewModel.isLoading) {
