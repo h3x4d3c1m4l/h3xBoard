@@ -56,6 +56,8 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
           ? await _auth.register(
               email: viewModel.emailController.text,
               password: viewModel.passwordController.text,
+              firstName: viewModel.firstNameController.text,
+              lastName: viewModel.lastNameController.text,
             )
           : await _auth.login(
               email: viewModel.emailController.text,
@@ -64,7 +66,12 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
       await _wsClient.connect();
       // Credentials were accepted: let the platform/browser offer to save them.
       TextInput.finishAutofillContext();
-      _session.markAuthenticated(result.userId, result.email);
+      _session.markAuthenticated(
+        result.userId,
+        result.email,
+        firstName: result.firstName,
+        lastName: result.lastName,
+      );
       // Navigate explicitly rather than leaning on the guard's reevaluate
       // redirect, which is unreliable while a deep-link route is still pending.
       if (contextAccessor.buildContext.mounted) {

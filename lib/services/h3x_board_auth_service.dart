@@ -55,8 +55,18 @@ class H3xBoardAuthService {
     return AuthResponse.fromJson(response.body as Map<String, dynamic>);
   }
 
-  Future<AuthResponse> register({required String email, required String password}) async {
-    final response = await _service.register({'email': email, 'password': password});
+  Future<AuthResponse> register({
+    required String email,
+    required String password,
+    String? firstName,
+    String? lastName,
+  }) async {
+    final response = await _service.register({
+      'email': email,
+      'password': password,
+      if (firstName != null && firstName.isNotEmpty) 'firstName': firstName,
+      if (lastName != null && lastName.isNotEmpty) 'lastName': lastName,
+    });
     _requireSuccess(response);
     return AuthResponse.fromJson(response.body as Map<String, dynamic>);
   }

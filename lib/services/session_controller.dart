@@ -16,17 +16,23 @@ class SessionController extends ChangeNotifier {
   UnauthReason _reason = UnauthReason.none;
   String? _userId;
   String? _email;
+  String? _firstName;
+  String? _lastName;
 
   SessionStatus get status => _status;
   UnauthReason get reason => _reason;
   String? get userId => _userId;
   String? get email => _email;
+  String? get firstName => _firstName;
+  String? get lastName => _lastName;
 
   bool get isAuthenticated => _status == SessionStatus.authenticated;
 
-  void markAuthenticated(String userId, String email) {
+  void markAuthenticated(String userId, String email, {String? firstName, String? lastName}) {
     _userId = userId;
     _email = email;
+    _firstName = firstName;
+    _lastName = lastName;
     _status = SessionStatus.authenticated;
     _reason = UnauthReason.none;
     notifyListeners();
@@ -35,6 +41,8 @@ class SessionController extends ChangeNotifier {
   void markUnauthenticated({UnauthReason reason = UnauthReason.loggedOut}) {
     _userId = null;
     _email = null;
+    _firstName = null;
+    _lastName = null;
     _status = SessionStatus.unauthenticated;
     _reason = reason;
     notifyListeners();

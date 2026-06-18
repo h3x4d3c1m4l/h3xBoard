@@ -33,6 +33,22 @@ class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenCo
                     style: FluentTheme.of(context).typography.title,
                     textAlign: TextAlign.center,
                   ),
+                  if (viewModel.isRegisterMode) ...[
+                    ContinuousTextBox(
+                      controller: viewModel.firstNameController,
+                      placeholder: localizations.loginScreen_firstName,
+                      enabled: !viewModel.isLoading,
+                      keyboardType: TextInputType.name,
+                      autofillHints: const [AutofillHints.givenName],
+                    ),
+                    ContinuousTextBox(
+                      controller: viewModel.lastNameController,
+                      placeholder: localizations.loginScreen_lastName,
+                      enabled: !viewModel.isLoading,
+                      keyboardType: TextInputType.name,
+                      autofillHints: const [AutofillHints.familyName],
+                    ),
+                  ],
                   ContinuousTextBox(
                     controller: viewModel.emailController,
                     placeholder: localizations.loginScreen_email,

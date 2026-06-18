@@ -10,6 +10,8 @@ abstract class LoginScreenViewModelBase extends ScreenViewModelBase with Store {
 
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final firstNameController = TextEditingController();
+  final lastNameController = TextEditingController();
 
   @readonly
   bool _isLoading = false;
@@ -49,12 +51,16 @@ abstract class LoginScreenViewModelBase extends ScreenViewModelBase with Store {
     _infoMessage = null;
     emailController.clear();
     passwordController.clear();
+    firstNameController.clear();
+    lastNameController.clear();
   }
 
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
+    firstNameController.dispose();
+    lastNameController.dispose();
     super.dispose();
   }
 

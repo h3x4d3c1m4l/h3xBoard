@@ -80,7 +80,12 @@ class _InitializationScreenState extends State<InitializationScreen> {
       );
       await wsClient.connect();
     });
-    session.markAuthenticated(user.userId, user.email);
+    session.markAuthenticated(
+      user.userId,
+      user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    );
     if (mounted) {
       final pending = GetIt.I<PendingNavigationService>().consumePendingRoute();
       await context.router.replaceAll([pending ?? const BoardsRoute()]);

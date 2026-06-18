@@ -9,6 +9,8 @@ abstract class WhoAmiResponse with _$WhoAmiResponse {
   const factory WhoAmiResponse({
     required String userId,
     required String email,
+    String? firstName,
+    String? lastName,
   }) = _WhoAmiResponse;
 
   factory WhoAmiResponse.fromJson(Map<String, dynamic> json) => _$WhoAmiResponseFromJson(json);
