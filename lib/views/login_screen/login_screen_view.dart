@@ -64,8 +64,8 @@ class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenCo
                     onPressed: viewModel.isLoading ? null : controller.submit,
                     child: viewModel.isLoading
                         ? const SizedBox(
-                            width: 16,
-                            height: 16,
+                            width: 20,
+                            height: 20,
                             child: ProgressRing(strokeWidth: 2),
                           )
                         : Text(
