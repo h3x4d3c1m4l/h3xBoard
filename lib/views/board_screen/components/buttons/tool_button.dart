@@ -168,20 +168,22 @@ class _ToolButtonContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: hasFlyout ? const EdgeInsets.fromLTRB(4, 4, 0, 4) : const EdgeInsets.all(4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 6,
-        children: [
-          Column(
+    return Stack(
+      alignment: .topRight,
+      children: [
+        Padding(
+          padding: const .fromLTRB(4, 6, 6, 0),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
-            spacing: 2,
-            children: [Icon(icon), Text(title, maxLines: 1)],
+            spacing: 4,
+            children: [Icon(icon, size: 18), Text(title, maxLines: 1)],
           ),
-          if (hasFlyout) Icon(LucideIcons.chevronDown),
-        ],
-      ),
+        ),
+        if (hasFlyout) Padding(
+          padding: const .only(top: 4),
+          child: Icon(LucideIcons.chevronDown, size: 12),
+        ),
+      ],
     );
   }
 

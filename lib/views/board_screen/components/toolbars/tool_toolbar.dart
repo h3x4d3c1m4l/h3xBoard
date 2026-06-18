@@ -22,33 +22,82 @@ class ToolToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+
     return Observer(
-      builder: (context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 32,
-        children: [
-          ToolButton(
-            icon: LucideIcons.x,
-            title: context.localizations.toolToolbar_close,
-            onPressed: () => unawaited(controller.requestClose()),
-          ),
-          ToggleButtonToolbar(
-            buttons: [
-              ToolButton(icon: LucideIcons.undo, title: context.localizations.toolToolbar_undo, onPressed: controller.historyManager.canUndo ? controller.historyManager.undo : null),
-              ToolButton(icon: LucideIcons.redo, title: context.localizations.toolToolbar_redo, onPressed: controller.historyManager.canRedo ? controller.historyManager.redo : null),
-              ToolButton(icon: LucideIcons.trash2, title: context.localizations.toolToolbar_clear, onPressed: controller.onClearButtonPressed),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: theme.micaBackgroundColor,
+            shape: ContinuousRectangleBorder(
+              borderRadius: BorderRadius.circular(32),
+              side: BorderSide(color: theme.resources.cardStrokeColorDefault),
+            ),
+            shadows: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
-          ToggleButtonToolbar(
-            buttons: [
-              PenToolButton(viewModel: viewModel, controller: controller),
-              EraserToolButton(viewModel: viewModel, controller: controller),
-              AddWidgetButton(viewModel: viewModel, controller: controller),
-              BoardSettingsButton(viewModel: viewModel, controller: controller),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ToolButton(
+                  icon: LucideIcons.x,
+                  title: context.localizations.toolToolbar_close,
+                  onPressed: () => unawaited(controller.requestClose()),
+                ),
+                const _ToolbarDivider(),
+                ToggleButtonToolbar(
+                  buttons: [
+                    PenToolButton(viewModel: viewModel, controller: controller),
+                    EraserToolButton(viewModel: viewModel, controller: controller),
+                  ],
+                ),
+                const _ToolbarDivider(),
+                ToggleButtonToolbar(
+                  buttons: [
+                    ToolButton(icon: LucideIcons.undo, title: context.localizations.toolToolbar_undo, onPressed: controller.historyManager.canUndo ? controller.historyManager.undo : null),
+                    ToolButton(icon: LucideIcons.redo, title: context.localizations.toolToolbar_redo, onPressed: controller.historyManager.canRedo ? controller.historyManager.redo : null),
+                    ToolButton(icon: LucideIcons.trash2, title: context.localizations.toolToolbar_clear, onPressed: controller.onClearButtonPressed),
+                  ],
+                ),
+                const _ToolbarDivider(),
+                ToggleButtonToolbar(
+                  buttons: [
+                    AddWidgetButton(viewModel: viewModel, controller: controller),
+                    BoardSettingsButton(viewModel: viewModel, controller: controller),
+                  ],
+                ),
+                const _ToolbarDivider(),
+                _SaveStatusIndicator(status: viewModel.saveStatus),
+              ],
+            ),
           ),
-          _SaveStatusIndicator(status: viewModel.saveStatus),
-        ],
+        ),
+      ),
+    );
+  }
+
+}
+
+class _ToolbarDivider extends StatelessWidget {
+
+  const _ToolbarDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: Divider(
+        direction: Axis.vertical,
+        size: 48,
+        style: DividerThemeData(verticalMargin: EdgeInsets.zero),
       ),
     );
   }
