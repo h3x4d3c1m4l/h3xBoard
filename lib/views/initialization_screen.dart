@@ -7,6 +7,7 @@ import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/pending_navigation_service.dart';
 import 'package:h3xboard/services/session_controller.dart';
+import 'package:h3xboard/widgets/themable_loading_dialog.dart';
 import 'package:polly_dart/polly_dart.dart';
 
 @RoutePage()
@@ -89,16 +90,9 @@ class _InitializationScreenState extends State<InitializationScreen> {
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        spacing: 16,
-        children: [
-          ProgressRing(),
-          if (nowInitializingText != null)
-            Text(nowInitializingText!, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          if (retries > 0) Text('Tried $retries time(s)'),
-        ],
+      child: ThemableLoadingDialog(
+        message: nowInitializingText ?? 'Initializing ...',
+        subtitle: retries > 0 ? 'Tried $retries time(s)' : null,
       ),
     );
   }
