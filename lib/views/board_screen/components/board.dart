@@ -15,6 +15,7 @@ import 'package:h3xboard/views/board_screen/components/backgrounds/background_li
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/widget_header_bar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_selection_overlay.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -33,7 +34,6 @@ class Board extends StatefulWidget {
   final void Function(String id) onMoveWidgetUp;
   final void Function(String id) onMoveWidgetDown;
   final void Function(String id) onMoveWidgetToBottom;
-  final VoidCallback onRestoreDrawingTool;
 
   const Board({
     super.key,
@@ -50,7 +50,6 @@ class Board extends StatefulWidget {
     required this.onMoveWidgetUp,
     required this.onMoveWidgetDown,
     required this.onMoveWidgetToBottom,
-    required this.onRestoreDrawingTool,
   });
 
   @override
@@ -80,22 +79,13 @@ class _BoardState extends State<Board> {
   int? _firstPointerId;
   Offset? _initialTouchPosition;
 
-  // Distinguishes a tap (select intent) from a drag (move intent).
+  // Distinguishes a tap from a drag (move intent).
   // Set to true as soon as cumulative movement in a gesture exceeds 3 canvas px.
   bool _gestureMovedSignificantly = false;
 
-  // True when the first pointer of the current gesture landed on empty canvas
-  // (no widget hit). Used by _onPointerUp to deselect without waiting for scale.
-  bool _tapCandidateOnEmptySpace = false;
-
-  // When a widget is selected, IgnorePointer blocks DrawingBoard for the whole
-  // gesture (the MobX Observer won't rebuild until the next frame). If the user
-  // draws on empty canvas while something is selected, we manually forward the
-  // draw events through the outer Listener so the first stroke is not lost.
-  bool _drawingStartedManually = false;
-
-  // Prevents auto-select from firing on every update frame during a drag.
-  bool _autoSelectedForDrag = false;
+  // True while a Use-mode header drag is in progress (move-only, no rotate/scale).
+  // The dragged widget is tracked by _activeWidgetId.
+  bool _headerDragActive = false;
 
   // Context menu state: a zero-size FlyoutTarget is placed at the right-click
   // canvas position so the flyout appears exactly at the cursor.
@@ -110,6 +100,10 @@ class _BoardState extends State<Board> {
   // Debounces scroll-to-scale: groups rapid scroll ticks into a single undo history entry.
   Timer? _scrollEndTimer;
 
+  // Debounces arrow-key nudges of the arranging widget into a single undo history entry.
+  Timer? _arrowEndTimer;
+  String? _arrowNudgeWidgetId;
+
   @override
   void initState() {
     widget.drawingController.drawConfig.addListener(_onDrawConfigChanged);
@@ -119,21 +113,61 @@ class _BoardState extends State<Board> {
   }
 
   bool _onKeyEvent(KeyEvent event) {
-    if (event is! KeyDownEvent) return false;
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
-      widget.viewModel.clearSelection();
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+    final arrangingId = widget.viewModel.arrangingWidgetId;
+
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+      if (arrangingId == null) return false;
+      widget.viewModel.setArrangingWidget(null);
       return true;
     }
-    if (event.logicalKey == LogicalKeyboardKey.delete || event.logicalKey == LogicalKeyboardKey.backspace) {
-      final ids = widget.viewModel.selectedWidgetIds.toList();
-      if (ids.isEmpty) return false;
-      for (final id in ids) {
-        widget.onDeleteWidget(id);
-      }
-      widget.viewModel.clearSelection();
+    if (event is KeyDownEvent &&
+        (event.logicalKey == LogicalKeyboardKey.delete || event.logicalKey == LogicalKeyboardKey.backspace)) {
+      if (arrangingId == null) return false;
+      widget.onDeleteWidget(arrangingId);
+      widget.viewModel.setArrangingWidget(null);
+      return true;
+    }
+
+    // Arrow keys nudge the arranging widget. Shift = larger step.
+    final delta = switch (event.logicalKey) {
+      LogicalKeyboardKey.arrowLeft => const Offset(-1, 0),
+      LogicalKeyboardKey.arrowRight => const Offset(1, 0),
+      LogicalKeyboardKey.arrowUp => const Offset(0, -1),
+      LogicalKeyboardKey.arrowDown => const Offset(0, 1),
+      _ => null,
+    };
+    if (delta != null && arrangingId != null) {
+      _nudgeArrangingWidget(arrangingId, delta * (HardwareKeyboard.instance.isShiftPressed ? 10.0 : 1.0));
       return true;
     }
     return false;
+  }
+
+  // Moves the arranging widget by [delta] canvas px, coalescing key-repeat bursts
+  // into a single undo history entry via a trailing timer.
+  void _nudgeArrangingWidget(String id, Offset delta) {
+    final matching = widget.viewModel.visibleBoardWidgets.where((b) => b.id == id);
+    if (matching.isEmpty) return;
+    final bw = matching.first;
+    if (_arrowEndTimer == null) {
+      widget.onWidgetTransformStart(id);
+      _arrowNudgeWidgetId = id;
+    }
+    _arrowEndTimer?.cancel();
+    _arrowEndTimer = Timer(const Duration(milliseconds: 400), () {
+      final nudged = _arrowNudgeWidgetId;
+      _arrowEndTimer = null;
+      _arrowNudgeWidgetId = null;
+      if (nudged != null) widget.onWidgetTransformEnd(nudged);
+    });
+    widget.viewModel.updateBoardWidget(
+      id,
+      (bw.x + delta.dx).clamp(0.0, 1920.0),
+      (bw.y + delta.dy).clamp(0.0, 1080.0),
+      bw.rotation,
+      bw.scale,
+    );
   }
 
   void _onDrawConfigChanged() {
@@ -143,6 +177,12 @@ class _BoardState extends State<Board> {
   }
 
   Widget _buildWidgetContent(BoardWidget bw) => descriptorFor(bw.config).buildWidget(bw.config);
+
+  // Header pencil/Done toggle: enter Arrange on this widget, or — if it is already
+  // arranging — return to Use mode. Drawing is suppressed while arranging.
+  void _toggleArrange(String id) {
+    widget.viewModel.setArrangingWidget(widget.viewModel.arrangingWidgetId == id ? null : id);
+  }
 
   List<MenuFlyoutItemBase> _buildSettingsItems(BuildContext context, BoardWidget bw) {
     final typeItems = descriptorFor(bw.config).settingsMenuItems(
@@ -205,58 +245,59 @@ class _BoardState extends State<Board> {
     ];
   }
 
-  // Returns true if canvasPoint is inside the action button bar of any currently
-  // selected widget's overlay. Must mirror the position math in WidgetSelectionOverlay
-  // so that _onPointerDown can skip clearSelection() for button-bar taps, preventing
-  // the overlay from being disposed before the button's tap recognizer fires.
-  bool _isPointOnAnyButtonBar(Offset canvasPoint) {
+  // Canvas-space rect of a widget's header bar. The single source of truth for
+  // both rendering (passed to WidgetHeaderBar) and hit-testing (_isPointOnHeader).
+  // The header is screen-aligned and pinned above the widget's rotated bounding box
+  // (and above the rotation handle while arranging), clamped to stay on-canvas.
+  Rect _headerRectFor(BoardWidget bw) {
     final ratio = widget.viewModel.boardPixelRatio;
-    const borderMargin = 8.0;
-    const btnBarH = 64.0;
-    const btnBarW = 200.0;
-    const gap = 6.0;
-    for (final bw in widget.viewModel.visibleBoardWidgets) {
-      if (!widget.viewModel.selectedWidgetIds.contains(bw.id)) continue;
-      final size = naturalSizeFor(bw.config);
-      final scaledW = size.width * bw.scale;
-      final scaledH = size.height * bw.scale;
-      final r = bw.rotation;
-      final cosR = math.cos(r).abs();
-      final sinR = math.sin(r).abs();
-      final borderMarginCanvas = borderMargin * ratio;
-      final rotBboxHalfH = (scaledH / 2 + borderMarginCanvas) * cosR +
-          (scaledW / 2 + borderMarginCanvas) * sinR;
-      // Use the actual handle center position (which accounts for smart direction selection)
-      // to determine whether the button bar needs to be pushed further up.
+    final size = naturalSizeFor(bw.config);
+    final scaledW = size.width * bw.scale;
+    final scaledH = size.height * bw.scale;
+    final r = bw.rotation;
+    final borderMargin = kOverlayBorderMargin * ratio;
+    final rotBboxHalfH =
+        (scaledH / 2 + borderMargin) * math.cos(r).abs() + (scaledW / 2 + borderMargin) * math.sin(r).abs();
+    var effectiveHalfH = rotBboxHalfH;
+    if (bw.id == widget.viewModel.arrangingWidgetId) {
       final handleCenter = rotationHandleCenter(bw, ratio);
       final handleRadius = kOverlayHandleRadius * ratio;
       final handleHalfH = bw.y - handleCenter.dy + handleRadius;
-      final effectiveHalfH = math.max(rotBboxHalfH, handleHalfH);
-      final left = bw.x - btnBarW * ratio / 2;
-      final top = bw.y - effectiveHalfH - gap * ratio - btnBarH * ratio;
-      if (canvasPoint.dx >= left &&
-          canvasPoint.dx <= left + btnBarW * ratio &&
-          canvasPoint.dy >= top &&
-          canvasPoint.dy <= top + btnBarH * ratio) {
-        return true;
-      }
+      effectiveHalfH = math.max(rotBboxHalfH, handleHalfH);
     }
-    return false;
+    final w = kHeaderWidth * ratio;
+    final h = kHeaderHeight * ratio;
+    final gap = kHeaderGap * ratio;
+    final left = (bw.x - w / 2).clamp(0.0, math.max(0.0, 1920.0 - w)).toDouble();
+    final top = (bw.y - effectiveHalfH - gap - h).clamp(0.0, math.max(0.0, 1080.0 - h)).toDouble();
+    return Rect.fromLTWH(left, top, w, h);
+  }
+
+  bool _isPointOnHeader(Offset canvasPoint, BoardWidget bw) => _headerRectFor(bw).contains(canvasPoint);
+
+  // Topmost widget whose header contains the point, or null. Reversed so the
+  // visually-topmost header wins when headers overlap.
+  BoardWidget? _headerAt(Offset canvasPoint) {
+    for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
+      if (_isPointOnHeader(canvasPoint, bw)) return bw;
+    }
+    return null;
   }
 
   // Returns true if canvasPoint is within a handle (rotation circle or corner scale square)
-  // of any currently selected widget. Mirrors the position math in WidgetSelectionOverlay
-  // so that _onPointerDown can skip clearSelection() when the user clicks a handle.
-  bool _isPointOnAnyHandle(Offset canvasPoint) {
+  // of the widget currently being arranged. Mirrors the geometry in WidgetSelectionOverlay
+  // (44px finger-friendly touch targets) so the board's recognizer yields to handle drags.
+  bool _isPointOnArrangeHandle(Offset canvasPoint) {
+    final arrangingId = widget.viewModel.arrangingWidgetId;
+    if (arrangingId == null) return false;
+    final matching = widget.viewModel.visibleBoardWidgets.where((b) => b.id == arrangingId);
+    if (matching.isEmpty) return false;
+    final bw = matching.first;
     final ratio = widget.viewModel.boardPixelRatio;
-    final handleRadius = kOverlayHandleRadius * ratio;
-    final cornerSize = kOverlayCornerSize * ratio;
-    for (final bw in widget.viewModel.visibleBoardWidgets) {
-      if (!widget.viewModel.selectedWidgetIds.contains(bw.id)) continue;
-      if ((canvasPoint - rotationHandleCenter(bw, ratio)).distance <= handleRadius * 2) return true;
-      for (final pos in cornerHandlePositions(bw, ratio)) {
-        if ((canvasPoint - pos).distance <= cornerSize * 2) return true;
-      }
+    final touchRadius = kOverlayHandleTouch * ratio / 2;
+    if ((canvasPoint - rotationHandleCenter(bw, ratio)).distance <= touchRadius) return true;
+    for (final pos in cornerHandlePositions(bw, ratio)) {
+      if ((canvasPoint - pos).distance <= touchRadius) return true;
     }
     return false;
   }
@@ -277,8 +318,7 @@ class _BoardState extends State<Board> {
   void _onPointerDown(PointerDownEvent event) {
     if (event.buttons & kSecondaryMouseButton != 0) {
       for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
-        if (_isPointOnWidget(event.localPosition, bw)) {
-          widget.viewModel.selectWidget(bw.id);
+        if (_isPointOnWidget(event.localPosition, bw) || _isPointOnHeader(event.localPosition, bw)) {
           _contextMenuCanvasPos = event.localPosition;
           _contextMenuBuilder = (context) => _buildSettingsItems(context, bw);
           setState(() {});
@@ -305,91 +345,35 @@ class _BoardState extends State<Board> {
     if (_firstPointerId == null) {
       _firstPointerId = event.pointer;
       _initialTouchPosition = event.localPosition;
-      // Determine at pointer-down time (before any slop/gesture handling) whether
-      // the touch landed on empty canvas. Used in _onPointerUp for deselection.
-      // ScaleGestureRecognizer only fires after slop, so stationary taps never
-      // reach _onScaleEnd — the Listener is more reliable for this case.
-      _tapCandidateOnEmptySpace = !widget.viewModel.visibleBoardWidgets.any(
-            (bw) => _isPointOnWidget(event.localPosition, bw),
-          ) &&
-          !_isPointOnAnyButtonBar(event.localPosition) &&
-          !_isPointOnAnyHandle(event.localPosition);
 
-      if (_tapCandidateOnEmptySpace) {
-        final hadSelection = widget.viewModel.selectedWidgetIds.isNotEmpty;
-
-        // When in pointer mode, restore the last drawing tool.
-        if (widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer) {
-          widget.onRestoreDrawingTool();
-        } else if (hadSelection) {
-          // Drawing tool already active but DrawingBoard is blocked by the
-          // selection — clear it now so the Observer can schedule a rebuild.
-          widget.viewModel.clearSelection();
-        }
-
-        // If a widget was selected, IgnorePointer is still blocking DrawingBoard
-        // for this gesture (the MobX Observer hasn't rebuilt yet). Manually start
-        // the drawing stroke so the first touch is not lost.
-        final tool = widget.viewModel.drawingTools.activeTool;
-        if (hadSelection && (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser)) {
-          widget.drawingController.addFingerCount(event.localPosition);
-          widget.drawingController.startDraw(event.localPosition);
-          widget.onDrawingStrokeStart();
-          _drawingStartedManually = true;
-        }
+      // Tapping empty board (no header, body or arrange handle) while a widget is
+      // being arranged exits Arrange mode.
+      if (widget.viewModel.arrangingWidgetId != null) {
+        final p = event.localPosition;
+        final onSomething = _headerAt(p) != null ||
+            _isPointOnArrangeHandle(p) ||
+            widget.viewModel.visibleBoardWidgets.any((bw) => _isPointOnWidget(p, bw));
+        if (!onSomething) widget.viewModel.setArrangingWidget(null);
       }
     }
   }
 
-  void _onPointerMove(PointerMoveEvent event) {
-    if (_drawingStartedManually && event.pointer == _firstPointerId) {
-      widget.drawingController.drawing(event.localPosition);
-      setState(() => _pointerPosition = event.localPosition);
-    }
-  }
+  void _onPointerMove(PointerMoveEvent event) {}
 
   void _onPointerUp(PointerUpEvent event) {
     if (event.pointer == _firstPointerId) {
-      final wasEmpty = _tapCandidateOnEmptySpace;
-      final startPos = _initialTouchPosition;
       _firstPointerId = null;
       _initialTouchPosition = null;
-      _tapCandidateOnEmptySpace = false;
-
-      if (_drawingStartedManually) {
-        _drawingStartedManually = false;
-        setState(() => _pointerPosition = null);
-        widget.drawingController.endDraw();
-        widget.drawingController.reduceFingerCount(event.localPosition);
-        widget.onDrawingStrokeEnd();
-        return;
-      }
-
-      // If the touch started on empty canvas and didn't move much, it's a tap
-      // to deselect. This handles cases where ScaleGestureRecognizer doesn't
-      // fire (movement below slop) and also touchscreen jitter.
-      if (wasEmpty && startPos != null) {
-        final movement = (event.localPosition - startPos).distance;
-        if (movement < 10.0) {
-          final isMultiSelect = HardwareKeyboard.instance.isControlPressed ||
-              HardwareKeyboard.instance.isMetaPressed;
-          if (!isMultiSelect) widget.viewModel.clearSelection();
-        }
-      }
     }
   }
 
   void _onPointerCancel(PointerCancelEvent event) {
+    // Widget drags (header / arrange body) are scale gestures, so _onScaleEnd
+    // fires on cancel and finalises the transform. Here we only clear the raw
+    // pointer tracking used for pre-slop hit-testing.
     if (event.pointer == _firstPointerId) {
-      if (_drawingStartedManually) {
-        _drawingStartedManually = false;
-        setState(() => _pointerPosition = null);
-        widget.drawingController.cancelDraw();
-        widget.drawingController.reduceFingerCount(event.localPosition);
-      }
       _firstPointerId = null;
       _initialTouchPosition = null;
-      _tapCandidateOnEmptySpace = false;
     }
   }
 
@@ -397,7 +381,6 @@ class _BoardState extends State<Board> {
     if (_handleDragActive) return;
     _lastFocalPoint = details.localFocalPoint;
     _gestureMovedSignificantly = false;
-    _autoSelectedForDrag = false;
 
     if (_activeWidgetId != null) {
       // Finger count changed mid-gesture: keep tracking the same widget but
@@ -409,22 +392,39 @@ class _BoardState extends State<Board> {
     }
 
     // Use the Listener-recorded initial touch position (pre-slop) rather than
-    // details.localFocalPoint (post-slop) for accurate widget hit-testing.
+    // details.localFocalPoint (post-slop) for accurate hit-testing.
     final checkPoint = _initialTouchPosition ?? details.localFocalPoint;
-    for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
-      if (_isPointOnWidget(checkPoint, bw)) {
+
+    // 1) Header drag (Use mode): move-only, available on any widget at any time.
+    final headerWidget = _headerAt(checkPoint);
+    if (headerWidget != null) {
+      _headerDragActive = true;
+      setState(() => _activeWidgetId = headerWidget.id);
+      _currentX = headerWidget.x;
+      _currentY = headerWidget.y;
+      _gestureStartRotation = headerWidget.rotation;
+      _gestureStartScale = headerWidget.scale;
+      widget.onWidgetTransformStart(headerWidget.id);
+      return;
+    }
+
+    // 2) Arrange-mode body drag: only the arranging widget's body is grabbable.
+    final arrangingId = widget.viewModel.arrangingWidgetId;
+    if (arrangingId != null) {
+      final matching = widget.viewModel.visibleBoardWidgets.where((b) => b.id == arrangingId);
+      if (matching.isNotEmpty && _isPointOnWidget(checkPoint, matching.first)) {
+        final bw = matching.first;
         setState(() => _activeWidgetId = bw.id);
         _currentX = bw.x;
         _currentY = bw.y;
         _gestureStartRotation = bw.rotation;
         _gestureStartScale = bw.scale;
-        widget.viewModel
-          ..setActiveColor(null)
-          ..setActiveTool(SelectableEditTool.pointer);
         widget.onWidgetTransformStart(bw.id);
         return;
       }
     }
+
+    // 3) Anything else (a live Use-mode body) is left for the widget body itself.
     _activeWidgetId = null;
   }
 
@@ -438,37 +438,26 @@ class _BoardState extends State<Board> {
     _currentX = (_currentX + delta.dx).clamp(0.0, 1920.0);
     _currentY = (_currentY + delta.dy).clamp(0.0, 1080.0);
 
-    // Auto-select the dragged widget only once significant movement is confirmed
-    // (i.e. it's a real drag, not a tap with touchscreen slop). Gating on
-    // _gestureMovedSignificantly prevents clearing a multi-selection when the
-    // user Ctrl/Cmd-taps — taps are handled in _onScaleEnd with the modifier key.
-    if (!_autoSelectedForDrag && _gestureMovedSignificantly) {
-      if (!widget.viewModel.selectedWidgetIds.contains(_activeWidgetId)) {
-        widget.viewModel.selectWidget(_activeWidgetId!);
-      }
-      _autoSelectedForDrag = true;
+    if (_headerDragActive) {
+      // Header drag is move-only: never rotate or scale.
+      widget.viewModel.updateBoardWidget(
+        _activeWidgetId!,
+        _currentX,
+        _currentY,
+        _gestureStartRotation,
+        _gestureStartScale,
+      );
+      return;
     }
 
-    final selectedIds = widget.viewModel.selectedWidgetIds;
-    final isMultiMove = selectedIds.length > 1 && selectedIds.contains(_activeWidgetId);
-
-    if (isMultiMove) {
-      for (final bw in widget.viewModel.visibleBoardWidgets) {
-        if (selectedIds.contains(bw.id)) {
-          widget.viewModel.updateBoardWidget(
-            bw.id,
-            (bw.x + delta.dx).clamp(0.0, 1920.0),
-            (bw.y + delta.dy).clamp(0.0, 1080.0),
-            bw.rotation,
-            bw.scale,
-          );
-        }
-      }
-    } else {
-      final newRotation = _gestureStartRotation + details.rotation;
-      final newScale = (_gestureStartScale * details.scale).clamp(0.2, 5.0);
-      widget.viewModel.updateBoardWidget(_activeWidgetId!, _currentX, _currentY, newRotation, newScale);
+    // Arrange-mode body drag: move + two-finger rotate/scale (Shift snaps rotation to 15°).
+    var newRotation = _gestureStartRotation + details.rotation;
+    if (HardwareKeyboard.instance.isShiftPressed) {
+      const step = math.pi / 12;
+      newRotation = (newRotation / step).round() * step;
     }
+    final newScale = (_gestureStartScale * details.scale).clamp(0.2, 5.0);
+    widget.viewModel.updateBoardWidget(_activeWidgetId!, _currentX, _currentY, newRotation, newScale);
   }
 
   void _onScaleEnd(ScaleEndDetails details) {
@@ -481,26 +470,19 @@ class _BoardState extends State<Board> {
       if (_gestureMovedSignificantly && _activeWidgetId != null) {
         widget.onWidgetTransformEnd(_activeWidgetId!);
       }
-      if (!_gestureMovedSignificantly && _activeWidgetId != null) {
-        final isMultiSelect = HardwareKeyboard.instance.isControlPressed ||
-            HardwareKeyboard.instance.isMetaPressed;
-        widget.viewModel.selectWidget(_activeWidgetId!, multiSelect: isMultiSelect);
-      }
       setState(() => _activeWidgetId = null);
+      _headerDragActive = false;
       _firstPointerId = null;
       _initialTouchPosition = null;
-      _tapCandidateOnEmptySpace = false;
       _gestureMovedSignificantly = false;
-      _autoSelectedForDrag = false;
     }
     _lastFocalPoint = null;
   }
 
   void _onPointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return;
-    final selected = widget.viewModel.selectedWidgetIds;
-    if (selected.length != 1) return;
-    final bwId = selected.first;
+    final bwId = widget.viewModel.arrangingWidgetId;
+    if (bwId == null) return;
     final matching = widget.viewModel.visibleBoardWidgets.where((b) => b.id == bwId);
     if (matching.isEmpty) return;
     final bw = matching.first;
@@ -536,8 +518,11 @@ class _BoardState extends State<Board> {
             height: 1080,
             child: Stack(
               children: [
+                // Drawing is suppressed only while a widget is being arranged; the
+                // always-visible headers absorb pointers to block strokes underneath
+                // them, and interactive bodies capture their own taps.
                 IgnorePointer(
-                  ignoring: _activeWidgetId != null || widget.viewModel.selectedWidgetIds.isNotEmpty,
+                  ignoring: widget.viewModel.arrangingWidgetId != null,
                   child: DrawingBoard(
                     controller: widget.drawingController,
                     background: Observer(builder: (_) {
@@ -574,23 +559,42 @@ class _BoardState extends State<Board> {
                     boardScaleEnabled: false,
                   ),
                 ),
+                // Widget bodies. Bodies keep their own interactivity (stopwatch
+                // buttons, piano keys) and pointers fall through to the drawing layer
+                // over non-interactive ones. The widget being arranged is dimmed and
+                // its body interaction paused.
                 for (final bw in widget.viewModel.visibleBoardWidgets)
                   ManipulableBoardWidget(
                     key: ValueKey(bw.id),
                     boardWidget: bw,
-                    child: _buildWidgetContent(bw),
+                    child: IgnorePointer(
+                      ignoring: bw.id == widget.viewModel.arrangingWidgetId,
+                      child: Opacity(
+                        opacity: bw.id == widget.viewModel.arrangingWidgetId ? 0.6 : 1.0,
+                        child: _buildWidgetContent(bw),
+                      ),
+                    ),
                   ),
-                // Selection overlays — inside FittedBox so coords match widget coords.
-                // Sized at boardPixelRatio-scaled canvas units to appear at host scale.
+                // Always-visible header chrome.
                 for (final bw in widget.viewModel.visibleBoardWidgets)
-                  if (widget.viewModel.selectedWidgetIds.contains(bw.id))
+                  WidgetHeaderBar(
+                    key: ValueKey('hdr_${bw.id}'),
+                    rect: _headerRectFor(bw),
+                    title: descriptorFor(bw.config).label(context.localizations),
+                    isArranging: bw.id == widget.viewModel.arrangingWidgetId,
+                    onToggleArrange: () => _toggleArrange(bw.id),
+                    onClose: () => widget.onDeleteWidget(bw.id),
+                  ),
+                // Arrange overlay (solid border + resize/rotate handles) for the
+                // single widget being arranged. Sized at boardPixelRatio-scaled
+                // canvas units to appear at host scale.
+                for (final bw in widget.viewModel.visibleBoardWidgets)
+                  if (bw.id == widget.viewModel.arrangingWidgetId)
                     Positioned.fill(
                       child: WidgetSelectionOverlay(
                         key: ValueKey('sel_${bw.id}'),
                         boardWidget: bw,
                         boardPixelRatio: widget.viewModel.boardPixelRatio,
-                        onDelete: () => widget.onDeleteWidget(bw.id),
-                        settingsBuilder: (context) => _buildSettingsItems(context, bw),
                         onHandleTransformStart: () {
                           _handleDragActive = true;
                           widget.onWidgetTransformStart(bw.id);
@@ -669,6 +673,7 @@ class _BoardState extends State<Board> {
     HardwareKeyboard.instance.removeHandler(_onKeyEvent);
     _contextMenuController.dispose();
     _scrollEndTimer?.cancel();
+    _arrowEndTimer?.cancel();
     if (kIsWeb) BrowserContextMenu.enableContextMenu();
     super.dispose();
   }

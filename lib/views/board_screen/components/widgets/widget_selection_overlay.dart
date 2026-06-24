@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 // Visual constants (in OS pixels; multiplied by boardPixelRatio to get canvas units).
 // Kept package-visible (no leading underscore) so board.dart can mirror the hit-test math.
@@ -11,6 +11,7 @@ const double kOverlayBorderMargin = 8.0;
 const double kOverlayStemLength = 32.0;
 const double kOverlayHandleRadius = 8.0;
 const double kOverlayCornerSize = 7.0; // half-side of corner square handle
+const double kOverlayHandleTouch = 44.0; // touch target size for handles (finger-friendly)
 
 // Picks the best direction for the rotation handle so it stays on-canvas.
 // Tests all 4 widget-local axis directions and picks the one whose handle circle
@@ -107,8 +108,6 @@ class WidgetSelectionOverlay extends StatefulWidget {
 
   final BoardWidget boardWidget;
   final double boardPixelRatio;
-  final VoidCallback onDelete;
-  final WidgetSettingsBuilder settingsBuilder;
   final VoidCallback onHandleTransformStart;
   final void Function(double rotation, double scale) onHandleTransformUpdate;
   final VoidCallback onHandleTransformEnd;
@@ -117,8 +116,6 @@ class WidgetSelectionOverlay extends StatefulWidget {
     super.key,
     required this.boardWidget,
     required this.boardPixelRatio,
-    required this.onDelete,
-    required this.settingsBuilder,
     required this.onHandleTransformStart,
     required this.onHandleTransformUpdate,
     required this.onHandleTransformEnd,
@@ -169,10 +166,13 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
     if (_activeDragHandle != 'rotate') return;
     final p = _toCanvas(e.position);
     final angle = math.atan2(p.dy - _dragStartCenter.dy, p.dx - _dragStartCenter.dx);
-    widget.onHandleTransformUpdate(
-      _dragStartRotation + (angle - _dragStartHandleAngle),
-      widget.boardWidget.scale,
-    );
+    var newRotation = _dragStartRotation + (angle - _dragStartHandleAngle);
+    // Hold Shift to snap rotation to 15° increments.
+    if (HardwareKeyboard.instance.isShiftPressed) {
+      const step = math.pi / 12;
+      newRotation = (newRotation / step).round() * step;
+    }
+    widget.onHandleTransformUpdate(newRotation, widget.boardWidget.scale);
   }
 
   void _onRotateUp(PointerUpEvent e) {
@@ -229,15 +229,11 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
     final scaledH = size.height * bw.scale;
     final r = bw.rotation;
     final ratio = widget.boardPixelRatio;
-    final cosR = math.cos(r);
-    final sinR = math.sin(r);
 
     final borderMargin = kOverlayBorderMargin * ratio;
-    final btnBarCanvasH = 64.0 * ratio;
-    final gapCanvas = 6.0 * ratio;
-    final btnBarCanvasW = 200.0 * ratio;
     final handleRadius = kOverlayHandleRadius * ratio;
     final cornerSize = kOverlayCornerSize * ratio;
+    final touch = kOverlayHandleTouch * ratio;
 
     // Rotation handle: pick the direction (up/down/left/right) that keeps the handle on-canvas.
     final placement = computeRotationHandle(bw, ratio);
@@ -248,18 +244,11 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
     final corners = cornerHandlePositions(bw, ratio);
     final cornerKeys = ['corner_tl', 'corner_tr', 'corner_br', 'corner_bl'];
 
-    // Button bar: push above the border AABB, and further above the rotation handle
-    // if the handle sits above the border AABB (general formula; works for any handle direction).
-    final rotBboxHalfH =
-        (scaledH / 2 + borderMargin) * cosR.abs() + (scaledW / 2 + borderMargin) * sinR.abs();
-    final handleHalfH = bw.y - handleCenter.dy + handleRadius;
-    final effectiveHalfH = math.max(rotBboxHalfH, handleHalfH);
-
     return Stack(
       key: _stackKey,
       clipBehavior: Clip.none,
       children: [
-        // Dashed border at the same position/rotation as ManipulableBoardWidget.
+        // Continuous solid border at the same position/rotation as ManipulableBoardWidget.
         // IgnorePointer lets touch events fall through to lower layers.
         Positioned(
           left: bw.x - scaledW / 2 - borderMargin,
@@ -270,22 +259,22 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
             child: Transform.rotate(
               angle: r,
               alignment: Alignment.center,
-              child: CustomPaint(painter: _DashedBorderPainter(ratio)),
+              child: CustomPaint(painter: _SolidBorderPainter(ratio)),
             ),
           ),
         ),
-        // Stem line from dashed border top to rotation handle center.
+        // Stem line from border top to rotation handle center.
         Positioned.fill(
           child: IgnorePointer(
             child: CustomPaint(painter: _StemPainter(from: stemStart, to: handleCenter, ratio: ratio)),
           ),
         ),
-        // Rotation handle circle.
+        // Rotation handle: small circle glyph inside a finger-friendly touch target.
         Positioned(
-          left: handleCenter.dx - handleRadius,
-          top: handleCenter.dy - handleRadius,
-          width: handleRadius * 2,
-          height: handleRadius * 2,
+          left: handleCenter.dx - touch / 2,
+          top: handleCenter.dy - touch / 2,
+          width: touch,
+          height: touch,
           child: MouseRegion(
             cursor: SystemMouseCursors.grab,
             child: Listener(
@@ -294,17 +283,23 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
               onPointerMove: _onRotateMove,
               onPointerUp: _onRotateUp,
               onPointerCancel: _onRotateCancel,
-              child: CustomPaint(painter: _HandleCirclePainter(ratio)),
+              child: Center(
+                child: SizedBox(
+                  width: handleRadius * 2,
+                  height: handleRadius * 2,
+                  child: CustomPaint(painter: _HandleCirclePainter(ratio)),
+                ),
+              ),
             ),
           ),
         ),
-        // Corner scale handles.
+        // Corner scale handles: small square glyph inside a finger-friendly touch target.
         for (var i = 0; i < corners.length; i++)
           Positioned(
-            left: corners[i].dx - cornerSize,
-            top: corners[i].dy - cornerSize,
-            width: cornerSize * 2,
-            height: cornerSize * 2,
+            left: corners[i].dx - touch / 2,
+            top: corners[i].dy - touch / 2,
+            width: touch,
+            height: touch,
             child: MouseRegion(
               cursor: i == 0 || i == 2
                   ? SystemMouseCursors.resizeUpLeftDownRight
@@ -315,161 +310,27 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
                 onPointerMove: _onCornerMove,
                 onPointerUp: _onCornerUp,
                 onPointerCancel: _onCornerCancel,
-                child: CustomPaint(painter: _HandleSquarePainter(ratio)),
+                child: Center(
+                  child: SizedBox(
+                    width: cornerSize * 2,
+                    height: cornerSize * 2,
+                    child: CustomPaint(painter: _HandleSquarePainter(ratio)),
+                  ),
+                ),
               ),
             ),
           ),
-        // Button bar centred above the widget's rotated visual top (or rotation handle, whichever is higher).
-        Positioned(
-          left: bw.x - btnBarCanvasW / 2,
-          top: bw.y - effectiveHalfH - gapCanvas - btnBarCanvasH,
-          width: btnBarCanvasW,
-          height: btnBarCanvasH,
-          child: Center(
-            child: OverflowBox(
-              maxWidth: double.infinity,
-              maxHeight: double.infinity,
-              // Transform.scale counter-acts the FittedBox downscale so the
-              // buttons appear at their natural host/OS pixel size.
-              child: Transform.scale(
-                scale: ratio,
-                child: _ActionButtonBar(onDelete: widget.onDelete, settingsBuilder: widget.settingsBuilder),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
 
 }
 
-class _ActionButtonBar extends StatefulWidget {
-
-  final VoidCallback onDelete;
-  final WidgetSettingsBuilder settingsBuilder;
-
-  const _ActionButtonBar({required this.onDelete, required this.settingsBuilder});
-
-  @override
-  State<_ActionButtonBar> createState() => _ActionButtonBarState();
-
-}
-
-class _ActionButtonBarState extends State<_ActionButtonBar> {
-
-  final FlyoutController _flyoutController = FlyoutController();
-
-  @override
-  void dispose() {
-    _flyoutController.dispose();
-    super.dispose();
-  }
-
-  void _openSettings() {
-    _flyoutController.showFlyout(
-      builder: (context) => MenuFlyout(
-        itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
-        items: widget.settingsBuilder(context),
-      ),
-      placementMode: FlyoutPlacementMode.topCenter,
-      additionalOffset: 8,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 64,
-      child: Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ButtonTheme.merge(
-              data: ButtonThemeData(
-                defaultButtonStyle: ButtonStyle(
-                  shape: WidgetStateProperty.resolveWith(
-                    (states) => _pillShape(ButtonThemeData.shapeBorder(context, states), isLeft: true),
-                  ),
-                ),
-              ),
-              child: FlyoutTarget(
-                controller: _flyoutController,
-                child: Button(
-                  onPressed: _openSettings,
-                  style: ButtonStyle(
-                    padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.symmetric(horizontal: 20, vertical: 16)),
-                    backgroundColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.isPressed) return const Color(0xFFB8B8B8);
-                      if (states.isHovered) return const Color(0xFFD8D8D8);
-                      return Colors.white;
-                    }),
-                  ),
-                  child: const Icon(LucideIcons.settings),
-                ),
-              ),
-            ),
-            ButtonTheme.merge(
-              data: ButtonThemeData(
-                defaultButtonStyle: ButtonStyle(
-                  shape: WidgetStateProperty.resolveWith(
-                    (states) => _pillShape(ButtonThemeData.shapeBorder(context, states), isLeft: false),
-                  ),
-                ),
-              ),
-              child: Button(
-                onPressed: widget.onDelete,
-                style: ButtonStyle(
-                  padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.symmetric(horizontal: 20, vertical: 16)),
-                  backgroundColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.isPressed) return const Color(0xFFE0E0E0);
-                    if (states.isHovered) return const Color(0xFFF0F0F0);
-                    return Colors.white;
-                  }),
-                ),
-                child: const Icon(LucideIcons.trash2, color: Color(0xFFEF4444)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static ShapeBorder _pillShape(ShapeBorder border, {required bool isLeft}) {
-    const nearRadius = Radius.circular(16);
-    if (border is RoundedRectangleBorder) {
-      final old = border.borderRadius as BorderRadius;
-      return border.copyWith(borderRadius: old.copyWith(
-        topLeft: isLeft ? nearRadius : Radius.zero,
-        bottomLeft: isLeft ? nearRadius : Radius.zero,
-        topRight: isLeft ? Radius.zero : nearRadius,
-        bottomRight: isLeft ? Radius.zero : nearRadius,
-      ));
-    } else if (border is RoundedRectangleGradientBorder) {
-      final old = border.borderRadius as BorderRadius;
-      return border.copyWith(
-        gradient: border.gradient,
-        borderRadius: old.copyWith(
-          topLeft: isLeft ? nearRadius : Radius.zero,
-          bottomLeft: isLeft ? nearRadius : Radius.zero,
-          topRight: isLeft ? Radius.zero : nearRadius,
-          bottomRight: isLeft ? Radius.zero : nearRadius,
-        ),
-        width: border.width,
-        strokeAlign: border.strokeAlign,
-      );
-    }
-    return border;
-  }
-
-}
-
-class _DashedBorderPainter extends CustomPainter {
+class _SolidBorderPainter extends CustomPainter {
 
   final double boardPixelRatio;
 
-  const _DashedBorderPainter(this.boardPixelRatio);
+  const _SolidBorderPainter(this.boardPixelRatio);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -478,24 +339,13 @@ class _DashedBorderPainter extends CustomPainter {
       ..strokeWidth = 1.5 * boardPixelRatio
       ..style = PaintingStyle.stroke;
 
-    final dashLen = 6.0 * boardPixelRatio;
-    final gapLen = 4.0 * boardPixelRatio;
     final radius = Radius.circular(4 * boardPixelRatio);
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
-    final rrect = RRect.fromRectAndRadius(rect, radius);
-    final path = Path()..addRRect(rrect);
-
-    final metric = path.computeMetrics().first;
-    double distance = 0;
-    while (distance < metric.length) {
-      final end = math.min(distance + dashLen, metric.length);
-      canvas.drawPath(metric.extractPath(distance, end), paint);
-      distance += dashLen + gapLen;
-    }
+    canvas.drawRRect(RRect.fromRectAndRadius(rect, radius), paint);
   }
 
   @override
-  bool shouldRepaint(_DashedBorderPainter old) => old.boardPixelRatio != boardPixelRatio;
+  bool shouldRepaint(_SolidBorderPainter old) => old.boardPixelRatio != boardPixelRatio;
 
 }
 

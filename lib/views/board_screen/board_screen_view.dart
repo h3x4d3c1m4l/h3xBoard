@@ -102,7 +102,6 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
                       onMoveWidgetUp: controller.onMoveWidgetUp,
                       onMoveWidgetDown: controller.onMoveWidgetDown,
                       onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
-                      onRestoreDrawingTool: controller.onRestoreDrawingTool,
                     );
                   }
                 )),

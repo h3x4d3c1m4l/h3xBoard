@@ -59,8 +59,10 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @readonly
   ObservableList<BoardWidget> _boardWidgets = ObservableList();
 
+  // The single widget currently in Arrange mode (resize/rotate handles shown,
+  // body dimmed & paused). null = no widget is being arranged.
   @readonly
-  ObservableSet<String> _selectedWidgetIds = ObservableSet();
+  String? _arrangingWidgetId;
 
   @readonly
   bool _isFullscreen = false;
@@ -103,7 +105,7 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
     _subBoards = ObservableList.of(boards);
     _boardWidgets = ObservableList.of(content.widgets);
     _subBoardDrawings = ObservableMap.of(content.drawings);
-    _selectedWidgetIds = ObservableSet();
+    _arrangingWidgetId = null;
     _activeSubBoardId = boards.any((b) => b.id == content.activeSubBoardId)
         ? content.activeSubBoardId
         : boards.first.id;
@@ -214,7 +216,7 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @action
   void setActiveSubBoardId(String id) {
     _activeSubBoardId = id;
-    _selectedWidgetIds.clear();
+    _arrangingWidgetId = null;
   }
 
   @action
@@ -236,20 +238,7 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   }
 
   @action
-  void selectWidget(String id, {bool multiSelect = false}) {
-    if (multiSelect) {
-      if (_selectedWidgetIds.contains(id)) {
-        _selectedWidgetIds.remove(id);
-      } else {
-        _selectedWidgetIds.add(id);
-      }
-    } else {
-      _selectedWidgetIds = ObservableSet.of([id]);
-    }
-  }
-
-  @action
-  void clearSelection() => _selectedWidgetIds.clear();
+  void setArrangingWidget(String? id) => _arrangingWidgetId = id;
 
   @action
   void updateBoardWidgetConfig(String id, BoardWidgetConfig config) {
@@ -273,7 +262,7 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @action
   void removeBoardWidget(String id) {
     _boardWidgets.removeWhere((w) => w.id == id);
-    _selectedWidgetIds.remove(id);
+    if (_arrangingWidgetId == id) _arrangingWidgetId = null;
   }
 
   @action
