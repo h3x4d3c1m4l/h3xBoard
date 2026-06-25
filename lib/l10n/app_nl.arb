@@ -185,5 +185,7 @@
     "boardWidget_dragToMove": "Sleep om te verplaatsen",
     "@boardWidget_dragToMove": {},
     "boardWidget_resizeRotate": "Formaat & draaien",
-    "@boardWidget_resizeRotate": {}
+    "@boardWidget_resizeRotate": {},
+    "boardWidget_settings": "Instellingen",
+    "@boardWidget_settings": {}
 }

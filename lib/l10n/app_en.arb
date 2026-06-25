@@ -185,5 +185,7 @@
     "boardWidget_dragToMove": "Drag to move",
     "@boardWidget_dragToMove": {},
     "boardWidget_resizeRotate": "Resize & rotate",
-    "@boardWidget_resizeRotate": {}
+    "@boardWidget_resizeRotate": {},
+    "boardWidget_settings": "Settings",
+    "@boardWidget_settings": {}
 }

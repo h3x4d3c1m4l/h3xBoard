@@ -178,6 +178,22 @@ class _BoardState extends State<Board> {
 
   Widget _buildWidgetContent(BoardWidget bw) => descriptorFor(bw.config).buildWidget(bw.config);
 
+  Widget _buildHeader(BuildContext context, BoardWidget bw) {
+    final placement = _headerPlacementFor(bw);
+    return WidgetHeaderBar(
+      key: ValueKey('hdr_${bw.id}'),
+      center: placement.center,
+      size: placement.size,
+      rotation: placement.rotation,
+      arrangeDelta: placement.arrangeDelta,
+      title: descriptorFor(bw.config).label(context.localizations),
+      isArranging: bw.id == widget.viewModel.arrangingWidgetId,
+      settingsBuilder: (context) => _buildSettingsItems(context, bw),
+      onToggleArrange: () => _toggleArrange(bw.id),
+      onClose: () => widget.onDeleteWidget(bw.id),
+    );
+  }
+
   // Header pencil/Done toggle: enter Arrange on this widget, or — if it is already
   // arranging — return to Use mode. Drawing is suppressed while arranging.
   void _toggleArrange(String id) {
@@ -245,35 +261,59 @@ class _BoardState extends State<Board> {
     ];
   }
 
-  // Canvas-space rect of a widget's header bar. The single source of truth for
+  // Canvas-space placement of a widget's header bar. The single source of truth for
   // both rendering (passed to WidgetHeaderBar) and hit-testing (_isPointOnHeader).
-  // The header is screen-aligned and pinned above the widget's rotated bounding box
-  // (and above the rotation handle while arranging), clamped to stay on-canvas.
-  Rect _headerRectFor(BoardWidget bw) {
+  // The header is attached above the widget's local top edge and shares the widget's
+  // rotation. [center] is the Use-mode anchor (follows the widget instantly while
+  // dragging); [arrangeDelta] is the extra push that clears the rotate handle while
+  // arranging — animated separately so the mode change eases without lagging drags.
+  ({Offset center, Size size, double rotation, Offset arrangeDelta}) _headerPlacementFor(BoardWidget bw) {
     final ratio = widget.viewModel.boardPixelRatio;
-    final size = naturalSizeFor(bw.config);
-    final scaledW = size.width * bw.scale;
-    final scaledH = size.height * bw.scale;
+    final natural = naturalSizeFor(bw.config);
+    final scaledH = natural.height * bw.scale;
     final r = bw.rotation;
     final borderMargin = kOverlayBorderMargin * ratio;
-    final rotBboxHalfH =
-        (scaledH / 2 + borderMargin) * math.cos(r).abs() + (scaledW / 2 + borderMargin) * math.sin(r).abs();
-    var effectiveHalfH = rotBboxHalfH;
-    if (bw.id == widget.viewModel.arrangingWidgetId) {
-      final handleCenter = rotationHandleCenter(bw, ratio);
-      final handleRadius = kOverlayHandleRadius * ratio;
-      final handleHalfH = bw.y - handleCenter.dy + handleRadius;
-      effectiveHalfH = math.max(rotBboxHalfH, handleHalfH);
-    }
     final w = kHeaderWidth * ratio;
     final h = kHeaderHeight * ratio;
     final gap = kHeaderGap * ratio;
-    final left = (bw.x - w / 2).clamp(0.0, math.max(0.0, 1920.0 - w)).toDouble();
-    final top = (bw.y - effectiveHalfH - gap - h).clamp(0.0, math.max(0.0, 1080.0 - h)).toDouble();
-    return Rect.fromLTWH(left, top, w, h);
+    final stem = kOverlayStemLength * ratio;
+    final handleRadius = kOverlayHandleRadius * ratio;
+
+    // Distance from the widget centre to the header centre, along the widget's local
+    // "up" axis — in Use mode, and (pushed out to clear the rotate handle) in Arrange.
+    final distUse = scaledH / 2 + borderMargin + gap + h / 2;
+    final distArrange = scaledH / 2 + borderMargin + stem + 2 * handleRadius + gap + h / 2;
+    final dir = Offset(math.sin(r), -math.cos(r));
+
+    // Clamp each centre so the header's (rotation-aware) bounding box stays fully
+    // on-canvas and readable even when the widget is dragged over the edge.
+    final halfW = (w / 2) * math.cos(r).abs() + (h / 2) * math.sin(r).abs();
+    final halfH = (w / 2) * math.sin(r).abs() + (h / 2) * math.cos(r).abs();
+    Offset clampCenter(double dist) {
+      final raw = Offset(bw.x, bw.y) + dir * dist;
+      return Offset(
+        raw.dx.clamp(halfW, math.max(halfW, 1920.0 - halfW)).toDouble(),
+        raw.dy.clamp(halfH, math.max(halfH, 1080.0 - halfH)).toDouble(),
+      );
+    }
+
+    final useCenter = clampCenter(distUse);
+    final arrangeCenter = clampCenter(distArrange);
+    return (center: useCenter, size: Size(w, h), rotation: r, arrangeDelta: arrangeCenter - useCenter);
   }
 
-  bool _isPointOnHeader(Offset canvasPoint, BoardWidget bw) => _headerRectFor(bw).contains(canvasPoint);
+  bool _isPointOnHeader(Offset canvasPoint, BoardWidget bw) {
+    final placement = _headerPlacementFor(bw);
+    final center = bw.id == widget.viewModel.arrangingWidgetId
+        ? placement.center + placement.arrangeDelta
+        : placement.center;
+    final d = canvasPoint - center;
+    final cosA = math.cos(-placement.rotation);
+    final sinA = math.sin(-placement.rotation);
+    final localX = d.dx * cosA - d.dy * sinA;
+    final localY = d.dx * sinA + d.dy * cosA;
+    return localX.abs() <= placement.size.width / 2 && localY.abs() <= placement.size.height / 2;
+  }
 
   // Topmost widget whose header contains the point, or null. Reversed so the
   // visually-topmost header wins when headers overlap.
@@ -576,15 +616,7 @@ class _BoardState extends State<Board> {
                     ),
                   ),
                 // Always-visible header chrome.
-                for (final bw in widget.viewModel.visibleBoardWidgets)
-                  WidgetHeaderBar(
-                    key: ValueKey('hdr_${bw.id}'),
-                    rect: _headerRectFor(bw),
-                    title: descriptorFor(bw.config).label(context.localizations),
-                    isArranging: bw.id == widget.viewModel.arrangingWidgetId,
-                    onToggleArrange: () => _toggleArrange(bw.id),
-                    onClose: () => widget.onDeleteWidget(bw.id),
-                  ),
+                for (final bw in widget.viewModel.visibleBoardWidgets) _buildHeader(context, bw),
                 // Arrange overlay (solid border + resize/rotate handles) for the
                 // single widget being arranged. Sized at boardPixelRatio-scaled
                 // canvas units to appear at host scale.

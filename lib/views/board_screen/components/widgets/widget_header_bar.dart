@@ -1,60 +1,94 @@
+import 'dart:math' as math;
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 // Header dimensions in OS pixels. board.dart multiplies these by boardPixelRatio
-// to obtain the canvas-space rect (see _headerRectFor), so rendering and
+// to obtain the canvas-space placement (see _headerPlacementFor), so rendering and
 // hit-testing stay in sync.
-const double kHeaderWidth = 220.0;
+const double kHeaderWidth = 250.0;
 const double kHeaderHeight = 34.0;
 const double kHeaderGap = 6.0; // gap between widget bounding box and header
 
 // Matches the selection overlay accent colour.
 const Color _kAccent = Color(0xFF3B82F6);
+const Duration _kToggleAnim = Duration(milliseconds: 220);
 
 // A persistent, always-visible chrome bar pinned above each board widget. In Use
 // mode the whole bar is a drag handle (handled by the gesture layer in board.dart);
-// in Arrange mode the pencil toggle becomes a blue "Done" pill. Settings/delete are
-// reached via the × button and the right-click menu.
-//
-// The bar is screen-aligned (it does NOT rotate with the widget) and rendered at a
+// the cog opens the settings menu and the manipulate toggle becomes a blue "Done"
+// pill while arranging. The bar shares the widget's rotation and is rendered at a
 // constant OS-pixel size regardless of widget scale: board.dart hands it a
-// pre-computed canvas-space [rect] and the content is scaled up via a FittedBox.
+// pre-computed canvas-space [center]/[size]/[rotation] and the content is scaled up
+// via a FittedBox.
 class WidgetHeaderBar extends StatelessWidget {
 
-  final Rect rect;
+  final Offset center;
+  final Size size;
+  final double rotation;
+  final Offset arrangeDelta;
   final String title;
   final bool isArranging;
+  final WidgetSettingsBuilder settingsBuilder;
   final VoidCallback onToggleArrange;
   final VoidCallback onClose;
 
   const WidgetHeaderBar({
     super.key,
-    required this.rect,
+    required this.center,
+    required this.size,
+    required this.rotation,
+    required this.arrangeDelta,
     required this.title,
     required this.isArranging,
+    required this.settingsBuilder,
     required this.onToggleArrange,
     required this.onClose,
   });
 
+  // Keeps the header text upright: follows the widget's rotation but flips 180°
+  // once past ±90° so the label never appears upside down. The bar's footprint is
+  // symmetric under 180°, so this stays aligned with the board's hit-testing.
+  double get _readableRotation {
+    var a = rotation % (2 * math.pi);
+    if (a > math.pi) a -= 2 * math.pi;
+    if (a < -math.pi) a += 2 * math.pi;
+    if (a > math.pi / 2) a -= math.pi;
+    if (a < -math.pi / 2) a += math.pi;
+    return a;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-      // Opaque so the header absorbs pointers and the drawing layer beneath it does
-      // not receive strokes. The board's translucent gesture layer (above) still
-      // gets the events to drive header drags, and the buttons handle their taps.
-      child: Listener(
-        behavior: HitTestBehavior.opaque,
-        child: FittedBox(
-          fit: BoxFit.fill,
-          child: SizedBox(
-            width: kHeaderWidth,
-            height: kHeaderHeight,
-            child: _buildContent(context),
+      left: center.dx - size.width / 2,
+      top: center.dy - size.height / 2,
+      width: size.width,
+      height: size.height,
+      // The bar sits at its Use-mode anchor (instant, so it tracks drags) and eases
+      // the extra Arrange push via the translate — animating the mode change only.
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: isArranging ? 1.0 : 0.0),
+        duration: _kToggleAnim,
+        curve: Curves.easeOut,
+        builder: (context, t, child) => Transform.translate(offset: arrangeDelta * t, child: child),
+        child: Transform.rotate(
+          angle: _readableRotation,
+          // Opaque so the header absorbs pointers and the drawing layer beneath it does
+          // not receive strokes. The board's translucent gesture layer (above) still
+          // gets the events to drive header drags, and the buttons handle their taps.
+          child: Listener(
+            behavior: HitTestBehavior.opaque,
+            child: FittedBox(
+              fit: BoxFit.fill,
+              child: SizedBox(
+                width: kHeaderWidth,
+                height: kHeaderHeight,
+                child: _buildContent(context),
+              ),
+            ),
           ),
         ),
       ),
@@ -85,14 +119,30 @@ class WidgetHeaderBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          if (isArranging)
-            _DonePill(label: context.localizations.boardWidget_done, onTap: onToggleArrange)
-          else
-            _HeaderIconButton(
-              icon: LucideIcons.pencil,
-              tooltip: context.localizations.boardWidget_resizeRotate,
-              onTap: onToggleArrange,
+          _HeaderSettingsButton(settingsBuilder: settingsBuilder),
+          const SizedBox(width: 2),
+          // Animate between the manipulate toggle and the Done pill.
+          AnimatedSize(
+            duration: _kToggleAnim,
+            curve: Curves.easeOut,
+            child: AnimatedSwitcher(
+              duration: _kToggleAnim,
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(scale: animation, child: child),
+              ),
+              child: isArranging
+                  ? _DonePill(key: const ValueKey('done'), label: context.localizations.boardWidget_done, onTap: onToggleArrange)
+                  : _HeaderIconButton(
+                      key: const ValueKey('arrange'),
+                      icon: LucideIcons.move,
+                      tooltip: context.localizations.boardWidget_arrange,
+                      onTap: onToggleArrange,
+                    ),
             ),
+          ),
           const SizedBox(width: 2),
           _HeaderIconButton(
             icon: LucideIcons.x,
@@ -115,6 +165,7 @@ class _HeaderIconButton extends StatefulWidget {
   final Color? hoverColor;
 
   const _HeaderIconButton({
+    super.key,
     required this.icon,
     required this.tooltip,
     required this.onTap,
@@ -158,12 +209,77 @@ class _HeaderIconButtonState extends State<_HeaderIconButton> {
 
 }
 
+// Cog button that opens the widget's settings menu (type-specific options, layers
+// and visibility) as a flyout anchored to the header.
+class _HeaderSettingsButton extends StatefulWidget {
+
+  final WidgetSettingsBuilder settingsBuilder;
+
+  const _HeaderSettingsButton({required this.settingsBuilder});
+
+  @override
+  State<_HeaderSettingsButton> createState() => _HeaderSettingsButtonState();
+
+}
+
+class _HeaderSettingsButtonState extends State<_HeaderSettingsButton> {
+
+  final FlyoutController _flyoutController = FlyoutController();
+  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _flyoutController.dispose();
+    super.dispose();
+  }
+
+  void _openSettings() {
+    _flyoutController.showFlyout(
+      builder: (context) => MenuFlyout(
+        itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
+        items: widget.settingsBuilder(context),
+      ),
+      placementMode: FlyoutPlacementMode.bottomCenter,
+      additionalOffset: 8,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: context.localizations.boardWidget_settings,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: FlyoutTarget(
+          controller: _flyoutController,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _openSettings,
+            child: Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: _hovered ? const Color(0x0F000000) : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(LucideIcons.settings, size: 16, color: _hovered ? _kAccent : const Color(0xFF475569)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+}
+
 class _DonePill extends StatelessWidget {
 
   final String label;
   final VoidCallback onTap;
 
-  const _DonePill({required this.label, required this.onTap});
+  const _DonePill({super.key, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
