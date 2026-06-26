@@ -8,6 +8,7 @@ import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart'
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 part '../menus/board_color_submenu.dart';
+part '../menus/board_background_menu_item.dart';
 part '../menus/board_lines_submenu.dart';
 part '../menus/board_fullscreen_menu_item.dart';
 
@@ -39,6 +40,7 @@ class _BoardSettingsButtonState extends State<BoardSettingsButton> {
             itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
             items: [
               _boardColorSubmenu(context, widget.viewModel, widget.controller),
+              _boardBackgroundMenuItem(context, widget.viewModel, widget.controller),
               _boardLinesSubmenu(context, widget.viewModel, widget.controller),
               const MenuFlyoutSeparator(),
               _fullscreenMenuItem(context, widget.viewModel, widget.controller),

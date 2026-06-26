@@ -159,6 +159,11 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   }
 
   @action
+  void setBoardBackgroundFileId(String? fileId) {
+    _updateActiveSubBoard((b) => b.copyWith(backgroundFileId: fileId));
+  }
+
+  @action
   void setBoardLineColor(Color color) {
     _updateActiveSubBoard((b) => b.copyWith(lineColor: color));
   }

@@ -303,19 +303,22 @@ class ThemableContentDialog extends StatelessWidget {
       );
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: actions.map((e) {
-        final index = actions.indexOf(e);
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsetsDirectional.only(
-              end: index != (actions.length - 1) ? style.actionsSpacing ?? 3 : 0,
+    return IntrinsicHeight(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: .stretch,
+        children: actions.map((e) {
+          final index = actions.indexOf(e);
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(
+                end: index != (actions.length - 1) ? style.actionsSpacing ?? 3 : 0,
+              ),
+              child: e,
             ),
-            child: e,
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 

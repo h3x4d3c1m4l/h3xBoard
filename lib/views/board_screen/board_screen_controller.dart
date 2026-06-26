@@ -11,8 +11,10 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/services/fullscreen_service.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
+import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/background_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
 import 'package:h3xboard/widgets/themable_loading_dialog.dart';
@@ -32,6 +34,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   final ValueNotifier<int> drawStartSignal = ValueNotifier(0);
   final FullscreenService _fullscreenService = FullscreenService();
   final _wsClient = GetIt.I<H3xBoardApiClient>();
+  final _fileService = GetIt.I<H3xBoardFileService>();
 
   // Pending state captured at gesture/stroke boundaries for history recording.
   List<Map<String, dynamic>>? _drawingBefore;
@@ -579,6 +582,41 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       redo: () {
         _ensureActiveBoard(boardId);
         viewModel.setBoardColorAndType(color, isChalkboard);
+      },
+    ));
+  }
+
+  /// Opens the background-image picker. The user can choose a previously
+  /// uploaded image, upload a new one, or clear the current background; the
+  /// resulting choice is applied via [_applyBackgroundFileId].
+  Future<void> onPickBackgroundImage() async {
+    final context = contextAccessor.buildContext;
+    final result = await showDialog<BackgroundPickerResult>(
+      context: context,
+      builder: (_) => BackgroundPickerDialog(
+        apiClient: _wsClient,
+        fileService: _fileService,
+        currentFileId: viewModel.board.backgroundFileId,
+      ),
+    );
+    // null = the dialog was dismissed without a choice.
+    if (result == null) return;
+    _applyBackgroundFileId(result.fileId);
+  }
+
+  void _applyBackgroundFileId(String? fileId) {
+    final oldFileId = viewModel.board.backgroundFileId;
+    if (oldFileId == fileId) return;
+    final boardId = viewModel.activeSubBoardId;
+    viewModel.setBoardBackgroundFileId(fileId);
+    historyManager.push(HistoryEntry(
+      undo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardBackgroundFileId(oldFileId);
+      },
+      redo: () {
+        _ensureActiveBoard(boardId);
+        viewModel.setBoardBackgroundFileId(fileId);
       },
     ));
   }

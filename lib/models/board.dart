@@ -20,6 +20,9 @@ abstract class Board with _$Board {
     required BoardLinePattern linePattern,
     required double lineSpacing,
     @ColorConverter() required Color lineColor,
+    // The id of an uploaded file (see `H3xBoardFileService`) used as the board
+    // background image, drawn over [backgroundColor]. null = no background image.
+    String? backgroundFileId,
   }) = _Board;
 
   factory Board.fromJson(Map<String, dynamic> json) => _$BoardFromJson(json);

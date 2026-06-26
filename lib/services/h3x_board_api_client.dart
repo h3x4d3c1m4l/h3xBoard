@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/board_detail.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
+import 'package:h3xboard/models/api/browse_files_result.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 enum H3xConnectionState { connected, reconnecting, disconnected }
@@ -104,6 +105,20 @@ class H3xBoardApiClient {
 
   Future<void> deleteBoard(String id) async {
     await _call('boards.v1.delete', id);
+  }
+
+  /// Lists one virtual folder — its immediate sub-folders and the files directly
+  /// in it (metadata only, no bytes). [path] is the folder to list (null/"" =
+  /// root). The bytes themselves are uploaded/downloaded over REST; see
+  /// `H3xBoardFileService`.
+  Future<BrowseFilesResult> browseFiles([String? path]) async {
+    final result = await _call('files.v1.browse', <String, dynamic>{'path': path ?? ''});
+    return BrowseFilesResult.fromJson(result as Map<String, dynamic>);
+  }
+
+  /// Permanently deletes a file (bytes and metadata). There is no undo.
+  Future<void> deleteFile(String id) async {
+    await _call('files.v1.delete', id);
   }
 
   Future<dynamic> _call(String method, [dynamic params]) {

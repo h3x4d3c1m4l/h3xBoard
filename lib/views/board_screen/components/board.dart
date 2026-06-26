@@ -7,11 +7,14 @@ import 'package:flutter/gestures.dart' show PointerScrollEvent, PointerSignalEve
 import 'package:flutter/services.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
+import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
+import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
@@ -573,6 +576,15 @@ class _BoardState extends State<Board> {
                         color: board.lineColor,
                         child: SizedBox(width: 1920, height: 1080),
                       );
+                      final backgroundFileId = board.backgroundFileId;
+                      if (backgroundFileId != null) {
+                        return BoardBackgroundImage(
+                          fileId: backgroundFileId,
+                          fallbackColor: board.backgroundColor,
+                          fileService: GetIt.I<H3xBoardFileService>(),
+                          child: box,
+                        );
+                      }
                       return board.isChalkboard
                           ? ChalkboardBackground(
                               boardColor: board.backgroundColor,
