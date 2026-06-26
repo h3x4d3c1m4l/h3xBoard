@@ -211,7 +211,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     viewModel
       ..setActiveColor(value)
       ..setActiveTool(.pen)
-      ..clearSelection();
+      ..setArrangingWidget(null);
     drawingController
       ..setPaintContent(SimpleLine())
       ..setStyle(color: value, strokeWidth: viewModel.drawingTools.penWidth);
@@ -227,19 +227,15 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
         }
         drawingController.setPaintContent(SimpleLine());
         drawingController.setStyle(strokeWidth: viewModel.drawingTools.penWidth);
-        viewModel.clearSelection();
+        viewModel.setArrangingWidget(null);
       case .eraser:
         viewModel.setActiveColor(null);
         drawingController.setPaintContent(Eraser());
         drawingController.setStyle(strokeWidth: viewModel.drawingTools.eraserWidth);
-        viewModel.clearSelection();
+        viewModel.setArrangingWidget(null);
     }
 
     viewModel.setActiveTool(value);
-  }
-
-  void onRestoreDrawingTool() {
-    onSelectableToolButtonPressed(viewModel.drawingTools.lastActiveTool);
   }
 
   void onPenWidthSliderMoved(double value) {
@@ -536,14 +532,10 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   // Widget transform history callbacks (called by Board)
 
   void onWidgetTransformStart(String id) {
-    final selectedIds = viewModel.selectedWidgetIds;
-    final idsToCapture = selectedIds.contains(id) && selectedIds.length > 1
-        ? Set<String>.from(selectedIds)
-        : {id};
     _transformBoardId = viewModel.activeSubBoardId;
     _transformBefore = {
       for (final bw in viewModel.boardWidgets)
-        if (idsToCapture.contains(bw.id)) bw.id: (bw.x, bw.y, bw.rotation, bw.scale),
+        if (bw.id == id) bw.id: (bw.x, bw.y, bw.rotation, bw.scale),
     };
   }
 

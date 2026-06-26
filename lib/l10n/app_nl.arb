@@ -175,5 +175,17 @@
     "boardVisibilityMenu_allBoards": "Zichtbaar op alle borden",
     "@boardVisibilityMenu_allBoards": {},
     "boardVisibilityMenu_thisBoard": "Alleen zichtbaar op dit bord",
-    "@boardVisibilityMenu_thisBoard": {}
+    "@boardVisibilityMenu_thisBoard": {},
+    "boardWidget_arrange": "Schikken",
+    "@boardWidget_arrange": {},
+    "boardWidget_done": "Klaar",
+    "@boardWidget_done": {},
+    "boardWidget_remove": "Verwijderen",
+    "@boardWidget_remove": {},
+    "boardWidget_dragToMove": "Sleep om te verplaatsen",
+    "@boardWidget_dragToMove": {},
+    "boardWidget_resizeRotate": "Formaat & draaien",
+    "@boardWidget_resizeRotate": {},
+    "boardWidget_settings": "Instellingen",
+    "@boardWidget_settings": {}
 }

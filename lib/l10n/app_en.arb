@@ -175,5 +175,17 @@
     "boardVisibilityMenu_allBoards": "Visible on all boards",
     "@boardVisibilityMenu_allBoards": {},
     "boardVisibilityMenu_thisBoard": "Only visible on this board",
-    "@boardVisibilityMenu_thisBoard": {}
+    "@boardVisibilityMenu_thisBoard": {},
+    "boardWidget_arrange": "Arrange",
+    "@boardWidget_arrange": {},
+    "boardWidget_done": "Done",
+    "@boardWidget_done": {},
+    "boardWidget_remove": "Remove",
+    "@boardWidget_remove": {},
+    "boardWidget_dragToMove": "Drag to move",
+    "@boardWidget_dragToMove": {},
+    "boardWidget_resizeRotate": "Resize & rotate",
+    "@boardWidget_resizeRotate": {},
+    "boardWidget_settings": "Settings",
+    "@boardWidget_settings": {}
 }
