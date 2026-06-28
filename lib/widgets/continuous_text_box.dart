@@ -1,5 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// A [TextBox] wrapped in a [ContinuousRectangleBorder], so text fields match
 /// the app's squircle buttons and dialogs.
@@ -59,6 +61,10 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
 
   FocusNode get _focusNode => widget.focusNode ?? (_internalNode ??= FocusNode());
 
+  /// Whether the text is currently hidden. Only relevant when [widget.obscureText]
+  /// is set; the eye button toggles this so the user can reveal what they typed.
+  late bool _obscured = widget.obscureText;
+
   @override
   void initState() {
 
@@ -74,9 +80,27 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
       oldWidget.focusNode?.removeListener(_onFocusChanged);
       _focusNode.addListener(_onFocusChanged);
     }
+    if (oldWidget.obscureText != widget.obscureText) {
+      _obscured = widget.obscureText;
+    }
   }
 
   void _onFocusChanged() => setState(() {});
+
+  Widget _buildVisibilityToggle(BuildContext context) {
+
+    final label = _obscured
+        ? context.localizations.continuousTextBox_showPassword
+        : context.localizations.continuousTextBox_hidePassword;
+
+    return Tooltip(
+      message: label,
+      child: IconButton(
+        icon: Icon(_obscured ? LucideIcons.eye : LucideIcons.eyeOff),
+        onPressed: widget.enabled ? () => setState(() => _obscured = !_obscured) : null,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -116,7 +140,8 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
           focusNode: _focusNode,
           placeholder: widget.placeholder,
           enabled: widget.enabled,
-          obscureText: widget.obscureText,
+          obscureText: _obscured,
+          suffix: widget.obscureText ? _buildVisibilityToggle(context) : null,
           keyboardType: widget.keyboardType,
           autofillHints: widget.autofillHints,
           onSubmitted: widget.onSubmitted,
