@@ -27,13 +27,19 @@ class ChalkboardBackground extends StatelessWidget {
 
 class _ChalkboardPainter extends CustomPainter {
 
-  final Random random = Random(42);
+  // Fixed seed so the smudges are deterministic. The Random is created *inside*
+  // paint() (not stored as a field) so every repaint replays the exact same
+  // sequence — otherwise a shared Random advances per paint and the smudges
+  // shift around on each rebuild.
+  static const int _seed = 42;
+
   final Color boardColor;
 
   _ChalkboardPainter({required this.boardColor});
 
   @override
   void paint(Canvas canvas, Size size) {
+    final random = Random(_seed);
     final paint = Paint();
 
     // Basic color
@@ -68,7 +74,6 @@ class _ChalkboardPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ChalkboardPainter oldDelegate) =>
-      boardColor != oldDelegate.boardColor || random != oldDelegate.random;
+  bool shouldRepaint(_ChalkboardPainter oldDelegate) => boardColor != oldDelegate.boardColor;
 
 }

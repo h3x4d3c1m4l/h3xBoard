@@ -40,6 +40,19 @@ class _BackgroundLinesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     Paint paint = Paint()..color = color;
+
+    // Dots: a dot at each grid intersection instead of full lines.
+    if (pattern == BoardLinePattern.dots) {
+      // Scale the dot to the spacing so it stays proportional as the grid changes.
+      final radius = (spacing * 0.06).clamp(1.0, 4.0);
+      for (double y = spacing; y < size.height; y += spacing) {
+        for (double x = spacing; x < size.width; x += spacing) {
+          canvas.drawCircle(Offset(x, y), radius, paint);
+        }
+      }
+      return;
+    }
+
     for (double y = spacing; y < size.height; y += spacing) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }

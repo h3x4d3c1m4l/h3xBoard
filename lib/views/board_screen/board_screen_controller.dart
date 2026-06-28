@@ -14,7 +14,7 @@ import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
-import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/board_settings_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_dialog.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
@@ -41,7 +41,6 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   List<Map<String, dynamic>>? _drawingBefore;
   Map<String, (double, double, double, double)>? _transformBefore;
   String? _transformBoardId;
-  double? _lineSpacingBefore;
 
   // Autosave bookkeeping.
   Timer? _saveTimer;
@@ -602,115 +601,49 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     ));
   }
 
-  // Board settings handlers
+  // Board settings handler
 
-  void onBoardBackgroundColorPicked(Color color, bool isChalkboard) {
-    final oldBoard = viewModel.board;
-    final boardId = viewModel.activeSubBoardId;
-    viewModel.setBoardColorAndType(color, isChalkboard);
-    historyManager.push(HistoryEntry(
-      undo: () {
-        _ensureActiveBoard(boardId);
-        viewModel.setBoardColorAndType(oldBoard.backgroundColor, oldBoard.isChalkboard);
-      },
-      redo: () {
-        _ensureActiveBoard(boardId);
-        viewModel.setBoardColorAndType(color, isChalkboard);
-      },
-    ));
-  }
-
-  /// Opens the background-image picker. The user can choose a previously
-  /// uploaded image, upload a new one, or clear the current background; the
-  /// resulting choice is applied via [_applyBackgroundFileId].
-  Future<void> onPickBackgroundImage() async {
+  /// Opens the board-settings dialog, which edits a working copy of the active
+  /// board's appearance with a live preview. The real board is left untouched
+  /// until the user confirms (or picks a board to copy from); the whole edit
+  /// then lands as a single undoable change.
+  Future<void> onShowBoardSettings() async {
     final context = contextAccessor.buildContext;
-    final result = await showDialog<FilePickerResult>(
+    final boardId = viewModel.activeSubBoardId;
+    final before = viewModel.board;
+    final result = await showDialog<Board>(
       context: context,
-      builder: (_) => FilePickerDialog(
+      builder: (_) => BoardSettingsDialog(
+        board: before,
+        otherBoards: viewModel.subBoards.where((b) => b.id != boardId).toList(),
         apiClient: _wsClient,
         fileService: _fileService,
-        initialFolder: backgroundsFolder,
-        currentFileId: viewModel.board.backgroundFileId,
-        title: localizations.backgroundPicker_title,
-        allowRemove: true,
+        boardPixelRatio: viewModel.boardPixelRatio,
       ),
+      barrierDismissible: true,
     );
-    // null = the dialog was dismissed without a choice.
-    if (result == null) return;
-    _applyBackgroundFileId(result.fileId);
-  }
-
-  void _applyBackgroundFileId(String? fileId) {
-    final oldFileId = viewModel.board.backgroundFileId;
-    if (oldFileId == fileId) return;
-    final boardId = viewModel.activeSubBoardId;
-    viewModel.setBoardBackgroundFileId(fileId);
+    // null = dismissed/cancelled, leaving the board as it was.
+    if (result == null || _sameAppearance(before, result)) return;
+    viewModel.setBoardAppearance(result);
     historyManager.push(HistoryEntry(
       undo: () {
         _ensureActiveBoard(boardId);
-        viewModel.setBoardBackgroundFileId(oldFileId);
+        viewModel.setBoardAppearance(before);
       },
       redo: () {
         _ensureActiveBoard(boardId);
-        viewModel.setBoardBackgroundFileId(fileId);
+        viewModel.setBoardAppearance(result);
       },
     ));
   }
 
-  void onBoardLinePatternPicked(BoardLinePattern pattern) {
-    final oldPattern = viewModel.board.linePattern;
-    final boardId = viewModel.activeSubBoardId;
-    viewModel.setBoardLinePattern(pattern);
-    historyManager.push(HistoryEntry(
-      undo: () {
-        _ensureActiveBoard(boardId);
-        viewModel.setBoardLinePattern(oldPattern);
-      },
-      redo: () {
-        _ensureActiveBoard(boardId);
-        viewModel.setBoardLinePattern(pattern);
-      },
-    ));
-  }
-
-  void onBoardLineSpacingSliderMoved(double value) {
-    _lineSpacingBefore ??= viewModel.board.lineSpacing;
-    viewModel.setBoardLineSpacing(value);
-  }
-
-  void onBoardLineSpacingSliderEnd(double value) {
-    final before = _lineSpacingBefore;
-    _lineSpacingBefore = null;
-    if (before == null || before == value) return;
-    final boardId = viewModel.activeSubBoardId;
-    historyManager.push(HistoryEntry(
-      undo: () {
-        _ensureActiveBoard(boardId);
-        viewModel.setBoardLineSpacing(before);
-      },
-      redo: () {
-        _ensureActiveBoard(boardId);
-        viewModel.setBoardLineSpacing(value);
-      },
-    ));
-  }
-
-  void onBoardLineColorPicked(Color color) {
-    final oldColor = viewModel.board.lineColor;
-    final boardId = viewModel.activeSubBoardId;
-    viewModel.setBoardLineColor(color);
-    historyManager.push(HistoryEntry(
-      undo: () {
-        _ensureActiveBoard(boardId);
-        viewModel.setBoardLineColor(oldColor);
-      },
-      redo: () {
-        _ensureActiveBoard(boardId);
-        viewModel.setBoardLineColor(color);
-      },
-    ));
-  }
+  bool _sameAppearance(Board a, Board b) =>
+      a.backgroundColor == b.backgroundColor &&
+      a.isChalkboard == b.isChalkboard &&
+      a.linePattern == b.linePattern &&
+      a.lineSpacing == b.lineSpacing &&
+      a.lineColor == b.lineColor &&
+      a.backgroundFileId == b.backgroundFileId;
 
   void _ensureActiveBoard(String boardId) {
     if (viewModel.activeSubBoardId != boardId) onSwitchSubBoard(boardId);

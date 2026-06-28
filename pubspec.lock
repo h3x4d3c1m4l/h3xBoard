@@ -813,6 +813,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.0"
+  scroll_edge_hint:
+    dependency: "direct main"
+    description:
+      name: scroll_edge_hint
+      sha256: "7d0b877134bc54af45241434d3d53ede61a09f2ae38d1d7efc628128fcc0ac5e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.1"
   scroll_pos:
     dependency: transitive
     description:

@@ -1,60 +1,26 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
-import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
-import 'package:h3xboard/views/board_screen/components/buttons/color_preset_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-part '../menus/board_color_submenu.dart';
-part '../menus/board_background_menu_item.dart';
-part '../menus/board_lines_submenu.dart';
-part '../menus/board_fullscreen_menu_item.dart';
+/// Toolbar button that opens the board-settings dialog (board color, background
+/// image and grid lines). Replaces the old settings flyout.
+class BoardSettingsButton extends StatelessWidget {
 
-class BoardSettingsButton extends StatefulWidget {
-
-  final BoardScreenViewModel viewModel;
   final BoardScreenController controller;
 
-  const BoardSettingsButton({super.key, required this.viewModel, required this.controller});
-
-  @override
-  State<BoardSettingsButton> createState() => _BoardSettingsButtonState();
-
-}
-
-class _BoardSettingsButtonState extends State<BoardSettingsButton> {
-
-  final FlyoutController _menuController = FlyoutController();
+  const BoardSettingsButton({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    return Observer(
-      builder: (_) => ToolButton(
-        icon: LucideIcons.settings,
-        title: context.localizations.boardSettingsButton_settings,
-        onPressed: () {},
-        flyoutBuilder: (context) => Observer(
-          builder: (context) => MenuFlyout(
-            itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
-            items: [
-              _boardColorSubmenu(context, widget.viewModel, widget.controller),
-              _boardBackgroundMenuItem(context, widget.viewModel, widget.controller),
-              _boardLinesSubmenu(context, widget.viewModel, widget.controller),
-              const MenuFlyoutSeparator(),
-              _fullscreenMenuItem(context, widget.viewModel, widget.controller),
-            ],
-          ),
-        ),
-      ),
+    return ToolButton(
+      icon: LucideIcons.settings,
+      title: context.localizations.boardSettingsButton_settings,
+      onPressed: () => unawaited(controller.onShowBoardSettings()),
     );
-  }
-
-  @override
-  void dispose() {
-    _menuController.dispose();
-    super.dispose();
   }
 
 }

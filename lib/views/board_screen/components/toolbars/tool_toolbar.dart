@@ -8,6 +8,7 @@ import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/add_widget_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/board_settings_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/eraser_tool_button.dart';
+import 'package:h3xboard/views/board_screen/components/buttons/fullscreen_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/pen_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/pointer_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart';
@@ -73,7 +74,8 @@ class ToolToolbar extends StatelessWidget {
                 ToggleButtonToolbar(
                   buttons: [
                     AddWidgetButton(controller: controller),
-                    BoardSettingsButton(viewModel: viewModel, controller: controller),
+                    BoardSettingsButton(controller: controller),
+                    FullscreenButton(viewModel: viewModel, controller: controller),
                   ],
                 ),
                 const _ToolbarDivider(),

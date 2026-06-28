@@ -4,7 +4,7 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/widgets/continuous_text_box.dart';
-import 'package:h3xboard/widgets/themable_content_dialog.dart';
+import 'package:h3xboard/widgets/themable_panel_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// The "Add a widget" catalog. Shows every registered widget type rendered with
@@ -55,7 +55,7 @@ class _WidgetCatalogDialogState extends State<WidgetCatalogDialog> {
     final loc = context.localizations;
     final descriptors = _visibleDescriptors(loc);
 
-    return ThemableContentDialog(
+    return ThemablePanelDialog(
       constraints: const BoxConstraints(maxWidth: 920, maxHeight: 820),
       content: SizedBox(
         height: 760,
@@ -182,16 +182,20 @@ class _WidgetTile extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: IgnorePointer(
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: SizedBox.fromSize(
-                        size: size,
-                        child: descriptor.buildWidget(descriptor.defaultConfig, (_) {}),
+                child: ColoredBox(
+                  color: theme.resources.cardBackgroundFillColorSecondary,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: IgnorePointer(
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: SizedBox.fromSize(
+                          size: size,
+                          child: descriptor.buildWidget(descriptor.defaultConfig, (_) {}),
+                        ),
                       ),
                     ),
                   ),

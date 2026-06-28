@@ -180,6 +180,22 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
     resyncMatchedWidgets();
   }
 
+  /// Replaces every appearance field of the active sub-board at once (its id and
+  /// title are kept). Used by the board-settings dialog, which edits a working
+  /// copy and commits the whole result as a single change.
+  @action
+  void setBoardAppearance(Board appearance) {
+    _updateActiveSubBoard((b) => b.copyWith(
+      backgroundColor: appearance.backgroundColor,
+      isChalkboard: appearance.isChalkboard,
+      linePattern: appearance.linePattern,
+      lineSpacing: appearance.lineSpacing,
+      lineColor: appearance.lineColor,
+      backgroundFileId: appearance.backgroundFileId,
+    ));
+    resyncMatchedWidgets();
+  }
+
   // Re-derives the scale of every grid-matched widget (ruler, geodreieck) from the
   // current grid spacing so matched widgets track the grid-spacing slider (and
   // undo/redo of it) live. Matched scale is a pure function of (config, lineSpacing),

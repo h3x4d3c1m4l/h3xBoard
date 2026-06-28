@@ -5,7 +5,7 @@ import 'package:h3xboard/models/converters/color_converter.dart';
 part 'board.freezed.dart';
 part 'board.g.dart';
 
-enum BoardLinePattern { none, horizontal, grid }
+enum BoardLinePattern { none, horizontal, grid, dots }
 
 @freezed
 abstract class Board with _$Board {

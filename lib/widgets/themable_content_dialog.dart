@@ -32,6 +32,9 @@ const double _kPatternTiltDegrees = -20;
 /// The semantic tone of a [ThemableContentDialog], driving its tint and border
 /// color. [normal] keeps the ambient [ContentDialogTheme] (accent) styling;
 /// [warning] and [error] recolor the surface with Fluent UI's status colors.
+///
+/// This is for confirmation-style dialogs. Larger content panels (Add Widget,
+/// Board Settings) use [ThemablePanelDialog] instead.
 enum ThemableDialogSeverity {
 
   normal,
@@ -236,7 +239,7 @@ class ThemableContentDialog extends StatelessWidget {
         child: decoration == null
             ? layered
             : ClipPath(
-                clipper: _DecorationClipper(
+                clipper: DecorationClipper(
                   decoration: decoration,
                   textDirection: Directionality.maybeOf(context),
                 ),
@@ -329,9 +332,9 @@ class ThemableContentDialog extends StatelessWidget {
 /// Works for any decoration that implements [Decoration.getClipPath], such as
 /// [BoxDecoration] (with a `borderRadius`) and [ShapeDecoration] (with any
 /// [ShapeBorder], e.g. [ContinuousRectangleBorder]).
-class _DecorationClipper extends CustomClipper<Path> {
+class DecorationClipper extends CustomClipper<Path> {
 
-  const _DecorationClipper({required this.decoration, this.textDirection});
+  const DecorationClipper({required this.decoration, this.textDirection});
 
   final Decoration decoration;
 
@@ -346,7 +349,7 @@ class _DecorationClipper extends CustomClipper<Path> {
   }
 
   @override
-  bool shouldReclip(_DecorationClipper oldClipper) {
+  bool shouldReclip(DecorationClipper oldClipper) {
     return oldClipper.decoration != decoration ||
         oldClipper.textDirection != textDirection;
   }
