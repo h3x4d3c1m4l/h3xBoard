@@ -9,6 +9,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/memo_note_widget.
 import 'package:h3xboard/views/board_screen/components/widgets/piano_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/ruler_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/stopwatch_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/timer_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/todo_list_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/traffic_light_widget.dart';
 
@@ -33,6 +34,16 @@ abstract class BoardWidgetDescriptor {
     void Function(BoardWidgetConfig) onChange,
   );
 
+  // The widget's primary inline-edit action, invoked when the body is double-clicked.
+  // Returns null for widgets with nothing to edit (e.g. clocks). Widgets that override
+  // this typically also expose the same action as a settings menu item.
+  VoidCallback? editAction(
+    BuildContext context,
+    BoardWidgetConfig config,
+    void Function(BoardWidgetConfig) onChange,
+  ) =>
+      null;
+
 }
 
 // The single place that maps config types to their descriptors.
@@ -42,6 +53,7 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   AnalogClockConfig: AnalogClockWidgetDescriptor.instance,
   TrafficLightConfig: TrafficLightWidgetDescriptor.instance,
   StopwatchConfig: StopwatchWidgetDescriptor.instance,
+  TimerConfig: TimerWidgetDescriptor.instance,
   MemoNoteConfig: MemoNoteWidgetDescriptor.instance,
   PianoConfig: PianoWidgetDescriptor.instance,
   TodoListConfig: TodoListWidgetDescriptor.instance,

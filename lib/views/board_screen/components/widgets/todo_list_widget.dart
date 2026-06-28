@@ -234,6 +234,14 @@ class TodoListWidgetDescriptor extends BoardWidgetDescriptor {
     ];
   }
 
+  @override
+  VoidCallback? editAction(
+    BuildContext context,
+    BoardWidgetConfig config,
+    void Function(BoardWidgetConfig) onChange,
+  ) =>
+      () => _showEditDialog(context, config as TodoListConfig, onChange);
+
   static void _showEditDialog(
     BuildContext context,
     TodoListConfig config,

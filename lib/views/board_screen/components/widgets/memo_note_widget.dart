@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
@@ -31,6 +32,17 @@ class MemoNoteWidget extends StatelessWidget {
 
   const MemoNoteWidget({super.key, this.text = '', this.color = MemoNoteColor.yellow});
 
+  // Renders the note in Patrick Hand — a clean, legible handwriting face that
+  // suits a sticky note far better than the default UI font.
+  static TextStyle _hand(TextStyle base) => GoogleFonts.patrickHand(textStyle: base);
+
+  // Markdown collapses runs of blank lines into a single paragraph gap, so several
+  // Enters in a row would all merge. Giving each blank line a non-breaking space
+  // turns it into its own (visible) line, preserving the note's literal spacing
+  // (works together with [MarkdownBody.softLineBreak], which keeps single newlines).
+  static String _withPreservedBlankLines(String raw) =>
+      raw.split('\n').map((line) => line.trim().isEmpty ? ' ' : line).join('\n');
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -61,15 +73,18 @@ class MemoNoteWidget extends StatelessWidget {
                         child: SizedBox(
                           width: 272,
                           child: MarkdownBody(
-                            data: text,
+                            data: _withPreservedBlankLines(text),
+                            // Preserve the author's single line breaks instead of
+                            // collapsing them into spaces (CommonMark soft breaks).
+                            softLineBreak: true,
                             styleSheet: MarkdownStyleSheet(
-                              p: const TextStyle(color: Color(0xFF2D2D2D), fontSize: 18, height: 1.4),
-                              strong: const TextStyle(color: Color(0xFF2D2D2D), fontSize: 18, fontWeight: FontWeight.bold),
-                              em: const TextStyle(color: Color(0xFF2D2D2D), fontSize: 18, fontStyle: FontStyle.italic),
-                              h1: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 26, fontWeight: FontWeight.bold),
-                              h2: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 22, fontWeight: FontWeight.bold),
-                              h3: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 20, fontWeight: FontWeight.bold),
-                              listBullet: const TextStyle(color: Color(0xFF2D2D2D), fontSize: 18),
+                              p: _hand(const TextStyle(color: Color(0xFF2D2D2D), fontSize: 20, height: 1.35)),
+                              strong: _hand(const TextStyle(color: Color(0xFF2D2D2D), fontSize: 20, fontWeight: FontWeight.bold)),
+                              em: _hand(const TextStyle(color: Color(0xFF2D2D2D), fontSize: 20, fontStyle: FontStyle.italic)),
+                              h1: _hand(const TextStyle(color: Color(0xFF1A1A1A), fontSize: 28, fontWeight: FontWeight.bold)),
+                              h2: _hand(const TextStyle(color: Color(0xFF1A1A1A), fontSize: 24, fontWeight: FontWeight.bold)),
+                              h3: _hand(const TextStyle(color: Color(0xFF1A1A1A), fontSize: 21, fontWeight: FontWeight.bold)),
+                              listBullet: _hand(const TextStyle(color: Color(0xFF2D2D2D), fontSize: 20)),
                               blockSpacing: 6,
                             ),
                           ),
@@ -189,6 +204,14 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
     ];
   }
 
+  @override
+  VoidCallback? editAction(
+    BuildContext context,
+    BoardWidgetConfig config,
+    void Function(BoardWidgetConfig) onChange,
+  ) =>
+      () => _showEditDialog(context, config as MemoNoteConfig, onChange);
+
   static void _showMarkdownCheatsheetDialog(BuildContext context) {
     final loc = context.localizations;
 
@@ -272,12 +295,43 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
       builder: (ctx) => ThemableContentDialog(
         title: Text(loc.memoNoteSettingsMenu_editTextDialogTitle),
         constraints: const BoxConstraints(maxWidth: 520),
-        content: ContinuousTextBox(
-          controller: controller,
-          maxLines: null,
-          minLines: 8,
-          placeholder: loc.memoNoteSettingsMenu_editTextPlaceholder,
-          style: const TextStyle(fontSize: 14, height: 1.5),
+        // Wrapped in a min-sized Column so the multi-line box sizes to its content
+        // instead of stretching to fill the dialog's flexible content slot.
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ContinuousTextBox(
+              controller: controller,
+              maxLines: null,
+              minLines: 8,
+              placeholder: loc.memoNoteSettingsMenu_editTextPlaceholder,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  LucideIcons.info,
+                  size: 14,
+                  color: FluentTheme.of(ctx).resources.textFillColorSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  loc.memoNoteSettingsMenu_markdownHint,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: FluentTheme.of(ctx).resources.textFillColorSecondary,
+                  ),
+                ),
+                HyperlinkButton(
+                  // Opens on top of the edit dialog so the in-progress text isn't lost.
+                  onPressed: () => _showMarkdownCheatsheetDialog(ctx),
+                  child: Text(loc.memoNoteSettingsMenu_markdownHintLink),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
           Button(

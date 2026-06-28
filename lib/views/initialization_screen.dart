@@ -46,7 +46,7 @@ class _InitializationScreenState extends State<InitializationScreen> {
         nowInitializingText: 'Loading fonts ...',
         retries: context.attemptNumber,
       );
-      await GoogleFonts.pendingFonts([GoogleFonts.ubuntu()]);
+      await GoogleFonts.pendingFonts([GoogleFonts.ubuntu(), GoogleFonts.patrickHand()]);
     });
 
     final session = GetIt.I<SessionController>();

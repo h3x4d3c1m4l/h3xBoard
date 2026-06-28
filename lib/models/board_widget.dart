@@ -88,6 +88,11 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     @Default(true) bool showCentiseconds,
   }) = StopwatchConfig;
 
+  const factory BoardWidgetConfig.timer({
+    @Default(300) int durationSeconds,
+    @Default(false) bool showCentiseconds,
+  }) = TimerConfig;
+
   const factory BoardWidgetConfig.memoNote({
     @Default('') String text,
     @Default(MemoNoteColor.yellow) MemoNoteColor color,

@@ -179,10 +179,20 @@ class _BoardState extends State<Board> {
     });
   }
 
-  Widget _buildWidgetContent(BoardWidget bw) => descriptorFor(bw.config).buildWidget(
-        bw.config,
-        (newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig),
-      );
+  Widget _buildWidgetContent(BoardWidget bw) {
+    final descriptor = descriptorFor(bw.config);
+    void onChange(BoardWidgetConfig newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig);
+    final content = descriptor.buildWidget(bw.config, onChange);
+
+    // Double-clicking an editable widget's body opens its inline editor (the same
+    // action offered in the settings menu). Widgets without an editor are unwrapped.
+    final edit = descriptor.editAction(context, bw.config, onChange);
+    if (edit == null) return content;
+    return GestureDetector(
+      onDoubleTap: edit,
+      child: content,
+    );
+  }
 
   Widget _buildHeader(BuildContext context, BoardWidget bw) {
     final placement = _headerPlacementFor(bw);
@@ -286,6 +296,19 @@ class _BoardState extends State<Board> {
           ),
         ],
       ),
+      // Delete lives in the right-click menu only; the header-bar already has a
+      // dedicated close (X) button for the same action.
+      if (includeTitle) ...[
+        const MenuFlyoutSeparator(),
+        MenuFlyoutItem(
+          leading: Icon(LucideIcons.trash2, color: Colors.red),
+          text: Text(
+            context.localizations.boardWidget_remove,
+            style: TextStyle(color: Colors.red),
+          ),
+          onPressed: () => widget.onDeleteWidget(bw.id),
+        ),
+      ],
     ];
   }
 
