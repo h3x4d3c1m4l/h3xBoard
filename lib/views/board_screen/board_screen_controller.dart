@@ -442,16 +442,31 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void onWidgetConfigChanged(String id, BoardWidgetConfig newConfig) {
     final boardId = viewModel.activeSubBoardId;
-    final oldConfig = viewModel.boardWidgets.firstWhere((w) => w.id == id).config;
+    final old = viewModel.boardWidgets.firstWhere((w) => w.id == id);
+    final oldConfig = old.config;
+    final oldScale = old.scale;
+    // A ruler's grid-match mode owns its scale; derive it from the current grid so
+    // enabling a match snaps the ruler immediately. Both the config and the previous
+    // (free) scale are captured so undo restores the size the ruler had before.
+    final newScale = boardWidgetMatchScale(newConfig, viewModel.board.lineSpacing);
+
+    void applyScale(double scale) {
+      final w = viewModel.boardWidgets.firstWhere((w) => w.id == id);
+      viewModel.updateBoardWidget(id, w.x, w.y, w.rotation, scale);
+    }
+
     viewModel.updateBoardWidgetConfig(id, newConfig);
+    if (newScale != null) applyScale(newScale);
     historyManager.push(HistoryEntry(
       undo: () {
         _ensureActiveBoard(boardId);
         viewModel.updateBoardWidgetConfig(id, oldConfig);
+        applyScale(oldScale);
       },
       redo: () {
         _ensureActiveBoard(boardId);
         viewModel.updateBoardWidgetConfig(id, newConfig);
+        if (newScale != null) applyScale(newScale);
       },
     ));
   }

@@ -10,8 +10,10 @@ class TrafficLightWidget extends StatelessWidget {
   static const Size naturalSize = Size(100, 260);
 
   final TrafficLightColor activeLight;
+  // Called when a light is tapped (Use mode). Null disables tapping.
+  final ValueChanged<TrafficLightColor>? onLightTap;
 
-  const TrafficLightWidget({super.key, this.activeLight = TrafficLightColor.red});
+  const TrafficLightWidget({super.key, this.activeLight = TrafficLightColor.red, this.onLightTap});
 
   @override
   Widget build(BuildContext context) {
@@ -28,9 +30,9 @@ class TrafficLightWidget extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _Light(color: TrafficLightColor.red, activeLight: activeLight),
-          _Light(color: TrafficLightColor.yellow, activeLight: activeLight),
-          _Light(color: TrafficLightColor.green, activeLight: activeLight),
+          _Light(color: TrafficLightColor.red, activeLight: activeLight, onTap: onLightTap),
+          _Light(color: TrafficLightColor.yellow, activeLight: activeLight, onTap: onLightTap),
+          _Light(color: TrafficLightColor.green, activeLight: activeLight, onTap: onLightTap),
         ],
       ),
     );
@@ -42,8 +44,9 @@ class _Light extends StatelessWidget {
 
   final TrafficLightColor color;
   final TrafficLightColor activeLight;
+  final ValueChanged<TrafficLightColor>? onTap;
 
-  const _Light({required this.color, required this.activeLight});
+  const _Light({required this.color, required this.activeLight, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +59,10 @@ class _Light extends StatelessWidget {
 
     final displayColor = isActive ? activeColor : inactiveColor;
 
-    return Container(
+    // Only inactive lights are tappable (tapping the lit one would be a no-op).
+    final canTap = onTap != null && !isActive;
+
+    final light = Container(
       width: 58,
       height: 58,
       decoration: BoxDecoration(
@@ -65,6 +71,17 @@ class _Light extends StatelessWidget {
         boxShadow: isActive
             ? [BoxShadow(color: activeColor.withValues(alpha: 0.7), blurRadius: 16, spreadRadius: 2)]
             : null,
+      ),
+    );
+
+    if (!canTap) return light;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onTap!(color),
+        child: light,
       ),
     );
   }
@@ -89,9 +106,12 @@ class TrafficLightWidgetDescriptor extends BoardWidgetDescriptor {
   BoardWidgetConfig get defaultConfig => const TrafficLightConfig();
 
   @override
-  Widget buildWidget(BoardWidgetConfig config) {
+  Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged) {
     final c = config as TrafficLightConfig;
-    return TrafficLightWidget(activeLight: c.activeLight);
+    return TrafficLightWidget(
+      activeLight: c.activeLight,
+      onLightTap: (color) => onConfigChanged(c.copyWith(activeLight: color)),
+    );
   }
 
   @override

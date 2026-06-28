@@ -133,7 +133,7 @@ class DigitalClockWidgetDescriptor extends BoardWidgetDescriptor {
   BoardWidgetConfig get defaultConfig => const DigitalClockConfig();
 
   @override
-  Widget buildWidget(BoardWidgetConfig config) {
+  Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged) {
     final c = config as DigitalClockConfig;
     return DigitalClockWidget(use24h: c.use24h, showSeconds: c.showSeconds);
   }

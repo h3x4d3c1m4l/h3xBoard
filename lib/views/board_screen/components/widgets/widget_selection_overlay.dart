@@ -294,7 +294,9 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
           ),
         ),
         // Corner scale handles: small square glyph inside a finger-friendly touch target.
-        for (var i = 0; i < corners.length; i++)
+        // Hidden for scale-locked widgets (e.g. grid-matched rulers) — they can't resize.
+        if (!bw.isScaleLocked)
+          for (var i = 0; i < corners.length; i++)
           Positioned(
             left: corners[i].dx - touch / 2,
             top: corners[i].dy - touch / 2,

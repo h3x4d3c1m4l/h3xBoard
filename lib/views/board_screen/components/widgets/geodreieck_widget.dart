@@ -1,24 +1,26 @@
 // ignore_for_file: cascade_invocations
 
 import 'dart:math';
-import 'package:flutter/widget_previews.dart';
-import 'package:flutter/widgets.dart';
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/extensions/canvas_extension.dart';
-
-@Preview(name: 'Geodreieck Widget')
-Widget myGeodreieckWidget() {
-  return GeodreieckWidget();
-}
+import 'package:h3xboard/l10n/generated/app_localizations.dart';
+import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class GeodreieckWidget extends StatelessWidget {
+
+  // The painter draws a 45-45-90 set square: a full-width top edge with the apex
+  // at (width/2, width/2), so the content height is half the width. Sized to fit
+  // that triangle tightly (no empty area below the apex).
+  static const Size naturalSize = Size(160, 88);
 
   const GeodreieckWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: CustomPaint(size: const Size(160, 240), painter: _GeodreieckPainter()),
-    );
+    return CustomPaint(size: naturalSize, painter: _GeodreieckPainter());
   }
 
 }
@@ -170,5 +172,45 @@ class _GeodreieckPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+
+}
+
+class GeodreieckWidgetDescriptor extends BoardWidgetDescriptor {
+
+  static const GeodreieckWidgetDescriptor instance = GeodreieckWidgetDescriptor._();
+  const GeodreieckWidgetDescriptor._();
+
+  @override
+  IconData get icon => LucideIcons.triangleRight;
+
+  @override
+  String label(AppLocalizations localizations) => localizations.addWidgetMenu_geodreieck;
+
+  @override
+  Size naturalSize(BoardWidgetConfig config) => GeodreieckWidget.naturalSize;
+
+  @override
+  BoardWidgetConfig get defaultConfig => const GeodreieckConfig();
+
+  @override
+  Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged) {
+    return const GeodreieckWidget();
+  }
+
+  @override
+  List<MenuFlyoutItemBase> settingsMenuItems(
+    BuildContext context,
+    BoardWidgetConfig config,
+    void Function(BoardWidgetConfig) onChange,
+  ) {
+    final c = config as GeodreieckConfig;
+    return [
+      ToggleMenuFlyoutItem(
+        value: c.matchSquares,
+        text: Text(context.localizations.geodreieckSettingsMenu_matchSquares),
+        onChanged: (v) => onChange(c.copyWith(matchSquares: v)),
+      ),
+    ];
+  }
 
 }

@@ -168,7 +168,7 @@ class PianoWidgetDescriptor extends BoardWidgetDescriptor {
   BoardWidgetConfig get defaultConfig => const PianoConfig();
 
   @override
-  Widget buildWidget(BoardWidgetConfig config) {
+  Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged) {
     final c = config as PianoConfig;
     return PianoWidget(octaves: c.octaves);
   }

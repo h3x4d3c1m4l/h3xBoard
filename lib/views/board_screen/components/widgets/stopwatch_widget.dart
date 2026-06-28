@@ -165,7 +165,7 @@ class StopwatchWidgetDescriptor extends BoardWidgetDescriptor {
   BoardWidgetConfig get defaultConfig => const StopwatchConfig();
 
   @override
-  Widget buildWidget(BoardWidgetConfig config) {
+  Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged) {
     final c = config as StopwatchConfig;
     return StopwatchWidget(showCentiseconds: c.showCentiseconds);
   }

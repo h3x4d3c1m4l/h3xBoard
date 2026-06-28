@@ -3,9 +3,12 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/analog_clock_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/geodreieck_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/memo_note_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/piano_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/ruler_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/stopwatch_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/todo_list_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/traffic_light_widget.dart';
 
 // Abstract descriptor for a board widget type. Each widget file provides a
@@ -20,7 +23,9 @@ abstract class BoardWidgetDescriptor {
   String label(AppLocalizations localizations);
   Size naturalSize(BoardWidgetConfig config);
   BoardWidgetConfig get defaultConfig;
-  Widget buildWidget(BoardWidgetConfig config);
+  // [onConfigChanged] lets interactive widgets persist config mutations made on
+  // the canvas itself (e.g. ticking a to-do item). Most widgets ignore it.
+  Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged);
   List<MenuFlyoutItemBase> settingsMenuItems(
     BuildContext context,
     BoardWidgetConfig config,
@@ -38,6 +43,9 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   StopwatchConfig: StopwatchWidgetDescriptor.instance,
   MemoNoteConfig: MemoNoteWidgetDescriptor.instance,
   PianoConfig: PianoWidgetDescriptor.instance,
+  TodoListConfig: TodoListWidgetDescriptor.instance,
+  RulerConfig: RulerWidgetDescriptor.instance,
+  GeodreieckConfig: GeodreieckWidgetDescriptor.instance,
 };
 
 // All registered descriptors, exposed for building the "add widget" menu.

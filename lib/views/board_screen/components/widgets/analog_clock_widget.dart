@@ -400,7 +400,7 @@ class AnalogClockWidgetDescriptor extends BoardWidgetDescriptor {
   BoardWidgetConfig get defaultConfig => const AnalogClockConfig();
 
   @override
-  Widget buildWidget(BoardWidgetConfig config) {
+  Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged) {
     final c = config as AnalogClockConfig;
     return _AnalogClockWidget(style: c.style, showSeconds: c.showSeconds);
   }

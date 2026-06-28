@@ -109,6 +109,7 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
     _activeSubBoardId = boards.any((b) => b.id == content.activeSubBoardId)
         ? content.activeSubBoardId
         : boards.first.id;
+    resyncMatchedWidgets();
   }
 
   @action
@@ -176,6 +177,22 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @action
   void setBoardLineSpacing(double spacing) {
     _updateActiveSubBoard((b) => b.copyWith(lineSpacing: spacing));
+    resyncMatchedWidgets();
+  }
+
+  // Re-derives the scale of every grid-matched widget (ruler, geodreieck) from the
+  // current grid spacing so matched widgets track the grid-spacing slider (and
+  // undo/redo of it) live. Matched scale is a pure function of (config, lineSpacing),
+  // so no extra history bookkeeping is needed — replaying the spacing change replays
+  // the scale.
+  @action
+  void resyncMatchedWidgets() {
+    final spacing = board.lineSpacing;
+    for (var i = 0; i < _boardWidgets.length; i++) {
+      final bw = _boardWidgets[i];
+      final s = boardWidgetMatchScale(bw.config, spacing);
+      if (s != null && bw.scale != s) _boardWidgets[i] = bw.copyWith(scale: s);
+    }
   }
 
   @action

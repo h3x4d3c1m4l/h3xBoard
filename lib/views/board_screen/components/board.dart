@@ -179,7 +179,10 @@ class _BoardState extends State<Board> {
     });
   }
 
-  Widget _buildWidgetContent(BoardWidget bw) => descriptorFor(bw.config).buildWidget(bw.config);
+  Widget _buildWidgetContent(BoardWidget bw) => descriptorFor(bw.config).buildWidget(
+        bw.config,
+        (newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig),
+      );
 
   Widget _buildHeader(BuildContext context, BoardWidget bw) {
     final placement = _headerPlacementFor(bw);
@@ -203,8 +206,9 @@ class _BoardState extends State<Board> {
     widget.viewModel.setArrangingWidget(widget.viewModel.arrangingWidgetId == id ? null : id);
   }
 
-  List<MenuFlyoutItemBase> _buildSettingsItems(BuildContext context, BoardWidget bw) {
-    final typeItems = descriptorFor(bw.config).settingsMenuItems(
+  List<MenuFlyoutItemBase> _buildSettingsItems(BuildContext context, BoardWidget bw, {bool includeTitle = false}) {
+    final descriptor = descriptorFor(bw.config);
+    final typeItems = descriptor.settingsMenuItems(
       context,
       bw.config,
       (newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig),
@@ -216,6 +220,27 @@ class _BoardState extends State<Board> {
     final isBottom = currentIndex == 0;
     final isGlobal = bw.isVisibleOnAllBoards;
     return [
+      // Right-click menus prepend the widget's identity so it's clear which widget
+      // the menu belongs to (the header-bar settings button doesn't need it).
+      if (includeTitle) ...[
+        MenuFlyoutItemBuilder(
+          builder: (context) => Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 10, 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(descriptor.icon, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  descriptor.label(context.localizations),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const MenuFlyoutSeparator(),
+      ],
       ...typeItems,
       if (typeItems.isNotEmpty) const MenuFlyoutSeparator(),
       MenuFlyoutSubItem(
@@ -244,7 +269,6 @@ class _BoardState extends State<Board> {
           ),
         ],
       ),
-      const MenuFlyoutSeparator(),
       MenuFlyoutSubItem(
         leading: const Icon(LucideIcons.eye),
         text: Text(context.localizations.boardVisibilityMenu_title),
@@ -363,7 +387,7 @@ class _BoardState extends State<Board> {
       for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
         if (_isPointOnWidget(event.localPosition, bw) || _isPointOnHeader(event.localPosition, bw)) {
           _contextMenuCanvasPos = event.localPosition;
-          _contextMenuBuilder = (context) => _buildSettingsItems(context, bw);
+          _contextMenuBuilder = (context) => _buildSettingsItems(context, bw, includeTitle: true);
           setState(() {});
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
@@ -499,7 +523,10 @@ class _BoardState extends State<Board> {
       const step = math.pi / 12;
       newRotation = (newRotation / step).round() * step;
     }
-    final newScale = (_gestureStartScale * details.scale).clamp(0.2, 5.0);
+    // Grid-matched rulers own their scale: keep it fixed (move + rotate still apply).
+    final active = widget.viewModel.visibleBoardWidgets.where((b) => b.id == _activeWidgetId);
+    final scaleLocked = active.isNotEmpty && active.first.isScaleLocked;
+    final newScale = scaleLocked ? _gestureStartScale : (_gestureStartScale * details.scale).clamp(0.2, 5.0);
     widget.viewModel.updateBoardWidget(_activeWidgetId!, _currentX, _currentY, newRotation, newScale);
   }
 
@@ -530,6 +557,7 @@ class _BoardState extends State<Board> {
     if (matching.isEmpty) return;
     final bw = matching.first;
     if (!_isPointOnWidget(event.localPosition, bw)) return;
+    if (bw.isScaleLocked) return; // grid-matched rulers ignore scroll-zoom
 
     const sensitivity = 0.001;
     final newScale = (bw.scale * (1.0 - event.scrollDelta.dy * sensitivity)).clamp(0.2, 5.0);

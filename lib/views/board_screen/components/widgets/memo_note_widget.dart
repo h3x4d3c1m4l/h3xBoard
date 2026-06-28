@@ -138,7 +138,7 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
   BoardWidgetConfig get defaultConfig => const MemoNoteConfig();
 
   @override
-  Widget buildWidget(BoardWidgetConfig config) {
+  Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged) {
     final c = config as MemoNoteConfig;
     return MemoNoteWidget(text: c.text, color: c.color);
   }
