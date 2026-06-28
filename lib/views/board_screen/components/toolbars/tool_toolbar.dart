@@ -124,17 +124,26 @@ class _SaveStatusIndicator extends StatelessWidget {
       BoardSaveStatus.error => (LucideIcons.cloudAlert, loc.boardScreen_saveError, Colors.red),
     };
 
-    return AnimatedOpacity(
+    final indicator = AnimatedOpacity(
       opacity: status == BoardSaveStatus.idle ? 0 : 1,
       duration: const Duration(milliseconds: 150),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 6,
-        children: [
-          Icon(icon, size: 16, color: color),
-          Text(label, style: theme.typography.caption?.copyWith(color: color)),
-        ],
+      child: SizedBox(
+        width: 32,
+        height: 32,
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 150),
+            child: Icon(icon, key: ValueKey(icon), size: 16, color: color),
+          ),
+        ),
       ),
+    );
+
+    if (label.isEmpty) return indicator;
+
+    return Tooltip(
+      message: label,
+      child: indicator,
     );
   }
 
