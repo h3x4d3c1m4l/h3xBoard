@@ -308,6 +308,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     final config = await showDialog<BoardWidgetConfig>(
       context: context,
       builder: (_) => const WidgetCatalogDialog(),
+      barrierDismissible: true,
     );
     if (config == null) return;
     onAddWidget(config);

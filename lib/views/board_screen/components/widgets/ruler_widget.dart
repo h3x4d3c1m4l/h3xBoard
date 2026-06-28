@@ -5,13 +5,16 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+// Blank margin on each end of the bar so the scale doesn't run flush to the edges.
+const double _kRulerPadX = kRulerPxPerCm / 4;
+
 // A single-edged measuring ruler (max 30 cm). The unit setting switches the drawn
 // graduations between cm/mm and inches/sixteenths; the "match the squares" setting
 // is handled outside the widget by locking the board scale (see [rulerMatchScale]).
 class _RulerWidget extends StatelessWidget {
 
-  // 30 cm long at the baseline cm-to-canvas ratio; a thin bar 3 cm tall.
-  static const Size naturalSize = Size(30 * kRulerPxPerCm, 3 * kRulerPxPerCm);
+  // 30 cm of graduations plus a little padding on each end; a thin bar 3 cm tall.
+  static const Size naturalSize = Size(30 * kRulerPxPerCm + 2 * _kRulerPadX, 3 * kRulerPxPerCm);
 
   final RulerUnit unit;
 
@@ -62,8 +65,9 @@ class _RulerPainter extends CustomPainter {
 
   void _paintCm(Canvas canvas, Size size, Paint tick) {
     const pxPerMm = kRulerPxPerCm / 10;
-    for (int i = 0; i * pxPerMm <= size.width; i++) {
-      final x = i * pxPerMm;
+    final scaleWidth = size.width - 2 * _kRulerPadX;
+    for (int i = 0; i * pxPerMm <= scaleWidth; i++) {
+      final x = _kRulerPadX + i * pxPerMm;
       final len = i % 10 == 0 ? 40.0 : (i % 5 == 0 ? 26.0 : 16.0);
       canvas.drawLine(Offset(x, 0), Offset(x, len), tick);
       if (i % 10 == 0) _paintNumber(canvas, size, x, '${i ~/ 10}');
@@ -73,8 +77,9 @@ class _RulerPainter extends CustomPainter {
   void _paintInch(Canvas canvas, Size size, Paint tick) {
     const pxPerInch = 2.54 * kRulerPxPerCm;
     const pxPer16th = pxPerInch / 16;
-    for (int j = 0; j * pxPer16th <= size.width; j++) {
-      final x = j * pxPer16th;
+    final scaleWidth = size.width - 2 * _kRulerPadX;
+    for (int j = 0; j * pxPer16th <= scaleWidth; j++) {
+      final x = _kRulerPadX + j * pxPer16th;
       final double len;
       if (j % 16 == 0) {
         len = 40;
