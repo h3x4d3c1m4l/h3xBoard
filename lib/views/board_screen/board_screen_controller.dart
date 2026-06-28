@@ -15,6 +15,7 @@ import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/background_picker_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_dialog.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
 import 'package:h3xboard/widgets/themable_loading_dialog.dart';
@@ -299,6 +300,18 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   }
 
   // Widget handlers
+
+  /// Opens the widget catalog and adds the chosen widget to the board. Does
+  /// nothing if the dialog is dismissed without a selection.
+  Future<void> onShowWidgetCatalog() async {
+    final context = contextAccessor.buildContext;
+    final config = await showDialog<BoardWidgetConfig>(
+      context: context,
+      builder: (_) => const WidgetCatalogDialog(),
+    );
+    if (config == null) return;
+    onAddWidget(config);
+  }
 
   void onAddWidget(BoardWidgetConfig config) {
     final id = '${config.runtimeType}_${DateTime.now().millisecondsSinceEpoch}';

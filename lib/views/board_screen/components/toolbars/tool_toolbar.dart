@@ -70,7 +70,7 @@ class ToolToolbar extends StatelessWidget {
                 const _ToolbarDivider(),
                 ToggleButtonToolbar(
                   buttons: [
-                    AddWidgetButton(viewModel: viewModel, controller: controller),
+                    AddWidgetButton(controller: controller),
                     BoardSettingsButton(viewModel: viewModel, controller: controller),
                   ],
                 ),
