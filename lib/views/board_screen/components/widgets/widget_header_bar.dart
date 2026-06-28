@@ -15,6 +15,8 @@ const double kHeaderGap = 6.0; // gap between widget bounding box and header
 // Matches the selection overlay accent colour.
 const Color _kAccent = Color(0xFF3B82F6);
 const Duration _kToggleAnim = Duration(milliseconds: 220);
+// Fade the whole bar in/out as Select mode is toggled.
+const Duration _kFadeAnim = Duration(milliseconds: 180);
 
 // A persistent, always-visible chrome bar pinned above each board widget. In Use
 // mode the whole bar is a drag handle (handled by the gesture layer in board.dart);
@@ -31,6 +33,9 @@ class WidgetHeaderBar extends StatelessWidget {
   final Offset arrangeDelta;
   final String title;
   final bool isArranging;
+  // Whether the board is in Select mode. The bar fades out (and stops absorbing
+  // pointers) when false, rather than being removed, so the transition animates.
+  final bool visible;
   final WidgetSettingsBuilder settingsBuilder;
   final VoidCallback onToggleArrange;
   final VoidCallback onClose;
@@ -43,6 +48,7 @@ class WidgetHeaderBar extends StatelessWidget {
     required this.arrangeDelta,
     required this.title,
     required this.isArranging,
+    required this.visible,
     required this.settingsBuilder,
     required this.onToggleArrange,
     required this.onClose,
@@ -67,26 +73,36 @@ class WidgetHeaderBar extends StatelessWidget {
       top: center.dy - size.height / 2,
       width: size.width,
       height: size.height,
-      // The bar sits at its Use-mode anchor (instant, so it tracks drags) and eases
-      // the extra Arrange push via the translate — animating the mode change only.
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(end: isArranging ? 1.0 : 0.0),
-        duration: _kToggleAnim,
-        curve: Curves.easeOut,
-        builder: (context, t, child) => Transform.translate(offset: arrangeDelta * t, child: child),
-        child: Transform.rotate(
-          angle: _readableRotation,
-          // Opaque so the header absorbs pointers and the drawing layer beneath it does
-          // not receive strokes. The board's translucent gesture layer (above) still
-          // gets the events to drive header drags, and the buttons handle their taps.
-          child: Listener(
-            behavior: HitTestBehavior.opaque,
-            child: FittedBox(
-              fit: BoxFit.fill,
-              child: SizedBox(
-                width: kHeaderWidth,
-                height: kHeaderHeight,
-                child: _buildContent(context),
+      // Hidden bars must not absorb pointers (they'd block strokes underneath
+      // while fading out), so gate hit-testing on visibility and fade opacity.
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1.0 : 0.0,
+          duration: _kFadeAnim,
+          curve: Curves.easeInOut,
+          // The bar sits at its Use-mode anchor (instant, so it tracks drags) and eases
+          // the extra Arrange push via the translate — animating the mode change only.
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: isArranging ? 1.0 : 0.0),
+            duration: _kToggleAnim,
+            curve: Curves.easeOut,
+            builder: (context, t, child) => Transform.translate(offset: arrangeDelta * t, child: child),
+            child: Transform.rotate(
+              angle: _readableRotation,
+              // Opaque so the header absorbs pointers and the drawing layer beneath it does
+              // not receive strokes. The board's translucent gesture layer (above) still
+              // gets the events to drive header drags, and the buttons handle their taps.
+              child: Listener(
+                behavior: HitTestBehavior.opaque,
+                child: FittedBox(
+                  fit: BoxFit.fill,
+                  child: SizedBox(
+                    width: kHeaderWidth,
+                    height: kHeaderHeight,
+                    child: _buildContent(context),
+                  ),
+                ),
               ),
             ),
           ),
@@ -283,6 +299,7 @@ class _DonePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -292,7 +309,10 @@ class _DonePill extends StatelessWidget {
           height: 26,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
-            color: _kAccent,
+            // Match the resting background of a primary FilledButton exactly: it
+            // uses the accent's brightness-adjusted brush, not the raw accentColor
+            // (which is a different, lighter shade).
+            color: theme.accentColor.defaultBrushFor(theme.brightness),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(

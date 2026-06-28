@@ -194,6 +194,7 @@ class _BoardState extends State<Board> {
       arrangeDelta: placement.arrangeDelta,
       title: descriptorFor(bw.config).label(context.localizations),
       isArranging: bw.id == widget.viewModel.arrangingWidgetId,
+      visible: widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer,
       settingsBuilder: (context) => _buildSettingsItems(context, bw),
       onToggleArrange: () => _toggleArrange(bw.id),
       onClose: () => widget.onDeleteWidget(bw.id),
@@ -343,8 +344,10 @@ class _BoardState extends State<Board> {
   }
 
   // Topmost widget whose header contains the point, or null. Reversed so the
-  // visually-topmost header wins when headers overlap.
+  // visually-topmost header wins when headers overlap. Headers (and their drag
+  // affordance) exist only in Select mode, so this never matches otherwise.
   BoardWidget? _headerAt(Offset canvasPoint) {
+    if (widget.viewModel.drawingTools.activeTool != SelectableEditTool.pointer) return null;
     for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
       if (_isPointOnHeader(canvasPoint, bw)) return bw;
     }
@@ -589,11 +592,13 @@ class _BoardState extends State<Board> {
             height: 1080,
             child: Stack(
               children: [
-                // Drawing is suppressed only while a widget is being arranged; the
-                // always-visible headers absorb pointers to block strokes underneath
-                // them, and interactive bodies capture their own taps.
+                // Drawing is suppressed in Select mode (the user is managing
+                // widgets, not drawing) and while a widget is being arranged; the
+                // headers absorb pointers to block strokes underneath them, and
+                // interactive bodies capture their own taps.
                 IgnorePointer(
-                  ignoring: widget.viewModel.arrangingWidgetId != null,
+                  ignoring: widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer ||
+                      widget.viewModel.arrangingWidgetId != null,
                   child: DrawingBoard(
                     controller: widget.drawingController,
                     background: Observer(builder: (_) {
@@ -655,7 +660,9 @@ class _BoardState extends State<Board> {
                       ),
                     ),
                   ),
-                // Always-visible header chrome.
+                // Header chrome — always mounted but faded out (and pointer-inert)
+                // outside Select mode, so toggling the mode animates in/out and the
+                // board stays uncluttered while drawing or presenting.
                 for (final bw in widget.viewModel.visibleBoardWidgets) _buildHeader(context, bw),
                 // Arrange overlay (solid border + resize/rotate handles) for the
                 // single widget being arranged. Sized at boardPixelRatio-scaled

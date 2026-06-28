@@ -111,6 +111,14 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     @Default(false) bool matchSquares,
   }) = GeodreieckConfig;
 
+  // [width]/[height] hold the picked image's intrinsic pixel size so the widget
+  // frames at its real aspect ratio; null until an image is chosen.
+  const factory BoardWidgetConfig.image({
+    @Default('') String fileId,
+    double? width,
+    double? height,
+  }) = ImageConfig;
+
   factory BoardWidgetConfig.fromJson(Map<String, dynamic> json) => _$BoardWidgetConfigFromJson(json);
 
 }

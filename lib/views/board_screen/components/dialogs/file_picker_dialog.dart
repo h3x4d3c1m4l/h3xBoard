@@ -11,45 +11,69 @@ import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/widgets/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-/// The virtual folder shared background images are stored in. Decoupled from any
-/// single board so an image uploaded once can be reused across boards.
+/// Virtual folders that file uploads are organised into. Decoupled from any single
+/// board so an image uploaded once can be reused across boards and widgets.
 const String backgroundsFolder = 'backgrounds';
+const String imagesFolder = 'images';
 
-/// The outcome of the [BackgroundPickerDialog]. A `null` [fileId] means the user
-/// chose to remove the current background; the dialog returning `null` itself
-/// (no result) means it was dismissed without a choice.
-class BackgroundPickerResult {
+/// The outcome of a [FilePickerDialog]. A `null` [fileId] means the user chose to
+/// clear/remove the current selection (only offered when `allowRemove` is set);
+/// the dialog returning `null` itself (no result) means it was dismissed without
+/// a choice.
+class FilePickerResult {
 
-  /// The selected file's id, or `null` to clear the background.
+  /// The selected file's id, or `null` to clear the current selection.
   final String? fileId;
 
-  const BackgroundPickerResult(this.fileId);
+  const FilePickerResult(this.fileId);
 
 }
 
-/// Lets the user set a board's background image: pick one already uploaded, or
-/// upload a new one. Browsing/deleting metadata go over the WebSocket API; the
-/// bytes go over REST (see [H3xBoardFileService]).
-class BackgroundPickerDialog extends StatefulWidget {
+/// A reusable image file browser. Starts in [initialFolder] but lets the user
+/// navigate the whole virtual folder tree (so e.g. an image uploaded as a board
+/// background can be picked for an image widget and vice versa). Uploads land in
+/// the folder currently being browsed.
+///
+/// Browsing metadata goes over the WebSocket API; the bytes go over REST (see
+/// [H3xBoardFileService]).
+class FilePickerDialog extends StatefulWidget {
 
   final H3xBoardApiClient apiClient;
   final H3xBoardFileService fileService;
+
+  /// The folder shown first. The user can still navigate up to the root and into
+  /// sibling folders from here.
+  final String initialFolder;
+
+  /// The id of the currently selected file, highlighted in the grid.
   final String? currentFileId;
 
-  const BackgroundPickerDialog({
+  /// Dialog title.
+  final String title;
+
+  /// When true, shows a button that pops a [FilePickerResult] with a `null`
+  /// file id to clear the current selection.
+  final bool allowRemove;
+
+  const FilePickerDialog({
     super.key,
     required this.apiClient,
     required this.fileService,
+    required this.initialFolder,
     required this.currentFileId,
+    required this.title,
+    this.allowRemove = false,
   });
 
   @override
-  State<BackgroundPickerDialog> createState() => _BackgroundPickerDialogState();
+  State<FilePickerDialog> createState() => _FilePickerDialogState();
 
 }
 
-class _BackgroundPickerDialogState extends State<BackgroundPickerDialog> {
+class _FilePickerDialogState extends State<FilePickerDialog> {
 
+  late String _path;
+  List<String>? _folders;
   List<FileSummary>? _files;
   bool _loadError = false;
   bool _busy = false;
@@ -58,24 +82,36 @@ class _BackgroundPickerDialogState extends State<BackgroundPickerDialog> {
   @override
   void initState() {
     super.initState();
-    _loadFiles();
+    _path = widget.initialFolder;
+    _loadFolder(_path);
   }
 
-  Future<void> _loadFiles() async {
+  List<String> get _segments => _path.isEmpty ? const [] : _path.split('/');
+
+  Future<void> _loadFolder(String path) async {
     setState(() {
+      _path = path;
       _loadError = false;
+      _folders = null;
       _files = null;
+      _errorMessage = null;
     });
     try {
-      final result = await widget.apiClient.browseFiles(backgroundsFolder);
+      final result = await widget.apiClient.browseFiles(path);
       final images = result.files.where((f) => f.contentType.startsWith('image/')).toList();
+      final folders = [...result.folders]..sort();
       if (!mounted) return;
-      setState(() => _files = images);
+      setState(() {
+        _folders = folders;
+        _files = images;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() => _loadError = true);
     }
   }
+
+  void _openFolder(String name) => _loadFolder(_path.isEmpty ? name : '$_path/$name');
 
   Future<void> _uploadNew() async {
     final picked = await FilePicker.pickFiles(type: FileType.image, withData: true);
@@ -92,10 +128,10 @@ class _BackgroundPickerDialogState extends State<BackgroundPickerDialog> {
         bytes: bytes,
         fileName: file.name,
         contentType: _contentTypeForExtension(file.extension),
-        path: backgroundsFolder,
+        path: _path,
       );
       if (!mounted) return;
-      Navigator.of(context).pop(BackgroundPickerResult(summary.id));
+      Navigator.of(context).pop(FilePickerResult(summary.id));
     } on H3xBoardApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -106,36 +142,43 @@ class _BackgroundPickerDialogState extends State<BackgroundPickerDialog> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _errorMessage = context.localizations.backgroundPicker_uploadError;
+        _errorMessage = context.localizations.filePicker_uploadError;
       });
     }
   }
 
-  void _select(String fileId) => Navigator.of(context).pop(BackgroundPickerResult(fileId));
+  void _select(String fileId) => Navigator.of(context).pop(FilePickerResult(fileId));
 
   @override
   Widget build(BuildContext context) {
     final loc = context.localizations;
 
     return ThemableContentDialog(
-      constraints: const BoxConstraints(maxWidth: 560, maxHeight: 640),
-      title: Text(loc.backgroundPicker_title),
+      constraints: const BoxConstraints(maxWidth: 560, maxHeight: 680),
+      title: Text(widget.title),
       content: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
         child: SizedBox(
-          height: 360,
-          child: _buildBody(loc),
+          height: 400,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildBreadcrumb(loc),
+              const SizedBox(height: 8),
+              Expanded(child: _buildBody(loc)),
+            ],
+          ),
         ),
       ),
       actions: [
-        if (widget.currentFileId != null)
+        if (widget.allowRemove && widget.currentFileId != null)
           Button(
-            onPressed: _busy ? null : () => Navigator.of(context).pop(const BackgroundPickerResult(null)),
-            child: Text(loc.backgroundPicker_remove),
+            onPressed: _busy ? null : () => Navigator.of(context).pop(const FilePickerResult(null)),
+            child: Text(loc.filePicker_remove),
           ),
         Button(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: Text(loc.backgroundPicker_cancel),
+          child: Text(loc.filePicker_cancel),
         ),
         FilledButton(
           onPressed: _busy ? null : _uploadNew,
@@ -147,7 +190,7 @@ class _BackgroundPickerDialogState extends State<BackgroundPickerDialog> {
               else
                 const Icon(LucideIcons.upload, size: 16),
               const SizedBox(width: 8),
-              Text(loc.backgroundPicker_uploadNew),
+              Text(loc.filePicker_uploadHere),
             ],
           ),
         ),
@@ -155,25 +198,40 @@ class _BackgroundPickerDialogState extends State<BackgroundPickerDialog> {
     );
   }
 
+  // A breadcrumb of clickable folder segments, so the user can jump back up the
+  // tree. "Home" is the storage root ("").
+  Widget _buildBreadcrumb(AppLocalizations loc) {
+    final segments = _segments;
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _crumb(loc.filePicker_home, () => _loadFolder('')),
+        for (var i = 0; i < segments.length; i++) ...[
+          const Icon(LucideIcons.chevronRight, size: 14),
+          _crumb(segments[i], () => _loadFolder(segments.sublist(0, i + 1).join('/'))),
+        ],
+      ],
+    );
+  }
+
+  Widget _crumb(String label, VoidCallback onPressed) => HyperlinkButton(
+        onPressed: _busy ? null : onPressed,
+        child: Text(label),
+      );
+
   Widget _buildBody(AppLocalizations loc) {
     if (_loadError) {
       return _CenteredMessage(
         icon: LucideIcons.triangleAlert,
-        message: loc.backgroundPicker_loadError,
-        action: Button(onPressed: _loadFiles, child: Text(loc.backgroundPicker_retry)),
+        message: loc.filePicker_loadError,
+        action: Button(onPressed: () => _loadFolder(_path), child: Text(loc.filePicker_retry)),
       );
     }
 
+    final folders = _folders;
     final files = _files;
-    if (files == null) {
+    if (folders == null || files == null) {
       return const Center(child: ProgressRing());
-    }
-
-    if (files.isEmpty) {
-      return _CenteredMessage(
-        icon: LucideIcons.imageOff,
-        message: loc.backgroundPicker_empty,
-      );
     }
 
     return Column(
@@ -189,25 +247,34 @@ class _BackgroundPickerDialogState extends State<BackgroundPickerDialog> {
             ),
           ),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.only(right: 4),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 160,
-              childAspectRatio: 16 / 9,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: files.length,
-            itemBuilder: (context, index) {
-              final file = files[index];
-              return _BackgroundThumb(
-                file: file,
-                fileService: widget.fileService,
-                isSelected: file.id == widget.currentFileId,
-                onPressed: _busy ? null : () => _select(file.id),
-              );
-            },
-          ),
+          child: (folders.isEmpty && files.isEmpty)
+              ? _CenteredMessage(icon: LucideIcons.imageOff, message: loc.filePicker_empty)
+              : GridView.builder(
+                  padding: const EdgeInsets.only(right: 4),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 160,
+                    childAspectRatio: 16 / 9,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: folders.length + files.length,
+                  itemBuilder: (context, index) {
+                    if (index < folders.length) {
+                      final name = folders[index];
+                      return _FolderTile(
+                        name: name,
+                        onPressed: _busy ? null : () => _openFolder(name),
+                      );
+                    }
+                    final file = files[index - folders.length];
+                    return _ImageThumb(
+                      file: file,
+                      fileService: widget.fileService,
+                      isSelected: file.id == widget.currentFileId,
+                      onPressed: _busy ? null : () => _select(file.id),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -215,15 +282,62 @@ class _BackgroundPickerDialogState extends State<BackgroundPickerDialog> {
 
 }
 
+/// A navigable folder tile in the picker grid.
+class _FolderTile extends StatelessWidget {
+
+  final String name;
+  final VoidCallback? onPressed;
+
+  const _FolderTile({required this.name, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    return HoverButton(
+      onPressed: onPressed,
+      builder: (context, states) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: theme.resources.cardBackgroundFillColorDefault,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: states.isHovered ? theme.accentColor.withValues(alpha: 0.5) : theme.resources.controlStrokeColorDefault,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(LucideIcons.folder, size: 20),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.typography.body,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+}
+
 /// One image tile in the picker grid.
-class _BackgroundThumb extends StatelessWidget {
+class _ImageThumb extends StatelessWidget {
 
   final FileSummary file;
   final H3xBoardFileService fileService;
   final bool isSelected;
   final VoidCallback? onPressed;
 
-  const _BackgroundThumb({
+  const _ImageThumb({
     required this.file,
     required this.fileService,
     required this.isSelected,

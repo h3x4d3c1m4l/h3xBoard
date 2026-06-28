@@ -14,7 +14,7 @@ import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
-import 'package:h3xboard/views/board_screen/components/dialogs/background_picker_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_dialog.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
@@ -314,6 +314,11 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   }
 
   void onAddWidget(BoardWidgetConfig config) {
+    // Switch to Select mode so the new widget's header is visible and it can be
+    // positioned right away (headers are hidden in Draw/Erase mode).
+    if (viewModel.drawingTools.activeTool != SelectableEditTool.pointer) {
+      onSelectableToolButtonPressed(SelectableEditTool.pointer);
+    }
     final id = '${config.runtimeType}_${DateTime.now().millisecondsSinceEpoch}';
     final boardId = viewModel.activeSubBoardId;
     final widget = BoardWidget(
@@ -619,12 +624,15 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   /// resulting choice is applied via [_applyBackgroundFileId].
   Future<void> onPickBackgroundImage() async {
     final context = contextAccessor.buildContext;
-    final result = await showDialog<BackgroundPickerResult>(
+    final result = await showDialog<FilePickerResult>(
       context: context,
-      builder: (_) => BackgroundPickerDialog(
+      builder: (_) => FilePickerDialog(
         apiClient: _wsClient,
         fileService: _fileService,
+        initialFolder: backgroundsFolder,
         currentFileId: viewModel.board.backgroundFileId,
+        title: localizations.backgroundPicker_title,
+        allowRemove: true,
       ),
     );
     // null = the dialog was dismissed without a choice.
