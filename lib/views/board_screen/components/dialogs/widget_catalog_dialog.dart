@@ -6,6 +6,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/board_widget_desc
 import 'package:h3xboard/widgets/continuous_text_box.dart';
 import 'package:h3xboard/widgets/themable_panel_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:scroll_edge_hint/scroll_edge_hint.dart';
 
 /// The "Add a widget" catalog. Shows every registered widget type rendered with
 /// its default config as a live preview, ordered alphabetically by label and
@@ -83,22 +84,30 @@ class _WidgetCatalogDialogState extends State<WidgetCatalogDialog> {
               Expanded(
                 child: descriptors.isEmpty
                     ? Center(child: Text(loc.widgetCatalog_noResults))
-                    : GridView.builder(
-                        padding: const EdgeInsets.only(right: 4),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 220,
-                          childAspectRatio: 1.15,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
+                    // Fade the grid at its scrollable top/bottom edges to hint
+                    // that there's more content. backgroundColor matches the
+                    // dialog's white surface so rows dissolve into the edge.
+                    : ScrollEdgeHint.builder(
+                        extent: 24,
+                        backgroundColor: Colors.white,
+                        builder: (context, controller) => GridView.builder(
+                          controller: controller,
+                          padding: const EdgeInsets.only(right: 4),
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 220,
+                            childAspectRatio: 1.15,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
+                          itemCount: descriptors.length,
+                          itemBuilder: (context, index) {
+                            final descriptor = descriptors[index];
+                            return _WidgetTile(
+                              descriptor: descriptor,
+                              onPressed: () => _select(descriptor.defaultConfig),
+                            );
+                          },
                         ),
-                        itemCount: descriptors.length,
-                        itemBuilder: (context, index) {
-                          final descriptor = descriptors[index];
-                          return _WidgetTile(
-                            descriptor: descriptor,
-                            onPressed: () => _select(descriptor.defaultConfig),
-                          );
-                        },
                       ),
               ),
             ],
