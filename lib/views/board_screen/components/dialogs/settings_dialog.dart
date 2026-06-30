@@ -108,7 +108,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
                               label: loc.settingsDialog_language,
                               control: _buildLanguageCombo(loc),
                             ),
-                            _SectionLabel(loc.settingsDialog_section_colorBar),
+                            _SectionLabel(
+                              icon: LucideIcons.palette,
+                              text: loc.settingsDialog_section_colorBar,
+                            ),
                             _SettingsRow(
                               label: loc.settingsDialog_position,
                               control: _buildPositionCombo(
@@ -124,7 +127,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                 onChanged: (v) => setState(() => _colorBarInside = v),
                               ),
                             ),
-                            _SectionLabel(loc.settingsDialog_section_toolBar),
+                            _SectionLabel(
+                              icon: LucideIcons.pencil,
+                              text: loc.settingsDialog_section_toolBar,
+                            ),
                             _SettingsRow(
                               label: loc.settingsDialog_position,
                               control: _buildPositionCombo(
@@ -143,7 +149,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
                             // Order is only meaningful when both bars stack on the
                             // same edge (same position and same inside/outside).
                             if (_colorBarPosition == _toolBarPosition && _colorBarInside == _toolBarInside) ...[
-                              _SectionLabel(loc.settingsDialog_section_barOrder),
+                              _SectionLabel(
+                                icon: LucideIcons.arrowDownUp,
+                                text: loc.settingsDialog_section_barOrder,
+                              ),
                               _SettingsRow(
                                 label: loc.settingsDialog_order,
                                 control: _buildOrderCombo(loc),
@@ -186,7 +195,17 @@ class _SettingsDialogState extends State<SettingsDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Text(loc.settingsDialog_title, style: theme.typography.subtitle),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(loc.settingsDialog_title, style: theme.typography.subtitle),
+              const SizedBox(height: 4),
+              Text(
+                loc.settingsDialog_subtitle,
+                style: theme.typography.body?.copyWith(color: theme.resources.textFillColorSecondary),
+              ),
+            ],
+          ),
         ),
         IconButton(
           icon: const Icon(LucideIcons.x, size: 18),
@@ -253,23 +272,34 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
 }
 
-/// A small section header grouping related settings rows.
+/// A small section header grouping related settings rows: an accent-tinted icon
+/// + title, mirroring the section headings in the Board Settings dialog.
 class _SectionLabel extends StatelessWidget {
 
+  final IconData icon;
   final String text;
 
-  const _SectionLabel(this.text);
+  const _SectionLabel({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 16, bottom: 4),
-      child: Text(
-        text,
-        style: theme.typography.bodyStrong?.copyWith(
-          color: theme.resources.textFillColorSecondary,
-        ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: theme.accentColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: theme.accentColor),
+          ),
+          const SizedBox(width: 12),
+          Text(text, style: theme.typography.bodyStrong),
+        ],
       ),
     );
   }
