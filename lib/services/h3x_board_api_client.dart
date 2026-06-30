@@ -121,6 +121,28 @@ class H3xBoardApiClient {
     await _call('files.v1.delete', id);
   }
 
+  /// Fetches every user setting as a `key → decoded JSON value` map. Keys are
+  /// dotted strings (e.g. `ui.language`); values are whatever JSON was stored.
+  Future<Map<String, dynamic>> getAllSettings() async {
+    final result = await _call('settings.v1.getAll', <String, dynamic>{});
+    return {
+      for (final entry in (result as List<dynamic>))
+        (entry as Map<String, dynamic>)['key'] as String: entry['value'],
+    };
+  }
+
+  /// Patches a single setting. Only the named [key] is touched server-side, so
+  /// concurrent edits to other keys are never clobbered. [value] is encoded as
+  /// JSON (string, bool, number, list or map).
+  Future<void> setSetting(String key, dynamic value) async {
+    await _call('settings.v1.set', <String, dynamic>{'key': key, 'value': value});
+  }
+
+  /// Removes a single setting, reverting it to its server-side default.
+  Future<void> deleteSetting(String key) async {
+    await _call('settings.v1.delete', <String, dynamic>{'key': key});
+  }
+
   Future<dynamic> _call(String method, [dynamic params]) {
     if (_channel == null) {
       throw const H3xBoardApiException(code: -1, message: 'Not connected');

@@ -3,6 +3,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
 import 'package:h3xboard/widgets/themable_content_dialog.dart';
@@ -29,6 +30,11 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
               onPressed: controller.onCreateBoardPressed,
               icon: Icon(LucideIcons.plus),
               label: Text(localizations.boardsScreen_createBoard),
+            ),
+            CommandBarButton(
+              onPressed: () => showSettingsDialog(contextAccessor.buildContext),
+              icon: Icon(LucideIcons.slidersHorizontal),
+              label: Text(localizations.appSettingsButton_preferences),
             ),
             CommandBarButton(
               onPressed: controller.onLogoutPressed,

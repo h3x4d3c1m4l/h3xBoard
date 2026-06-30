@@ -4,7 +4,10 @@ class ToggleButtonToolbar extends StatelessWidget {
 
   final List<Widget> buttons;
 
-  const ToggleButtonToolbar({super.key, required this.buttons})
+  /// Lay the buttons out along this axis, matching the parent toolbar.
+  final Axis direction;
+
+  const ToggleButtonToolbar({super.key, required this.buttons, this.direction = Axis.horizontal})
     : assert(buttons.length > 0, 'ToggleButtonToolbar needs at least 1 button');
 
   @override
@@ -13,7 +16,8 @@ class ToggleButtonToolbar extends StatelessWidget {
     ToggleButtonThemeData toggleButtonTheme = _getToggleButtonTheme(theme);
     ButtonThemeData buttonTheme = _getButtonTheme();
 
-    return Row(
+    return Flex(
+      direction: direction,
       mainAxisSize: .min,
       spacing: 6,
       children: buttons

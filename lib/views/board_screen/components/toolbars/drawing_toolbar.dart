@@ -7,27 +7,42 @@ class DrawingToolbar extends StatelessWidget {
   final Color? activeColor;
   final ValueChanged<Color>? onColorButtonPressed;
 
-  const DrawingToolbar({super.key, required this.activeColor, required this.onColorButtonPressed});
+  /// The bar's layout axis. Vertical (default) when docked left/right; horizontal
+  /// when docked top/bottom.
+  final Axis direction;
+
+  const DrawingToolbar({
+    super.key,
+    required this.activeColor,
+    required this.onColorButtonPressed,
+    this.direction = Axis.vertical,
+  });
 
   static final List<Color> _colors = [Colors.black, Colors.white, Colors.green, Colors.red, Colors.yellow, Colors.blue];
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final children = [
+      ..._colors.map((c) => DrawingColorButton(
+        color: c,
+        isActive: c == activeColor,
+        onPressed: onColorButtonPressed != null ? () => onColorButtonPressed!(c) : null,
+      )),
+      Divider(
+        direction: direction == Axis.vertical ? Axis.horizontal : Axis.vertical,
+        size: 24,
+      ),
+      CustomColorButton(
+        pickedColorIsActive: activeColor != null && !_colors.contains(activeColor),
+        onColorPicked: onColorButtonPressed,
+      ),
+    ];
+
+    return Flex(
+      direction: direction,
       mainAxisSize: MainAxisSize.min,
       spacing: 16,
-      children: [
-        ..._colors.map((c) => DrawingColorButton(
-          color: c,
-          isActive: c == activeColor,
-          onPressed: onColorButtonPressed != null ? () => onColorButtonPressed!(c) : null,
-        )),
-        Divider(size: 24),
-        CustomColorButton(
-          pickedColorIsActive: activeColor != null && !_colors.contains(activeColor),
-          onColorPicked: onColorButtonPressed,
-        ),
-      ],
+      children: children,
     );
   }
 
