@@ -31,7 +31,7 @@ class _BoardAppState extends State<BoardApp> {
       accentColor: Color(0xFF00FF80).toAccentColor(),
       typography: Typography.fromBrightness(
         brightness: Brightness.light,
-      ).apply(fontFamily: GoogleFonts.ubuntu().fontFamily),
+      ).apply(fontFamily: GoogleFonts.lexend().fontFamily),
       visualDensity: VisualDensity.standard,
     );
     // Observe the language setting so changing it in the Settings dialog
