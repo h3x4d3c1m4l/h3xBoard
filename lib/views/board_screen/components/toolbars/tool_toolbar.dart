@@ -6,6 +6,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/add_widget_button.dart';
+import 'package:h3xboard/views/board_screen/components/buttons/app_settings_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/board_settings_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/eraser_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/fullscreen_button.dart';
@@ -20,7 +21,16 @@ class ToolToolbar extends StatelessWidget {
   final BoardScreenController controller;
   final BoardScreenViewModel viewModel;
 
-  const ToolToolbar({super.key, required this.controller, required this.viewModel});
+  /// The bar's layout axis. Horizontal (default) when docked top/bottom; vertical
+  /// when docked left/right.
+  final Axis direction;
+
+  const ToolToolbar({
+    super.key,
+    required this.controller,
+    required this.viewModel,
+    this.direction = Axis.horizontal,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +56,8 @@ class ToolToolbar extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(4),
-            child: Row(
+            child: Flex(
+              direction: direction,
               mainAxisSize: MainAxisSize.min,
               children: [
                 ToolButton(
@@ -54,31 +65,35 @@ class ToolToolbar extends StatelessWidget {
                   title: context.localizations.toolToolbar_close,
                   onPressed: () => unawaited(controller.requestClose()),
                 ),
-                const _ToolbarDivider(),
+                _ToolbarDivider(direction: direction),
                 ToggleButtonToolbar(
+                  direction: direction,
                   buttons: [
                     PointerToolButton(viewModel: viewModel, controller: controller),
                     PenToolButton(viewModel: viewModel, controller: controller),
                     EraserToolButton(viewModel: viewModel, controller: controller),
                   ],
                 ),
-                const _ToolbarDivider(),
+                _ToolbarDivider(direction: direction),
                 ToggleButtonToolbar(
+                  direction: direction,
                   buttons: [
                     ToolButton(icon: LucideIcons.undo, title: context.localizations.toolToolbar_undo, onPressed: controller.historyManager.canUndo ? controller.historyManager.undo : null),
                     ToolButton(icon: LucideIcons.redo, title: context.localizations.toolToolbar_redo, onPressed: controller.historyManager.canRedo ? controller.historyManager.redo : null),
                     ToolButton(icon: LucideIcons.trash2, title: context.localizations.toolToolbar_clear, onPressed: controller.onClearButtonPressed),
                   ],
                 ),
-                const _ToolbarDivider(),
+                _ToolbarDivider(direction: direction),
                 ToggleButtonToolbar(
+                  direction: direction,
                   buttons: [
                     AddWidgetButton(controller: controller),
                     BoardSettingsButton(controller: controller),
+                    const AppSettingsButton(),
                     FullscreenButton(viewModel: viewModel, controller: controller),
                   ],
                 ),
-                const _ToolbarDivider(),
+                _ToolbarDivider(direction: direction),
                 _SaveStatusIndicator(status: viewModel.saveStatus),
               ],
             ),
@@ -92,16 +107,25 @@ class ToolToolbar extends StatelessWidget {
 
 class _ToolbarDivider extends StatelessWidget {
 
-  const _ToolbarDivider();
+  /// The toolbar's own axis; the divider runs across it.
+  final Axis direction;
+
+  const _ToolbarDivider({required this.direction});
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8),
+    final isHorizontal = direction == Axis.horizontal;
+    return Padding(
+      padding: isHorizontal
+          ? const EdgeInsets.symmetric(horizontal: 8)
+          : const EdgeInsets.symmetric(vertical: 8),
       child: Divider(
-        direction: Axis.vertical,
+        direction: isHorizontal ? Axis.vertical : Axis.horizontal,
         size: 48,
-        style: DividerThemeData(verticalMargin: EdgeInsets.zero),
+        style: const DividerThemeData(
+          verticalMargin: EdgeInsets.zero,
+          horizontalMargin: EdgeInsets.zero,
+        ),
       ),
     );
   }

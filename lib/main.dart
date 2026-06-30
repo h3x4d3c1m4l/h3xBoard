@@ -6,6 +6,7 @@ import 'package:h3xboard/app_router.dart';
 import 'package:h3xboard/app_router.gr.dart';
 import 'package:h3xboard/board_app.dart';
 import 'package:h3xboard/config.dart';
+import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
@@ -47,6 +48,7 @@ void setupServices() {
     ..registerSingleton<H3xBoardAuthService>(auth)
     ..registerSingleton<H3xBoardFileService>(files)
     ..registerSingleton<H3xBoardApiClient>(api)
+    ..registerSingleton<AppSettingsController>(AppSettingsController(api))
     ..registerSingleton<AppRouter>(appRouter)
     ..registerSingleton<PendingNavigationService>(PendingNavigationService());
 }

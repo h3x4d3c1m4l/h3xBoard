@@ -1,10 +1,12 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:h3xboard/app_router.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
+import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/connection_banner.dart';
@@ -32,7 +34,11 @@ class _BoardAppState extends State<BoardApp> {
       ).apply(fontFamily: GoogleFonts.ubuntu().fontFamily),
       visualDensity: VisualDensity.standard,
     );
-    return FluentApp.router(
+    // Observe the language setting so changing it in the Settings dialog
+    // re-localizes the whole app immediately. null locale = follow the device.
+    return Observer(
+      builder: (context) => FluentApp.router(
+      locale: GetIt.I<AppSettingsController>().language.locale,
       routerConfig: _appRouter.config(
         reevaluateListenable: GetIt.I<SessionController>(),
       ),
@@ -79,6 +85,7 @@ class _BoardAppState extends State<BoardApp> {
           // to the decoration shape above.
         ),
       ),
+    ),
     );
   }
 
