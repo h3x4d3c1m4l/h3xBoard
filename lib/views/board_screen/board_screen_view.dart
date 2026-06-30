@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:get_it/get_it.dart';
+import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/board.dart';
+import 'package:h3xboard/views/board_screen/components/board_scaffold.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/drawing_toolbar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/sub_board_tab_bar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dart';
@@ -56,59 +59,81 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
   }
 
   Widget _buildBoard() {
+    final appSettings = GetIt.I<AppSettingsController>();
+
+    // The central content: sub-board tabs above the board canvas. The two bars
+    // are docked around (or over) this by BoardScaffold per the user's settings.
+    final center = Column(
+      spacing: 8,
+      mainAxisAlignment: .center,
+      children: [
+        Observer(
+          builder: (_) => SubBoardTabBar(
+            subBoards: viewModel.subBoards.toList(),
+            activeSubBoardId: viewModel.activeSubBoardId,
+            onSwitchSubBoard: controller.onSwitchSubBoard,
+            onAddSubBoard: controller.onAddSubBoard,
+            onRemoveSubBoard: controller.onRemoveSubBoard,
+            onRenameSubBoard: controller.onRenameSubBoard,
+          ),
+        ),
+        Flexible(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              viewModel.updateResizeFactor(constraints);
+              return Board(
+                drawingController: controller.drawingController,
+                viewModel: viewModel,
+                onDeleteWidget: controller.onDeleteWidget,
+                onWidgetConfigChanged: controller.onWidgetConfigChanged,
+                onWidgetVisibilityChanged: controller.onWidgetVisibilityChanged,
+                onWidgetTransformStart: controller.onWidgetTransformStart,
+                onWidgetTransformEnd: controller.onWidgetTransformEnd,
+                onDrawingStrokeStart: controller.onDrawingStrokeStart,
+                onDrawingStrokeEnd: controller.onDrawingStrokeEnd,
+                onMoveWidgetToTop: controller.onMoveWidgetToTop,
+                onMoveWidgetUp: controller.onMoveWidgetUp,
+                onMoveWidgetDown: controller.onMoveWidgetDown,
+                onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+
     return Padding(
       padding: const EdgeInsets.all(8),
-      child: Column(
-        spacing: 8,
-        mainAxisAlignment: .center,
-        children: [
-          ToolToolbar(controller: controller, viewModel: viewModel),
-          Observer(
-            builder: (_) => SubBoardTabBar(
-              subBoards: viewModel.subBoards.toList(),
-              activeSubBoardId: viewModel.activeSubBoardId,
-              onSwitchSubBoard: controller.onSwitchSubBoard,
-              onAddSubBoard: controller.onAddSubBoard,
-              onRemoveSubBoard: controller.onRemoveSubBoard,
-              onRenameSubBoard: controller.onRenameSubBoard,
-            ),
-          ),
-          Flexible(
-            child: Row(
-              mainAxisAlignment: .center,
-              crossAxisAlignment: .center,
-              spacing: 8,
-              children: [
-                Observer(
+      child: Observer(
+        builder: (_) {
+          final colorBarPos = appSettings.colorBarPosition;
+          final toolBarPos = appSettings.toolBarPosition;
+          return BoardScaffold(
+            center: center,
+            bars: [
+              DockedBar(
+                position: toolBarPos,
+                inside: appSettings.toolBarInside,
+                bar: ToolToolbar(
+                  controller: controller,
+                  viewModel: viewModel,
+                  direction: toolBarPos.axis,
+                ),
+              ),
+              DockedBar(
+                position: colorBarPos,
+                inside: appSettings.colorBarInside,
+                bar: Observer(
                   builder: (_) => DrawingToolbar(
                     activeColor: viewModel.drawingTools.activeColor,
                     onColorButtonPressed: controller.onColorButtonPressed,
+                    direction: colorBarPos.axis,
                   ),
                 ),
-                Flexible(child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    viewModel.updateResizeFactor(constraints);
-                    return Board(
-                      drawingController: controller.drawingController,
-                      viewModel: viewModel,
-                      onDeleteWidget: controller.onDeleteWidget,
-                      onWidgetConfigChanged: controller.onWidgetConfigChanged,
-                      onWidgetVisibilityChanged: controller.onWidgetVisibilityChanged,
-                      onWidgetTransformStart: controller.onWidgetTransformStart,
-                      onWidgetTransformEnd: controller.onWidgetTransformEnd,
-                      onDrawingStrokeStart: controller.onDrawingStrokeStart,
-                      onDrawingStrokeEnd: controller.onDrawingStrokeEnd,
-                      onMoveWidgetToTop: controller.onMoveWidgetToTop,
-                      onMoveWidgetUp: controller.onMoveWidgetUp,
-                      onMoveWidgetDown: controller.onMoveWidgetDown,
-                      onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
-                    );
-                  }
-                )),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
