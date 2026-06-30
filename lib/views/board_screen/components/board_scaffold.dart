@@ -1,6 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/models/app_settings_enums.dart';
 
+/// Gap between an outside (docked) bar and the board edge it sits against.
+const double _kBarGap = 8;
+
 /// One bar docked around (or floating over) the board.
 class DockedBar {
 
@@ -66,32 +69,48 @@ class BoardScaffold extends StatelessWidget {
       );
     }
 
-    // Ring 2: outside left/right bars sit beside the board.
+    // Ring 2: outside left/right bars sit beside the board. The board area is
+    // aspect-locked (16:9) and shrink-wraps via Flexible (loose fit), so the bar
+    // hugs the board's real edge instead of the far screen edge; centering the
+    // row keeps the [bar, board] group together rather than spreading them apart.
     final left = at(BarPosition.left, inside: false);
     final right = at(BarPosition.right, inside: false);
     if (left.isNotEmpty || right.isNotEmpty) {
       content = Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
+        spacing: _kBarGap,
         children: [
           ...left,
-          Expanded(child: content),
+          Flexible(child: content),
           ...right,
         ],
       );
     }
 
-    // Ring 3: outside top/bottom bars sit above/below everything.
+    // Ring 3: outside top/bottom bars sit above/below everything — same approach
+    // as Ring 2, so the bar hugs the board's real top/bottom edge.
     final top = at(BarPosition.top, inside: false);
     final bottom = at(BarPosition.bottom, inside: false);
     if (top.isNotEmpty || bottom.isNotEmpty) {
       content = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
+        spacing: _kBarGap,
         children: [
           ...top,
-          Expanded(child: content),
+          Flexible(child: content),
           ...bottom,
         ],
       );
+    }
+
+    // The board column shrink-wraps (mainAxisSize.min), so a bare board with no
+    // outside bars would otherwise pin to the top-left — keep it centered. Inside
+    // overlays (Stack) and the outside rings already center their content.
+    final hasOutside = left.isNotEmpty || right.isNotEmpty || top.isNotEmpty || bottom.isNotEmpty;
+    if (!hasOutside && insideBars.isEmpty) {
+      content = Center(child: content);
     }
 
     return content;

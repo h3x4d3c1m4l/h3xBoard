@@ -48,3 +48,21 @@ enum BarPosition {
       values.firstWhere((p) => p.wireValue == value, orElse: () => fallback);
 
 }
+
+/// When both bars are docked to the same edge, which one comes first (nearest the
+/// start of the edge — top for a side edge, left for a top/bottom edge).
+enum BarOrder {
+
+  toolBarFirst('toolBar'),
+  colorBarFirst('colorBar');
+
+  const BarOrder(this.wireValue);
+
+  /// The value stored server-side (`'toolBar'`, `'colorBar'`).
+  final String wireValue;
+
+  /// Parses a persisted value, falling back to [toolBarFirst] for unknown/missing input.
+  static BarOrder fromWire(Object? value) =>
+      values.firstWhere((o) => o.wireValue == value, orElse: () => toolBarFirst);
+
+}

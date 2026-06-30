@@ -40,6 +40,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   late bool _colorBarInside = _settings.colorBarInside;
   late BarPosition _toolBarPosition = _settings.toolBarPosition;
   late bool _toolBarInside = _settings.toolBarInside;
+  late BarOrder _barOrder = _settings.barOrder;
 
   bool _saving = false;
   String? _error;
@@ -56,6 +57,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         colorBarInside: _colorBarInside,
         toolBarPosition: _toolBarPosition,
         toolBarInside: _toolBarInside,
+        barOrder: _barOrder,
       );
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
@@ -138,6 +140,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                 onChanged: (v) => setState(() => _toolBarInside = v),
                               ),
                             ),
+                            // Order is only meaningful when both bars stack on the
+                            // same edge (same position and same inside/outside).
+                            if (_colorBarPosition == _toolBarPosition && _colorBarInside == _toolBarInside) ...[
+                              _SectionLabel(loc.settingsDialog_section_barOrder),
+                              _SettingsRow(
+                                label: loc.settingsDialog_order,
+                                control: _buildOrderCombo(loc),
+                              ),
+                            ],
                             if (_error != null) ...[
                               const SizedBox(height: 8),
                               InfoBar(
@@ -220,6 +231,22 @@ class _SettingsDialogState extends State<SettingsDialog> {
       ],
       onChanged: (p) {
         if (p != null) onChanged(p);
+      },
+    );
+  }
+
+  Widget _buildOrderCombo(AppLocalizations loc) {
+    String label(BarOrder o) => switch (o) {
+      BarOrder.toolBarFirst => loc.settingsDialog_order_toolBarFirst,
+      BarOrder.colorBarFirst => loc.settingsDialog_order_colorBarFirst,
+    };
+    return ComboBox<BarOrder>(
+      value: _barOrder,
+      items: [
+        for (final o in BarOrder.values) ComboBoxItem(value: o, child: Text(label(o))),
+      ],
+      onChanged: (o) {
+        if (o != null) setState(() => _barOrder = o);
       },
     );
   }

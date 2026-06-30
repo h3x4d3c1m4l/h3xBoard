@@ -21,6 +21,7 @@ abstract class AppSettingsControllerBase with Store {
   static const String keyColorBarInside = 'ui.colorBar.inside';
   static const String keyToolBarPosition = 'ui.toolBar.position';
   static const String keyToolBarInside = 'ui.toolBar.inside';
+  static const String keyBarOrder = 'ui.bars.order';
 
   final H3xBoardApiClient _api;
 
@@ -44,6 +45,11 @@ abstract class AppSettingsControllerBase with Store {
   @readonly
   bool _toolBarInside = false;
 
+  /// When both bars share an edge, which one is placed first. Ignored when the
+  /// bars sit on different edges.
+  @readonly
+  BarOrder _barOrder = BarOrder.toolBarFirst;
+
   /// Loads all settings from the server into the observables. Missing or invalid
   /// values fall back to their defaults; unknown keys are ignored. Never throws —
   /// a failed load simply leaves the defaults in place.
@@ -60,6 +66,7 @@ abstract class AppSettingsControllerBase with Store {
     _colorBarInside = values[keyColorBarInside] as bool? ?? false;
     _toolBarPosition = BarPosition.fromWire(values[keyToolBarPosition], BarPosition.top);
     _toolBarInside = values[keyToolBarInside] as bool? ?? false;
+    _barOrder = BarOrder.fromWire(values[keyBarOrder]);
   }
 
   /// Persists and applies a batch of edits, issuing a `settings.v1.set` only for
@@ -72,6 +79,7 @@ abstract class AppSettingsControllerBase with Store {
     required bool colorBarInside,
     required BarPosition toolBarPosition,
     required bool toolBarInside,
+    required BarOrder barOrder,
   }) async {
     if (language != _language) {
       await _api.setSetting(keyLanguage, language.wireValue);
@@ -92,6 +100,10 @@ abstract class AppSettingsControllerBase with Store {
     if (toolBarInside != _toolBarInside) {
       await _api.setSetting(keyToolBarInside, toolBarInside);
       _toolBarInside = toolBarInside;
+    }
+    if (barOrder != _barOrder) {
+      await _api.setSetting(keyBarOrder, barOrder.wireValue);
+      _barOrder = barOrder;
     }
   }
 
