@@ -34,6 +34,21 @@ abstract class _H3xBoardFileChopperService extends ChopperService {
   @FactoryConverter(response: _passThroughResponse)
   Future<Response<List<int>>> download(@Path('id') String id);
 
+  // Upserts a board's screenshot (replaces any existing one). A board has at most
+  // one screenshot; the bytes ride REST just like generic uploads.
+  @PUT(path: '/api/v1/boards/{boardId}/screenshot')
+  @multipart
+  Future<Response> uploadBoardScreenshot(
+    @Path('boardId') String boardId,
+    @PartFile('file') MultipartFile file,
+  );
+
+  // Downloads a board's screenshot bytes; 404 when the board has none. Same
+  // pass-through as [download] so the PNG stream isn't run through JSON decoding.
+  @GET(path: '/api/v1/boards/{boardId}/screenshot')
+  @FactoryConverter(response: _passThroughResponse)
+  Future<Response<List<int>>> downloadBoardScreenshot(@Path('boardId') String boardId);
+
 }
 
 /// Re-wraps the response with the raw bytes as its body so binary downloads
@@ -107,6 +122,34 @@ class H3xBoardFileService {
       _downloadCache.removeWhere((key, _) => key == id);
       rethrow;
     }
+  }
+
+  /// Uploads [bytes] as the screenshot for [boardId], replacing any existing one.
+  /// The image is stored as a hidden `board-screenshot` file and does not bump the
+  /// board's `updatedAt`. Returns the screenshot file's metadata.
+  Future<FileSummary> setBoardScreenshot({
+    required String boardId,
+    required List<int> bytes,
+  }) async {
+    final part = MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: 'screenshot.png',
+      contentType: MediaType('image', 'png'),
+    );
+    final response = await _service.uploadBoardScreenshot(boardId, part);
+    _requireSuccess(response);
+    return FileSummary.fromJson(response.body as Map<String, dynamic>);
+  }
+
+  /// Downloads the screenshot bytes for [boardId], or `null` when the board has
+  /// no screenshot yet (HTTP 404). Not memoized: unlike an uploaded file, a
+  /// board's screenshot is overwritten in place, so its bytes are mutable.
+  Future<Uint8List?> downloadBoardScreenshot(String boardId) async {
+    final response = await _service.downloadBoardScreenshot(boardId);
+    if (response.statusCode == 404) return null;
+    _requireSuccess(response);
+    return Uint8List.fromList(response.bodyBytes);
   }
 
   void _requireSuccess(Response<dynamic> response) {

@@ -56,6 +56,65 @@
     "@boardsScreen_deleteConfirm": {},
     "boardsScreen_deleteCancel": "Annuleren",
     "@boardsScreen_deleteCancel": {},
+    "boardsScreen_searchPlaceholder": "Borden zoeken",
+    "@boardsScreen_searchPlaceholder": {},
+    "boardsScreen_allBoards": "Alle borden",
+    "@boardsScreen_allBoards": {},
+    "boardsScreen_newBlankBoard": "Nieuw leeg bord",
+    "@boardsScreen_newBlankBoard": {},
+    "boardsScreen_boardCount": "{count, plural, =0{Je hebt nog geen borden} =1{Je hebt 1 bord} other{Je hebt {count} borden}}",
+    "@boardsScreen_boardCount": {
+        "placeholders": {
+            "count": { "type": "int" }
+        }
+    },
+    "boardsScreen_goodMorning": "Goedemorgen",
+    "@boardsScreen_goodMorning": {},
+    "boardsScreen_goodAfternoon": "Goedemiddag",
+    "@boardsScreen_goodAfternoon": {},
+    "boardsScreen_goodEvening": "Goedenavond",
+    "@boardsScreen_goodEvening": {},
+    "boardsScreen_greetingNamed": "{greeting}, {name}",
+    "@boardsScreen_greetingNamed": {
+        "placeholders": {
+            "greeting": { "type": "String" },
+            "name": { "type": "String" }
+        }
+    },
+    "boardsScreen_editedJustNow": "Zojuist bewerkt",
+    "@boardsScreen_editedJustNow": {},
+    "boardsScreen_editedMinutesAgo": "{count, plural, =1{1 minuut geleden bewerkt} other{{count} minuten geleden bewerkt}}",
+    "@boardsScreen_editedMinutesAgo": {
+        "placeholders": {
+            "count": { "type": "int" }
+        }
+    },
+    "boardsScreen_editedHoursAgo": "{count, plural, =1{1 uur geleden bewerkt} other{{count} uur geleden bewerkt}}",
+    "@boardsScreen_editedHoursAgo": {
+        "placeholders": {
+            "count": { "type": "int" }
+        }
+    },
+    "boardsScreen_editedYesterday": "Gisteren bewerkt",
+    "@boardsScreen_editedYesterday": {},
+    "boardsScreen_editedDaysAgo": "{count, plural, =1{1 dag geleden bewerkt} other{{count} dagen geleden bewerkt}}",
+    "@boardsScreen_editedDaysAgo": {
+        "placeholders": {
+            "count": { "type": "int" }
+        }
+    },
+    "boardsScreen_editedWeeksAgo": "{count, plural, =1{1 week geleden bewerkt} other{{count} weken geleden bewerkt}}",
+    "@boardsScreen_editedWeeksAgo": {
+        "placeholders": {
+            "count": { "type": "int" }
+        }
+    },
+    "boardsScreen_editedOn": "Bewerkt op {date}",
+    "@boardsScreen_editedOn": {
+        "placeholders": {
+            "date": { "type": "String" }
+        }
+    },
     "boardScreen_retry": "Opnieuw proberen",
     "@boardScreen_retry": {},
     "boardScreen_saving": "Opslaan naar cloud…",
