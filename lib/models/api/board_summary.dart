@@ -9,6 +9,7 @@ abstract class BoardSummary with _$BoardSummary {
   const factory BoardSummary({
     required String id,
     required String title,
+    @Default(false) bool hasScreenshot,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) = _BoardSummary;

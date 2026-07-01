@@ -27,24 +27,68 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
     WidgetsBinding.instance.addPostFrameCallback((_) => loadBoards());
   }
 
-  Future<void> loadBoards() async {
-    viewModel
-      ..setIsLoading(true)
-      ..setErrorMessage(null);
+  /// The signed-in user's first name, or `null` when unknown (registration makes
+  /// it optional). Used only to personalise the greeting.
+  String? get firstName {
+    final name = _session.firstName?.trim();
+    return (name == null || name.isEmpty) ? null : name;
+  }
+
+  /// A label for the account chip: the full name when we have one, otherwise the
+  /// email.
+  String get userDisplayName {
+    final parts = [_session.firstName, _session.lastName]
+        .map((p) => p?.trim())
+        .whereType<String>()
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isNotEmpty) return parts.join(' ');
+    return _session.email ?? '';
+  }
+
+  /// One or two initials for the account avatar, derived from the name, falling
+  /// back to the first letter of the email.
+  String get userInitials {
+    final first = _session.firstName?.trim();
+    final last = _session.lastName?.trim();
+    final letters = [first, last]
+        .whereType<String>()
+        .where((p) => p.isNotEmpty)
+        .map((p) => p[0].toUpperCase())
+        .join();
+    if (letters.isNotEmpty) return letters;
+    final email = _session.email?.trim();
+    return (email != null && email.isNotEmpty) ? email[0].toUpperCase() : '?';
+  }
+
+  /// Loads the board list. [showSpinner] is false for a silent refresh (e.g. when
+  /// returning from a board) so the grid doesn't flash a full-screen spinner.
+  Future<void> loadBoards({bool showSpinner = true}) async {
+    if (showSpinner) viewModel.setIsLoading(true);
+    viewModel.setErrorMessage(null);
     try {
       final boards = await _wsClient.listBoards();
-      viewModel.setBoards(boards);
+      viewModel
+        ..setBoards(boards)
+        // Nudge thumbnails to re-fetch — a board's screenshot may have changed
+        // (e.g. we just came back from editing it) without any summary field.
+        ..bumpReloadTick();
     } on H3xBoardApiException catch (e) {
       viewModel.setErrorMessage(e.message);
     } catch (e) {
       viewModel.setErrorMessage(e.toString());
     } finally {
-      viewModel.setIsLoading(false);
+      if (showSpinner) viewModel.setIsLoading(false);
     }
   }
 
+  void onSearchChanged(String query) => viewModel.setSearchQuery(query);
+
   Future<void> openBoard(BoardSummary board) async {
     await contextAccessor.buildContext.pushRoute(BoardRoute(boardId: board.id));
+    // Refresh quietly on return so edited titles/timestamps (and, over time, new
+    // thumbnails) show up without a jarring spinner.
+    await loadBoards(showSpinner: false);
   }
 
   Future<void> onDeleteBoard(BoardSummary board) async {
@@ -64,20 +108,28 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
     }
   }
 
+  /// Creates a fresh board and opens it straight away (the "New blank board"
+  /// flow). On return, the list is refreshed so the new board appears.
   Future<void> onCreateBoardPressed() async {
     viewModel
       ..setIsLoading(true)
       ..setErrorMessage(null);
     try {
-      await _wsClient.createBoard(title: _nextBoardTitle());
-      final boards = await _wsClient.listBoards();
-      viewModel.setBoards(boards);
-    } on H3xBoardApiException catch (e) {
-      viewModel.setErrorMessage(e.message);
-    } catch (e) {
-      viewModel.setErrorMessage(e.toString());
-    } finally {
+      final board = await _wsClient.createBoard(title: _nextBoardTitle());
       viewModel.setIsLoading(false);
+      final context = contextAccessor.buildContext;
+      if (context.mounted) {
+        await context.pushRoute(BoardRoute(boardId: board.id));
+      }
+      await loadBoards(showSpinner: false);
+    } on H3xBoardApiException catch (e) {
+      viewModel
+        ..setErrorMessage(e.message)
+        ..setIsLoading(false);
+    } catch (e) {
+      viewModel
+        ..setErrorMessage(e.toString())
+        ..setIsLoading(false);
     }
   }
 

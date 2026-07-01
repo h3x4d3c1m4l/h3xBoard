@@ -90,6 +90,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
               return Board(
                 drawingController: controller.drawingController,
                 viewModel: viewModel,
+                captureKey: controller.boardCaptureKey,
                 onDeleteWidget: controller.onDeleteWidget,
                 onWidgetConfigChanged: controller.onWidgetConfigChanged,
                 onWidgetVisibilityChanged: controller.onWidgetVisibilityChanged,

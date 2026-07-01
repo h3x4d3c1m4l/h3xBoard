@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:get_it/get_it.dart';
@@ -26,11 +29,19 @@ final _boardTitleRegex = RegExp(r'^Board (\d+)$');
 // How long to wait after the last change before persisting the board.
 const _autosaveDebounce = Duration(seconds: 1);
 
+// How often, at most, to refresh the board's thumbnail while it is being edited.
+const _screenshotInterval = Duration(minutes: 5);
+
 class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   final String boardId;
 
   final DrawingController drawingController = DrawingController();
+
+  /// Wraps the board's visual layers so [_captureScreenshot] can rasterise the
+  /// canvas into a thumbnail when the user leaves the board.
+  final GlobalKey boardCaptureKey = GlobalKey();
+
   final HistoryManager historyManager = HistoryManager();
   final ValueNotifier<int> drawStartSignal = ValueNotifier(0);
   final FullscreenService _fullscreenService = FullscreenService();
@@ -47,6 +58,13 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   Future<void>? _activeSave;
   bool _saveDirty = false;
 
+  // Thumbnail bookkeeping. The screenshot is refreshed at most once every
+  // [_screenshotInterval] while editing (and once on close), but only when the
+  // board changed since the last upload — a clean board never re-uploads.
+  Timer? _screenshotTimer;
+  bool _screenshotDirty = false;
+  bool _screenshotBusy = false;
+
   StreamSubscription<bool>? _fullscreenSubscription;
 
   // Initialization/Deinitialization
@@ -60,12 +78,15 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     _fullscreenSubscription = _fullscreenService.onChange.listen(viewModel.setFullscreen);
     // Every undoable step is also a save point, mirroring the undo history.
     historyManager.onChange = _scheduleSave;
+    // Refresh the thumbnail on a slow cadence while editing (no-op when clean).
+    _screenshotTimer = Timer.periodic(_screenshotInterval, (_) => unawaited(_captureScreenshotIfDirty()));
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadBoard());
   }
 
   @override
   void dispose() {
     _saveTimer?.cancel();
+    _screenshotTimer?.cancel();
     _fullscreenSubscription?.cancel();
     _fullscreenService.dispose();
     super.dispose();
@@ -101,6 +122,8 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void _scheduleSave() {
     _saveDirty = true;
+    // Any change that warrants a save also makes the thumbnail stale.
+    _screenshotDirty = true;
     _saveTimer?.cancel();
     _saveTimer = Timer(_autosaveDebounce, _save);
   }
@@ -192,9 +215,70 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
         if (!saved) return;
       }
 
+      // Refresh the thumbnail only when the board changed since the last upload,
+      // and (unlike the periodic capture) wait for it — capped, so a slow network
+      // can't trap the user — so the boards overview shows the new image the
+      // moment it reloads on return. Screenshot uploads don't bump updatedAt, so
+      // this never reorders the list.
+      _screenshotTimer?.cancel();
+      if (_screenshotDirty && !_screenshotBusy) {
+        _screenshotDirty = false;
+        final screenshot = await _captureScreenshot();
+        if (screenshot != null) {
+          try {
+            await _fileService
+                .setBoardScreenshot(boardId: boardId, bytes: screenshot)
+                .timeout(const Duration(seconds: 3));
+          } catch (_) {
+            // Best-effort; the thumbnail will catch up on a later save/close.
+          }
+        }
+      }
       if (navigator.mounted) navigator.pop();
     } finally {
       _isClosing = false;
+    }
+  }
+
+  /// Uploads a fresh thumbnail when the board changed since the last upload.
+  /// Driven by the periodic timer, so it stays entirely in the background and
+  /// never blocks the UI; a clean board is a no-op. Re-marks the board dirty on
+  /// failure so the next tick (or close) retries.
+  Future<void> _captureScreenshotIfDirty() async {
+    if (!_screenshotDirty || _screenshotBusy) return;
+    _screenshotBusy = true;
+    _screenshotDirty = false;
+    try {
+      final bytes = await _captureScreenshot();
+      if (bytes == null) {
+        _screenshotDirty = true;
+        return;
+      }
+      await _fileService.setBoardScreenshot(boardId: boardId, bytes: bytes);
+    } catch (_) {
+      _screenshotDirty = true;
+    } finally {
+      _screenshotBusy = false;
+    }
+  }
+
+  /// Rasterises the board's visual layers (background, drawings, widget bodies —
+  /// no header/overlay chrome) to PNG bytes for use as a list thumbnail. Rendered
+  /// at half the 1920×1080 canvas resolution to keep the upload small. Returns
+  /// `null` if the boundary isn't ready or capture fails (best-effort).
+  Future<Uint8List?> _captureScreenshot() async {
+    try {
+      // Ensure the canvas has painted a frame before rasterising it, otherwise
+      // toImage can throw on a boundary still marked as needing paint.
+      await WidgetsBinding.instance.endOfFrame;
+      final boundary = boardCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final image = await boundary.toImage(pixelRatio: 0.5);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
     }
   }
 

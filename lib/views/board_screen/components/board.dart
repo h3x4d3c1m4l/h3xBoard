@@ -26,6 +26,12 @@ class Board extends StatefulWidget {
 
   final DrawingController drawingController;
   final BoardScreenViewModel viewModel;
+
+  /// Attached to the [RepaintBoundary] wrapping the board's visual layers
+  /// (background, drawings and widget bodies — no header/overlay chrome), so the
+  /// controller can grab a clean screenshot of the canvas to use as a thumbnail.
+  final GlobalKey captureKey;
+
   final void Function(String id) onDeleteWidget;
   final void Function(String id, BoardWidgetConfig config) onWidgetConfigChanged;
   final void Function(String id, bool isGlobal) onWidgetVisibilityChanged;
@@ -42,6 +48,7 @@ class Board extends StatefulWidget {
     super.key,
     required this.drawingController,
     required this.viewModel,
+    required this.captureKey,
     required this.onDeleteWidget,
     required this.onWidgetConfigChanged,
     required this.onWidgetVisibilityChanged,
@@ -615,6 +622,15 @@ class _BoardState extends State<Board> {
             height: 1080,
             child: Stack(
               children: [
+                // Everything the screenshot should capture — background, drawings
+                // and widget bodies — lives under this RepaintBoundary. Header/
+                // overlay chrome and the gesture layer are stacked on top of it, so
+                // they stay out of the captured thumbnail.
+                Positioned.fill(
+                  child: RepaintBoundary(
+                    key: widget.captureKey,
+                    child: Stack(
+                      children: [
                 // Drawing is suppressed in Select mode (the user is managing
                 // widgets, not drawing) and while a widget is being arranged; the
                 // headers absorb pointers to block strokes underneath them, and
@@ -683,6 +699,10 @@ class _BoardState extends State<Board> {
                       ),
                     ),
                   ),
+                      ],
+                    ),
+                  ),
+                ),
                 // Header chrome — always mounted but faded out (and pointer-inert)
                 // outside Select mode, so toggling the mode animates in/out and the
                 // board stays uncluttered while drawing or presenting.
