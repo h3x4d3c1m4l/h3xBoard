@@ -467,10 +467,20 @@
     "@settingsDialog_order_toolBarFirst": {},
     "settingsDialog_order_colorBarFirst": "Kleurenbalk eerst",
     "@settingsDialog_order_colorBarFirst": {},
+    "settingsDialog_section_externalDisplay": "Extern scherm",
+    "@settingsDialog_section_externalDisplay": {},
+    "settingsDialog_resolution": "Resolutie",
+    "@settingsDialog_resolution": {},
+    "settingsDialog_resolution_auto": "Automatisch (hoogste)",
+    "@settingsDialog_resolution_auto": {},
     "settingsDialog_saveError": "Instellingen konden niet worden opgeslagen. Probeer het opnieuw.",
     "@settingsDialog_saveError": {},
     "settingsDialog_cancel": "Annuleren",
     "@settingsDialog_cancel": {},
     "settingsDialog_ok": "OK",
-    "@settingsDialog_ok": {}
+    "@settingsDialog_ok": {},
+    "externalDisplay_selectBoard_title": "Geen bord geselecteerd",
+    "@externalDisplay_selectBoard_title": {},
+    "externalDisplay_selectBoard_message": "Selecteer een bord op je apparaat om het op dit scherm te tonen.",
+    "@externalDisplay_selectBoard_message": {}
 }

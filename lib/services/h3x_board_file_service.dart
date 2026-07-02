@@ -4,8 +4,10 @@ import 'dart:typed_data';
 import 'package:chopper/chopper.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/file_summary.dart';
-import 'package:http/browser_client.dart';
-import 'package:http/http.dart' show MultipartFile;
+import 'package:h3xboard/services/cookies/cookie_store.dart';
+import 'package:h3xboard/services/credentialed_http_client_web.dart'
+    if (dart.library.io) 'package:h3xboard/services/credentialed_http_client_io.dart';
+import 'package:http/http.dart' show Client, MultipartFile;
 import 'package:http_parser/http_parser.dart';
 
 part 'h3x_board_file_service.chopper.dart';
@@ -60,7 +62,7 @@ class H3xBoardFileService {
 
   // The underlying HTTP client is reused across base-URL changes; only the
   // Chopper client (which captures the base URL) is rebuilt in [updateBaseUrl].
-  final BrowserClient _httpClient;
+  final Client _httpClient;
   _H3xBoardFileChopperService _service;
 
   // File bytes are immutable for a given id (every upload mints a fresh UUID),
@@ -69,12 +71,12 @@ class H3xBoardFileService {
 
   H3xBoardFileService._(this._service, this._httpClient);
 
-  static H3xBoardFileService create(String baseUrl) {
-    final httpClient = BrowserClient()..withCredentials = true;
+  static H3xBoardFileService create(String baseUrl, CookieStore cookieStore) {
+    final httpClient = createCredentialedHttpClient(cookieStore);
     return H3xBoardFileService._(_buildService(baseUrl, httpClient), httpClient);
   }
 
-  static _H3xBoardFileChopperService _buildService(String baseUrl, BrowserClient httpClient) {
+  static _H3xBoardFileChopperService _buildService(String baseUrl, Client httpClient) {
     final chopperClient = ChopperClient(
       baseUrl: Uri.parse(baseUrl),
       client: httpClient,

@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:h3xboard/app_router.gr.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
+import 'package:h3xboard/services/cookies/cookie_store.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/session_controller.dart';
@@ -18,6 +19,7 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
   final _wsClient = GetIt.I<H3xBoardApiClient>();
   final _auth = GetIt.I<H3xBoardAuthService>();
   final _session = GetIt.I<SessionController>();
+  final _cookieStore = GetIt.I<CookieStore>();
 
   BoardsScreenController({
     required super.viewModel,
@@ -150,6 +152,9 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
     } catch (_) {}
     try {
       await _wsClient.disconnect();
+    } catch (_) {}
+    try {
+      await _cookieStore.clear();
     } catch (_) {}
     _session.markUnauthenticated();
     // Navigate explicitly rather than leaning on the guard's reevaluate

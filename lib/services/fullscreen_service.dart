@@ -1,54 +1,25 @@
 import 'dart:async';
-import 'dart:js_interop';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:web/web.dart' as web;
+import 'package:h3xboard/services/fullscreen_service_web.dart'
+    if (dart.library.io) 'package:h3xboard/services/fullscreen_service_io.dart';
 
+/// Toggles browser fullscreen on web; a no-op on other platforms. The platform
+/// split lives in fullscreen_service_web.dart / fullscreen_service_io.dart,
+/// selected by conditional import so mobile builds never reference dart:js_interop.
 class FullscreenService {
 
-  StreamController<bool>? _controller;
-  web.EventListener? _listener;
+  final FullscreenServiceImpl _impl = FullscreenServiceImpl();
 
-  bool get isSupported => kIsWeb && web.document.fullscreenEnabled;
+  bool get isSupported => _impl.isSupported;
 
-  bool get isFullscreen => kIsWeb && web.document.fullscreenElement != null;
+  bool get isFullscreen => _impl.isFullscreen;
 
-  Stream<bool> get onChange {
-    _controller ??= StreamController<bool>.broadcast(
-      onListen: _attachListener,
-      onCancel: _detachListener,
-    );
-    return _controller!.stream;
-  }
+  Stream<bool> get onChange => _impl.onChange;
 
-  Future<void> requestFullscreen() async {
-    if (!kIsWeb) return;
-    await web.document.documentElement?.requestFullscreen().toDart;
-  }
+  Future<void> requestFullscreen() => _impl.requestFullscreen();
 
-  Future<void> exitFullscreen() async {
-    if (!kIsWeb) return;
-    await web.document.exitFullscreen().toDart;
-  }
+  Future<void> exitFullscreen() => _impl.exitFullscreen();
 
-  void _attachListener() {
-    _listener = ((web.Event _) {
-      _controller?.add(isFullscreen);
-    }).toJS;
-    web.document.addEventListener('fullscreenchange', _listener);
-  }
-
-  void _detachListener() {
-    if (_listener != null) {
-      web.document.removeEventListener('fullscreenchange', _listener);
-      _listener = null;
-    }
-  }
-
-  void dispose() {
-    _detachListener();
-    _controller?.close();
-    _controller = null;
-  }
+  void dispose() => _impl.dispose();
 
 }

@@ -13,6 +13,7 @@ import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
+import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 import 'package:h3xboard/widgets/themable_content_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -203,7 +204,7 @@ class _AccountMenu extends StatefulWidget {
 
 class _AccountMenuState extends State<_AccountMenu> {
 
-  final _flyoutController = FlyoutController();
+  final _flyoutController = StableFlyoutController();
 
   @override
   void dispose() {
@@ -642,13 +643,7 @@ class _CardMenu extends StatefulWidget {
 
 class _CardMenuState extends State<_CardMenu> {
 
-  final _flyoutController = FlyoutController();
-
-  @override
-  void dispose() {
-    _flyoutController.dispose();
-    super.dispose();
-  }
+  final _flyoutController = StableFlyoutController();
 
   void _showMenu() {
     final loc = context.localizations;
@@ -697,6 +692,12 @@ class _CardMenuState extends State<_CardMenu> {
         onPressed: _showMenu,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _flyoutController.dispose();
+    super.dispose();
   }
 
 }

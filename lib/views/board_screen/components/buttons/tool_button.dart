@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
+import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ToolButton extends StatefulWidget {
@@ -21,8 +22,8 @@ class ToolButton extends StatefulWidget {
 class _ToolButtonState extends State<ToolButton> {
 
   final OverlayPortalController _popupController = OverlayPortalController();
-  final FlyoutController _flyoutController = FlyoutController();
-  final FlyoutController _errorController = FlyoutController();
+  final FlyoutController _flyoutController = StableFlyoutController();
+  final FlyoutController _errorController = StableFlyoutController();
   final LayerLink _layerLink = LayerLink();
   // Unique group id per button instance so tap-outside of the popup does not
   // fire when the user taps the button itself (handled via toggle in _onPressed).

@@ -20,6 +20,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/board_widget_desc
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_header_bar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_selection_overlay.dart';
+import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class Board extends StatefulWidget {
@@ -99,7 +100,7 @@ class _BoardState extends State<Board> {
 
   // Context menu state: a zero-size FlyoutTarget is placed at the right-click
   // canvas position so the flyout appears exactly at the cursor.
-  final FlyoutController _contextMenuController = FlyoutController();
+  final FlyoutController _contextMenuController = StableFlyoutController();
   Offset? _contextMenuCanvasPos;
   WidgetSettingsBuilder? _contextMenuBuilder;
 
