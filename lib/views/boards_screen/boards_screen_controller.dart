@@ -110,6 +110,27 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
     }
   }
 
+  /// Renames a board to [newTitle], then refreshes the list so the new title and
+  /// updated timestamp show up.
+  Future<void> onRenameBoard(BoardSummary board, String newTitle) async {
+    final title = newTitle.trim();
+    if (title.isEmpty || title == board.title) return;
+    viewModel
+      ..setIsLoading(true)
+      ..setErrorMessage(null);
+    try {
+      await _wsClient.updateBoard(id: board.id, title: title);
+      final boards = await _wsClient.listBoards();
+      viewModel.setBoards(boards);
+    } on H3xBoardApiException catch (e) {
+      viewModel.setErrorMessage(e.message);
+    } catch (e) {
+      viewModel.setErrorMessage(e.toString());
+    } finally {
+      viewModel.setIsLoading(false);
+    }
+  }
+
   /// Creates a fresh board and opens it straight away (the "New blank board"
   /// flow). On return, the list is refreshed so the new board appears.
   Future<void> onCreateBoardPressed() async {

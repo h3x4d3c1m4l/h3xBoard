@@ -268,6 +268,7 @@ class TodoListWidgetDescriptor extends BoardWidgetDescriptor {
             const SizedBox(height: 12),
             ContinuousTextBox(
               controller: itemsController,
+              autofocus: true,
               maxLines: null,
               minLines: 8,
               placeholder: loc.todoListSettingsMenu_itemsPlaceholder,

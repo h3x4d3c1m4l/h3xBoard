@@ -303,6 +303,7 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
           children: [
             ContinuousTextBox(
               controller: controller,
+              autofocus: true,
               maxLines: null,
               minLines: 8,
               placeholder: loc.memoNoteSettingsMenu_editTextPlaceholder,

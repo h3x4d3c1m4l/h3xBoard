@@ -23,6 +23,7 @@ import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_di
 import 'package:h3xboard/views/board_screen/drawing_serialization.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
+import 'package:h3xboard/widgets/themable_content_dialog.dart';
 import 'package:h3xboard/widgets/themable_loading_dialog.dart';
 import 'package:mobx/mobx.dart';
 
@@ -168,9 +169,42 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     } finally {
       viewModel.setIsLoading(false);
     }
+    if (viewModel.loadError != null) {
+      unawaited(_showLoadErrorDialog());
+    }
   }
 
-  void retryLoad() => unawaited(_loadBoard());
+  /// Presents the board-load failure as a modal dialog offering to retry the
+  /// load or return to the boards overview. Shown whenever [_loadBoard] fails,
+  /// replacing the inline error banner so the choice is always front-and-center.
+  Future<void> _showLoadErrorDialog() async {
+    final context = contextAccessor.buildContext;
+    final navigator = Navigator.of(context);
+    final retry = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => ThemableContentDialog(
+        severity: ThemableDialogSeverity.error,
+        title: Text(localizations.boardScreen_loadErrorTitle),
+        content: Text(localizations.boardScreen_loadErrorMessage),
+        actions: [
+          Button(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(localizations.boardScreen_loadErrorGoBack),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(localizations.boardScreen_loadErrorRetry),
+          ),
+        ],
+      ),
+    );
+    if (retry ?? false) {
+      unawaited(_loadBoard());
+    } else if (navigator.mounted) {
+      navigator.pop();
+    }
+  }
 
   void _scheduleSave() {
     _saveDirty = true;

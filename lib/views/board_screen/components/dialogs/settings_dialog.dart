@@ -13,9 +13,16 @@ import 'package:scroll_edge_hint/scroll_edge_hint.dart';
 
 /// Opens the app-wide Settings dialog. Used by the global Ctrl/Cmd+S shortcut
 /// (and any future menu entry) so every entry point shares one code path.
-Future<void> showSettingsDialog(BuildContext context) => showDialog<void>(
+/// Opens the preferences dialog.
+///
+/// [useRootNavigator] defaults to `true` (matching Flutter's `showDialog`). Pass
+/// `false` when opening from inside a flyout so the dialog lands on the same
+/// navigator the flyout is dismissing on — otherwise a root-level barrier stacks
+/// over the still-closing flyout and leaves it visible behind the dialog.
+Future<void> showSettingsDialog(BuildContext context, {bool useRootNavigator = true}) => showDialog<void>(
   context: context,
   barrierDismissible: true,
+  useRootNavigator: useRootNavigator,
   builder: (_) => const SettingsDialog(),
 );
 

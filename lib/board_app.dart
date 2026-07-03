@@ -36,11 +36,8 @@ class _BoardAppState extends State<BoardApp> {
           reevaluateListenable: GetIt.I<SessionController>(),
         ),
         builder: (context, child) {
-          Widget safeChild = ColoredBox(
-            color: theme.scaffoldBackgroundColor,
-            child: SafeArea(child: child ?? const SizedBox.shrink()),
-          );
-          Widget connectionBanner = ConnectionBanner(child: safeChild);
+          Widget content = child ?? const SizedBox.shrink();
+          Widget connectionBanner = ConnectionBanner(child: content);
           return kDebugMode ? DebugOverlay(child: connectionBanner) : connectionBanner;
         },
         localizationsDelegates: const [
