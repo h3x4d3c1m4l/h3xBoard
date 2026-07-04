@@ -164,18 +164,26 @@ class _ExternalDisplayViewState extends State<ExternalDisplayView> with SingleTi
       padding: EdgeInsets.zero,
       content: Stack(
         children: [
+          // White bars behind the board; the board fits within, centered.
+          const Positioned.fill(child: ColoredBox(color: Colors.white)),
           if (board == null)
-            const ExternalIdleView()
+            const Positioned.fill(child: ExternalIdleView())
           else
-            ReadOnlyBoard(
-              board: board,
-              widgets: _widgets,
-              drawingController: _drawingController,
+            Positioned.fill(
+              child: ReadOnlyBoard(
+                board: board,
+                widgets: _widgets,
+                drawingController: _drawingController,
+              ),
             ),
-          IgnorePointer(
-            child: FadeTransition(
-              opacity: _fadeController,
-              child: const ColoredBox(color: Colors.black),
+          // Crossfade-through-black overlay. Positioned.fill so it actually
+          // covers the screen — a bare ColoredBox in a loose Stack is 0×0.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: FadeTransition(
+                opacity: _fadeController,
+                child: const ColoredBox(color: Colors.black),
+              ),
             ),
           ),
         ],

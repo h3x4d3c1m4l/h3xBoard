@@ -67,6 +67,23 @@ bool boardWidgetIsGridMatched(BoardWidgetConfig config) => switch (config) {
       _ => false,
     };
 
+/// Returns [config] with any stopwatch/timer running state reset to its default,
+/// so two configs can be compared while ignoring their runtime anchor (see
+/// [isWidgetRuntimeOnlyChange]).
+BoardWidgetConfig clearWidgetRuntimeState(BoardWidgetConfig config) => switch (config) {
+      StopwatchConfig c => c.copyWith(elapsedMs: 0, startedAtEpochMs: null),
+      TimerConfig c => c.copyWith(elapsedMs: 0, startedAtEpochMs: null),
+      _ => config,
+    };
+
+/// Whether two configs differ only in ephemeral runtime state (the stopwatch/
+/// timer running anchor). Such changes must reach the external mirror but stay
+/// out of undo history and autosave.
+bool isWidgetRuntimeOnlyChange(BoardWidgetConfig oldConfig, BoardWidgetConfig newConfig) =>
+    oldConfig.runtimeType == newConfig.runtimeType &&
+    oldConfig != newConfig &&
+    clearWidgetRuntimeState(oldConfig) == clearWidgetRuntimeState(newConfig);
+
 @freezed
 sealed class BoardWidgetConfig with _$BoardWidgetConfig {
 
@@ -86,11 +103,20 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
 
   const factory BoardWidgetConfig.stopwatch({
     @Default(true) bool showCentiseconds,
+    // Live running state, saved with the board and mirrored to the external
+    // display. Wall-clock anchor: while running [startedAtEpochMs] is set and
+    // elapsed = [elapsedMs] + (now - started); while paused it is null and elapsed
+    // = [elapsedMs]. Persisted so a running clock survives a crash/restart.
+    @Default(0) int elapsedMs,
+    int? startedAtEpochMs,
   }) = StopwatchConfig;
 
   const factory BoardWidgetConfig.timer({
     @Default(300) int durationSeconds,
     @Default(false) bool showCentiseconds,
+    // Same wall-clock anchor as the stopwatch; remaining = duration - elapsed.
+    @Default(0) int elapsedMs,
+    int? startedAtEpochMs,
   }) = TimerConfig;
 
   const factory BoardWidgetConfig.memoNote({

@@ -26,36 +26,50 @@ class ReadOnlyBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: board.backgroundColor == Colors.white
-            ? BoxBorder.all(width: 1, color: Colors.black.withValues(alpha: 0.12), strokeAlign: BorderSide.strokeAlignOutside)
-            : null,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: FittedBox(
-        child: SizedBox(
-          width: 1920,
-          height: 1080,
-          child: Stack(
-            children: [
-              IgnorePointer(
-                child: DrawingBoard(
-                  controller: drawingController,
-                  background: _buildBackground(),
-                  boardPanEnabled: false,
-                  boardScaleEnabled: false,
-                ),
+    // Scale the fixed 1920×1080 canvas up to the largest 16:9 rectangle that
+    // fits the external screen, centered. On a non-16:9 display the leftover
+    // space shows as white bars (painted behind by the parent); the board itself
+    // is framed with a soft square border and a subtle drop shadow — a more
+    // restrained take on the memo-note widget's lifted-paper look.
+    return Center(
+      child: AspectRatio(
+        aspectRatio: 1920 / 1080,
+        child: Container(
+          decoration: BoxDecoration(
+            border: BoxBorder.all(width: 1, color: Colors.black.withValues(alpha: 0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.13),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
               ),
-              for (final bw in widgets)
-                ManipulableBoardWidget(
-                  key: ValueKey(bw.id),
-                  boardWidget: bw,
-                  // Read-only mirror: widgets never edit their own config here.
-                  child: descriptorFor(bw.config).buildWidget(bw.config, (_) {}),
-                ),
             ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: FittedBox(
+            child: SizedBox(
+              width: 1920,
+              height: 1080,
+              child: Stack(
+                children: [
+                  IgnorePointer(
+                    child: DrawingBoard(
+                      controller: drawingController,
+                      background: _buildBackground(),
+                      boardPanEnabled: false,
+                      boardScaleEnabled: false,
+                    ),
+                  ),
+                  for (final bw in widgets)
+                    ManipulableBoardWidget(
+                      key: ValueKey(bw.id),
+                      boardWidget: bw,
+                      // Read-only mirror: widgets never edit their own config here.
+                      child: descriptorFor(bw.config).buildWidget(bw.config, (_) {}),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

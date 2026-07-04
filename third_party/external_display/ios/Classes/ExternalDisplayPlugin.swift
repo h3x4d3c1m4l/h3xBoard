@@ -1,6 +1,19 @@
 import Flutter
 import UIKit
 
+/// Whether a screen mode physically fits the panel — its pixel size doesn't
+/// exceed the panel's native pixels (`nativeBounds`). Orientation-tolerant:
+/// compares the larger and smaller dimensions independently, since `nativeBounds`
+/// is reported in a canonical orientation. iPadOS lists oversized signal modes
+/// (e.g. 3840×2160, 4096×2160) that a smaller panel can't switch to — excluded.
+fileprivate func fitsPanel(_ mode: UIScreenMode, _ native: CGSize) -> Bool {
+    let mMax = max(mode.size.width, mode.size.height)
+    let mMin = min(mode.size.width, mode.size.height)
+    let pMax = max(native.width, native.height)
+    let pMin = min(native.width, native.height)
+    return mMax <= pMax && mMin <= pMin
+}
+
 public class ExternalDisplayPlugin: NSObject, FlutterPlugin {
     public static var connectReturn:(() -> Void)?
     public static var mainViewEvents:FlutterEventSink?
@@ -10,6 +23,22 @@ public class ExternalDisplayPlugin: NSObject, FlutterPlugin {
     public static var receiveParameters:FlutterEventChannel?
     public static var sendParameters:FlutterMethodChannel?
     public static var externalWindow:UIWindow?
+
+    // The external panel's true native pixel size. `nativeBounds` on an external
+    // UIScreen tracks the CURRENT mode (it shrinks after we switch to a lower
+    // resolution), so we remember the largest size observed for this display —
+    // captured at first connect while it is still at its native mode — and use
+    // that as the stable ceiling. Reset when the display is physically unplugged.
+    public static var cachedNativeSize:CGSize?
+
+    // Largest-area size among the live nativeBounds, the current mode, and what we
+    // cached earlier — i.e. the panel's real native, undrifted by mode switches.
+    static func nativeSize(for screen: UIScreen) -> CGSize {
+        let candidates: [CGSize] = [screen.nativeBounds.size, screen.currentMode?.size, cachedNativeSize].compactMap { $0 }
+        let best = candidates.max(by: { $0.width * $0.height < $1.width * $1.height }) ?? screen.nativeBounds.size
+        cachedNativeSize = best
+        return best
+    }
 
     // 初始化
     public static func register(with registrar: FlutterPluginRegistrar) {
@@ -40,12 +69,21 @@ public class ExternalDisplayPlugin: NSObject, FlutterPlugin {
                 let target = (args?["targetScreen"] as? Int) ?? 1
                 if (UIScreen.screens.count > target) {
                     let screen = UIScreen.screens[target]
-                    var modes = screen.availableModes
-                        .map { "\(Int($0.size.width))x\(Int($0.size.height))" }
+                    let native = ExternalDisplayPlugin.nativeSize(for: screen)
+                    NSLog("[ExtDisplay] getModes: nativeBounds=\(screen.nativeBounds.size) current=\(String(describing: screen.currentMode?.size)) resolvedNative=\(native) available=\(screen.availableModes.map { $0.size })")
+                    // Only offer modes the physical panel can display; drop the
+                    // oversized signal modes iPadOS reports (e.g. 3840x2160 on a
+                    // 3440x1440 panel), which only flicker and never switch.
+                    var seen = Set<String>()
+                    var modes = [String]()
+                    for mode in screen.availableModes where fitsPanel(mode, native) {
+                        let key = "\(Int(mode.size.width))x\(Int(mode.size.height))"
+                        if seen.insert(key).inserted { modes.append(key) }
+                    }
                     // Some panels (e.g. the Simulator's external screen) don't list
                     // their native resolution among availableModes — offer it too.
-                    let native = "\(Int(screen.nativeBounds.width))x\(Int(screen.nativeBounds.height))"
-                    if !modes.contains(native) { modes.append(native) }
+                    let nativeKey = "\(Int(native.width))x\(Int(native.height))"
+                    if seen.insert(nativeKey).inserted { modes.append(nativeKey) }
                     result(modes)
                 } else {
                     result([String]())
@@ -57,30 +95,44 @@ public class ExternalDisplayPlugin: NSObject, FlutterPlugin {
                     let args = call.arguments as? [String: Any]
                     let routeName = (args?["routeName"] as? String) ?? "externalView"
                     let externalScreen = UIScreen.screens[1]
-                    let scale = externalScreen.scale
                     let reqWidth = args?["width"] as? Int
                     let reqHeight = args?["height"] as? Int
+                    let native = ExternalDisplayPlugin.nativeSize(for: externalScreen)
 
-                    // Window size in PIXELS. Default to the panel's true native
-                    // resolution (`nativeBounds`) — NOT `availableModes.last`,
-                    // which is a legacy low-res mode on many displays, and not the
-                    // largest `availableMode` either, since some panels (e.g. the
-                    // iOS Simulator's external display) don't list their native
-                    // resolution as a mode at all. That produced a tiny window.
-                    var pxWidth = externalScreen.nativeBounds.width
-                    var pxHeight = externalScreen.nativeBounds.height
-                    // When a specific resolution is requested, switch the screen to
-                    // that mode (if it exists) and size the window to it.
+                    // Choose the screen mode to apply:
+                    //  - a specific request → the matching available mode, but only
+                    //    if the panel can physically display it (guards against a
+                    //    stale/oversized saved value that would just flicker);
+                    //  - Auto (nil) or an unmatched request → the largest mode that
+                    //    fits the panel. Applying a mode for Auto is what actually
+                    //    switches the display to its native resolution instead of
+                    //    leaving it in whatever mode it was already in.
+                    var chosen: UIScreenMode?
                     if let w = reqWidth, let h = reqHeight {
-                        if let match = externalScreen.availableModes.first(where: {
-                            Int($0.size.width) == w && Int($0.size.height) == h
-                        }) {
-                            externalScreen.currentMode = match
-                        }
-                        pxWidth = CGFloat(w)
-                        pxHeight = CGFloat(h)
+                        chosen = externalScreen.availableModes.first(where: {
+                            Int($0.size.width) == w && Int($0.size.height) == h && fitsPanel($0, native)
+                        })
                     }
-                    // UIWindow frames are in points; convert from pixels via scale.
+                    if chosen == nil {
+                        chosen = externalScreen.availableModes
+                            .filter { fitsPanel($0, native) }
+                            .max(by: { $0.size.width * $0.size.height < $1.size.width * $1.size.height })
+                    }
+                    NSLog("[ExtDisplay] connect: req=(\(String(describing: reqWidth)),\(String(describing: reqHeight))) nativeBounds=\(externalScreen.nativeBounds.size) current=\(String(describing: externalScreen.currentMode?.size)) resolvedNative=\(native) chosen=\(String(describing: chosen?.size)) available=\(externalScreen.availableModes.map { $0.size })")
+
+                    // Window size in PIXELS. Fall back to the panel's native
+                    // resolution when no mode is available (e.g. the iOS Simulator's
+                    // external display lists none).
+                    var pxWidth = native.width
+                    var pxHeight = native.height
+                    if let mode = chosen {
+                        externalScreen.currentMode = mode
+                        pxWidth = mode.size.width
+                        pxHeight = mode.size.height
+                    }
+                    // Read scale AFTER any mode change. UIWindow frames are in
+                    // points; convert from pixels via scale.
+                    let scale = externalScreen.scale
                     var frame = CGRect.zero
                     frame.size = CGSize(width: pxWidth / scale, height: pxHeight / scale)
 
@@ -188,6 +240,9 @@ public class MainViewHandler: NSObject, FlutterStreamHandler {
         didDisconnectObserver = NotificationCenter.default.addObserver(forName:UIScreen.didDisconnectNotification, object:nil, queue: nil) {_ in
             ExternalDisplayPlugin.externalWindow?.removeFromSuperview()
             ExternalDisplayPlugin.externalWindow = nil
+            // Physical unplug — forget the cached native so a different monitor
+            // gets its own detection on the next connect.
+            ExternalDisplayPlugin.cachedNativeSize = nil
             events(false)
         }
         return nil

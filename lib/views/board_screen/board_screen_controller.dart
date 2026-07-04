@@ -635,6 +635,18 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   void onWidgetConfigChanged(String id, BoardWidgetConfig newConfig) {
     final boardId = viewModel.activeSubBoardId;
     final old = viewModel.boardWidgets.firstWhere((w) => w.id == id);
+    // A running stopwatch/timer reports its tick anchor through this same path.
+    // Mirror it to the external screen (updateBoardWidgetConfig fires the mirror
+    // autorun), but keep it out of undo history and autosave — it is ephemeral
+    // runtime state, not a board edit.
+    if (isWidgetRuntimeOnlyChange(old.config, newConfig)) {
+      // Mirror it and persist it — so a running stopwatch/timer survives a crash
+      // or restart — but keep it out of undo history: a spontaneous timer-finish
+      // shouldn't leave an undo entry, and un-pausing a clock isn't a board edit.
+      viewModel.updateBoardWidgetConfig(id, newConfig);
+      _scheduleSave();
+      return;
+    }
     final oldConfig = old.config;
     final oldScale = old.scale;
     // A ruler's grid-match mode owns its scale; derive it from the current grid so

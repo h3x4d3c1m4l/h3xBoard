@@ -16,10 +16,23 @@ class TimerWidget extends StatefulWidget {
   final int durationSeconds;
   final bool showCentiseconds;
 
+  // Wall-clock anchor for the running state, carried in the widget's config so the
+  // external display reconstructs the exact same remaining time from the same
+  // device clock. [startedAtEpochMs] is null while paused.
+  final int elapsedMs;
+  final int? startedAtEpochMs;
+
+  // Emits the new (elapsedMs, startedAtEpochMs) on start/pause/reset/finish. A
+  // no-op on the read-only external mirror.
+  final void Function(int elapsedMs, int? startedAtEpochMs) onChanged;
+
   const TimerWidget({
     super.key,
     this.durationSeconds = 300,
     this.showCentiseconds = false,
+    this.elapsedMs = 0,
+    this.startedAtEpochMs,
+    required this.onChanged,
   });
 
   @override
@@ -29,10 +42,9 @@ class TimerWidget extends StatefulWidget {
 
 class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStateMixin {
 
-  // Counts up elapsed time; remaining is derived as total - elapsed so the
-  // countdown stays accurate regardless of tick jitter.
-  final _stopwatch = Stopwatch();
-  Timer? _timer;
+  // Refreshes the display while counting down; the authoritative state is the
+  // config anchor, so this only re-renders — it never holds elapsed time itself.
+  Timer? _ticker;
 
   // Drives the finished-state border flicker: a smooth fade in/out that repeats
   // (reversing) while the countdown sits at zero, and is held still otherwise.
@@ -43,30 +55,63 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
 
   Duration get _total => Duration(seconds: widget.durationSeconds);
 
+  bool get _isRunning => widget.startedAtEpochMs != null;
+
+  Duration get _elapsed {
+    final started = widget.startedAtEpochMs;
+    if (started == null) return Duration(milliseconds: widget.elapsedMs);
+    final since = DateTime.now().millisecondsSinceEpoch - started;
+    return Duration(milliseconds: widget.elapsedMs + (since < 0 ? 0 : since));
+  }
+
   Duration get _remaining {
-    final r = _total - _stopwatch.elapsed;
+    final r = _total - _elapsed;
     return r.isNegative ? Duration.zero : r;
+  }
+
+  bool get _finished => _remaining == Duration.zero && _elapsed > Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncState();
   }
 
   @override
   void didUpdateWidget(TimerWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Editing the configured duration resets the countdown to the new time.
-    if (oldWidget.durationSeconds != widget.durationSeconds) {
-      _reset();
+    if (oldWidget.startedAtEpochMs != widget.startedAtEpochMs ||
+        oldWidget.elapsedMs != widget.elapsedMs ||
+        oldWidget.durationSeconds != widget.durationSeconds ||
+        oldWidget.showCentiseconds != widget.showCentiseconds) {
+      _syncState();
     }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _ticker?.cancel();
     _flicker.dispose();
     super.dispose();
   }
 
+  // Runs the display ticker while counting down and the fade-flicker while
+  // finished; both are derived from the config anchor.
+  void _syncState() {
+    _ticker?.cancel();
+    _ticker = null;
+    if (_isRunning && _remaining > Duration.zero) {
+      _ticker = Timer.periodic(
+        widget.showCentiseconds ? const Duration(milliseconds: 50) : const Duration(seconds: 1),
+        _onTick,
+      );
+    }
+    _syncFlicker();
+  }
+
   // Runs the fade-flicker only while finished; holds the border steady otherwise.
   void _syncFlicker() {
-    if (_remaining == Duration.zero) {
+    if (_finished) {
       if (!_flicker.isAnimating) _flicker.repeat(reverse: true);
     } else {
       _flicker
@@ -75,40 +120,28 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
     }
   }
 
-  void _tick(Timer _) {
+  void _onTick(Timer _) {
     if (_remaining == Duration.zero) {
-      _stopwatch.stop();
-      _timer?.cancel();
-      _timer = null;
+      _ticker?.cancel();
+      _ticker = null;
+      // Settle to a stopped, fully-elapsed state (the editor persists it; a no-op
+      // on the mirror, which reaches zero on its own from the same anchor).
+      if (_isRunning) widget.onChanged(_total.inMilliseconds, null);
+      _syncFlicker();
     }
-    _syncFlicker();
     setState(() {});
   }
 
   void _toggle() {
-    if (_stopwatch.isRunning) {
-      _stopwatch.stop();
-      _timer?.cancel();
-      _timer = null;
+    if (_isRunning) {
+      widget.onChanged(_elapsed.inMilliseconds, null);
     } else {
       if (_remaining == Duration.zero) return; // already finished — nothing to count down
-      _stopwatch.start();
-      _timer = Timer.periodic(
-        widget.showCentiseconds ? const Duration(milliseconds: 50) : const Duration(seconds: 1),
-        _tick,
-      );
+      widget.onChanged(widget.elapsedMs, DateTime.now().millisecondsSinceEpoch);
     }
-    setState(() {});
   }
 
-  void _reset() {
-    _stopwatch.stop();
-    _timer?.cancel();
-    _timer = null;
-    _stopwatch.reset();
-    _syncFlicker();
-    setState(() {});
-  }
+  void _reset() => widget.onChanged(0, null);
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +161,7 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
       timeText = '${two(minutes)}:${two(seconds)}';
     }
 
-    final finished = _remaining == Duration.zero;
+    final finished = _finished;
 
     // The flicker fades the red border between near-invisible and full while the
     // timer is finished; eased so the pulse breathes rather than blinks. The inner
@@ -172,7 +205,7 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _ControlButton(
-                icon: _stopwatch.isRunning ? LucideIcons.pause : LucideIcons.play,
+                icon: _isRunning ? LucideIcons.pause : LucideIcons.play,
                 onTap: _toggle,
                 highlighted: true,
               ),
@@ -247,6 +280,10 @@ class TimerWidgetDescriptor extends BoardWidgetDescriptor {
       key: ValueKey('timer_${c.durationSeconds}'),
       durationSeconds: c.durationSeconds,
       showCentiseconds: c.showCentiseconds,
+      elapsedMs: c.elapsedMs,
+      startedAtEpochMs: c.startedAtEpochMs,
+      onChanged: (elapsedMs, startedAtEpochMs) =>
+          onConfigChanged(c.copyWith(elapsedMs: elapsedMs, startedAtEpochMs: startedAtEpochMs)),
     );
   }
 
@@ -320,7 +357,12 @@ class TimerWidgetDescriptor extends BoardWidgetDescriptor {
           FilledButton(
             onPressed: () {
               final total = parse(minutesController) * 60 + parse(secondsController);
-              onChange(config.copyWith(durationSeconds: total.clamp(1, 24 * 3600)));
+              // Changing the duration resets any running countdown to the new time.
+              onChange(config.copyWith(
+                durationSeconds: total.clamp(1, 24 * 3600),
+                elapsedMs: 0,
+                startedAtEpochMs: null,
+              ));
               Navigator.of(ctx).pop();
             },
             child: Text(loc.timerSettingsMenu_save),

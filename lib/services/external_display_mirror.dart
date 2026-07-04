@@ -60,8 +60,13 @@ class ExternalDisplayMirror {
       (res) => unawaited(_onResolutionChanged(res)),
     );
     try {
+      // getScreen() lists all screens including the primary, so an external
+      // display is attached only when there's more than one. Connecting on a bare
+      // non-empty list would (falsely) mark us connected with no window created,
+      // and the guard in _connect would then block the real connect when a display
+      // is later plugged in — leaving iOS mirroring the main screen.
       final screens = await externalDisplay.getScreen();
-      if (screens.isNotEmpty) await _connect();
+      if (screens.length > 1) await _connect();
     } catch (_) {
       // Platform not available (e.g. web/tests) — mirroring is simply inactive.
     }
@@ -147,6 +152,9 @@ class ExternalDisplayMirror {
           _ready = false;
         },
       );
+      // No window was actually created (e.g. no display attached) — clear the flag
+      // so a later plug-in isn't blocked by the _connected guard.
+      if (!_ready) _connected = false;
     } catch (_) {
       _connected = false;
       _ready = false;
