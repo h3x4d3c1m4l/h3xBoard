@@ -26,6 +26,10 @@ class ExternalDisplayMirror {
   bool _connected = false;
   bool _ready = false;
 
+  // Observable mirror of [_ready], so UI (e.g. the Settings dialog) can react
+  // live to plug/unplug and reflect whether an external display is attached.
+  final Observable<bool> _connectedObservable = Observable(false);
+
   // The most recent board payload, retained so we can (a) flush it once the
   // external view signals readiness and (b) re-send it when a display is
   // plugged in mid-session. Null means "no board open" → idle placeholder.
@@ -40,6 +44,16 @@ class ExternalDisplayMirror {
   void Function(String action, Object? value)? _sendOverride;
 
   ExternalDisplayMirror();
+
+  /// Whether an external display is currently attached and actively mirroring.
+  /// Observable — reading it inside a MobX `reaction`/`Observer` tracks changes.
+  bool get isConnected => _connectedObservable.value;
+
+  /// Updates [_ready] and keeps the observable connection state in sync.
+  void _setReady(bool value) {
+    _ready = value;
+    runInAction(() => _connectedObservable.value = value);
+  }
 
   /// Test seam: route sends through [override] instead of the platform plugin.
   @visibleForTesting
@@ -101,7 +115,7 @@ class ExternalDisplayMirror {
       // Ignore — we recreate the connection below regardless.
     }
     _connected = false;
-    _ready = false;
+    _setReady(false);
     await _connect();
   }
 
@@ -129,14 +143,14 @@ class ExternalDisplayMirror {
       unawaited(_connect());
     } else {
       _connected = false;
-      _ready = false;
+      _setReady(false);
     }
   }
 
   Future<void> _connect() async {
     if (_connected) return;
     _connected = true;
-    _ready = false;
+    _setReady(false);
     try {
       await externalDisplay.connect(
         routeName: ExternalDisplayProtocol.routeName,
@@ -145,11 +159,11 @@ class ExternalDisplayMirror {
       );
       await externalDisplay.waitingTransferParametersReady(
         onReady: () {
-          _ready = true;
+          _setReady(true);
           _flushPending();
         },
         onError: () {
-          _ready = false;
+          _setReady(false);
         },
       );
       // No window was actually created (e.g. no display attached) — clear the flag
@@ -157,7 +171,7 @@ class ExternalDisplayMirror {
       if (!_ready) _connected = false;
     } catch (_) {
       _connected = false;
-      _ready = false;
+      _setReady(false);
     }
   }
 
