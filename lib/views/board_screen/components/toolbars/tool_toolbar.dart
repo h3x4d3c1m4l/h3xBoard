@@ -1,15 +1,10 @@
-import 'dart:async';
-
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/add_widget_button.dart';
-import 'package:h3xboard/views/board_screen/components/buttons/app_settings_button.dart';
-import 'package:h3xboard/views/board_screen/components/buttons/board_settings_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/eraser_tool_button.dart';
-import 'package:h3xboard/views/board_screen/components/buttons/fullscreen_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/pen_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/pointer_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart';
@@ -60,12 +55,6 @@ class ToolToolbar extends StatelessWidget {
               direction: direction,
               mainAxisSize: MainAxisSize.min,
               children: [
-                ToolButton(
-                  icon: LucideIcons.x,
-                  title: context.localizations.toolToolbar_close,
-                  onPressed: () => unawaited(controller.requestClose()),
-                ),
-                _ToolbarDivider(direction: direction),
                 ToggleButtonToolbar(
                   direction: direction,
                   buttons: [
@@ -88,13 +77,8 @@ class ToolToolbar extends StatelessWidget {
                   direction: direction,
                   buttons: [
                     AddWidgetButton(controller: controller),
-                    BoardSettingsButton(controller: controller),
-                    const AppSettingsButton(),
-                    FullscreenButton(viewModel: viewModel, controller: controller),
                   ],
                 ),
-                _ToolbarDivider(direction: direction),
-                _SaveStatusIndicator(status: viewModel.saveStatus),
               ],
             ),
           ),
@@ -127,49 +111,6 @@ class _ToolbarDivider extends StatelessWidget {
           horizontalMargin: EdgeInsets.zero,
         ),
       ),
-    );
-  }
-
-}
-
-class _SaveStatusIndicator extends StatelessWidget {
-
-  final BoardSaveStatus status;
-
-  const _SaveStatusIndicator({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    final loc = context.localizations;
-
-    final (IconData icon, String label, Color color) = switch (status) {
-      BoardSaveStatus.idle => (LucideIcons.cloud, '', theme.inactiveColor),
-      BoardSaveStatus.saving => (LucideIcons.cloud, loc.boardScreen_saving, theme.inactiveColor),
-      BoardSaveStatus.saved => (LucideIcons.cloudCheck, loc.boardScreen_saved, theme.inactiveColor),
-      BoardSaveStatus.error => (LucideIcons.cloudAlert, loc.boardScreen_saveError, Colors.red),
-    };
-
-    final indicator = AnimatedOpacity(
-      opacity: status == BoardSaveStatus.idle ? 0 : 1,
-      duration: const Duration(milliseconds: 150),
-      child: SizedBox(
-        width: 32,
-        height: 32,
-        child: Center(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 150),
-            child: Icon(icon, key: ValueKey(icon), size: 16, color: color),
-          ),
-        ),
-      ),
-    );
-
-    if (label.isEmpty) return indicator;
-
-    return Tooltip(
-      message: label,
-      child: indicator,
     );
   }
 
