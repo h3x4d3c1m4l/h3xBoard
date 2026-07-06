@@ -163,6 +163,8 @@
     "@toolToolbar_widgets": {},
     "toolToolbar_close": "Close",
     "@toolToolbar_close": {},
+    "toolToolbar_menu": "Menu",
+    "@toolToolbar_menu": {},
     "addWidgetMenu_digitalClock": "Digital clock",
     "@addWidgetMenu_digitalClock": {},
     "addWidgetMenu_analogClock": "Analog clock",

@@ -3,10 +3,16 @@
     "dart": {
       "type": "stdio",
       "command": "fvm",
-      "args": [
-        "dart",
-        "mcp-server"
-      ]
+      "args": ["dart", "mcp-server"]
+    },
+    "vscode-debugmcp": {
+      "type": "http",
+      "url": "http://localhost:3001/mcp"
+    },
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest"]
     }
   }
 }
