@@ -54,16 +54,22 @@ class BoardScaffold extends StatelessWidget {
         .toList();
 
     // Ring 1: inside (overlay) bars float over the board, aligned to their edge.
+    // `center` (the aspect-locked board) is the Stack's only non-positioned
+    // child, so the Stack shrink-wraps to the board's real 16:9 size; the inside
+    // bars are overlaid within those bounds (Positioned.fill + Align) so they hug
+    // the board's real edges rather than the far screen edges.
     final insideBars = bars.where((b) => b.inside).toList();
     Widget content = center;
     if (insideBars.isNotEmpty) {
       content = Stack(
         children: [
-          Positioned.fill(child: center),
+          center,
           for (final b in insideBars)
-            Align(
-              alignment: _alignmentFor(b.position),
-              child: b.bar,
+            Positioned.fill(
+              child: Align(
+                alignment: _alignmentFor(b.position),
+                child: b.bar,
+              ),
             ),
         ],
       );
@@ -105,11 +111,11 @@ class BoardScaffold extends StatelessWidget {
       );
     }
 
-    // The board column shrink-wraps (mainAxisSize.min), so a bare board with no
-    // outside bars would otherwise pin to the top-left — keep it centered. Inside
-    // overlays (Stack) and the outside rings already center their content.
+    // The board shrink-wraps to its 16:9 size, so with no outside bars it would
+    // otherwise pin to the top-left — keep it centered. The outside rings already
+    // center their content via mainAxisAlignment.
     final hasOutside = left.isNotEmpty || right.isNotEmpty || top.isNotEmpty || bottom.isNotEmpty;
-    if (!hasOutside && insideBars.isEmpty) {
+    if (!hasOutside) {
       content = Center(child: content);
     }
 

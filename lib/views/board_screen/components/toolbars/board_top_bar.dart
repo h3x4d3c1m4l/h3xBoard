@@ -6,45 +6,114 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/toolbars/sub_board_tab_bar.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-/// Bare back icon pinned to the top-left screen corner. Routes through the
-/// controller (like every other exit) so pending changes are flushed first.
-class BoardBackButton extends StatelessWidget {
+/// The board screen's top bar: an Exit button on the left, the sub-board switcher
+/// centred, and the save indicator + menu on the right. Styled to match the
+/// Boards screen header (card background with a bottom hairline).
+class BoardTopBar extends StatelessWidget {
 
   final BoardScreenController controller;
+  final BoardScreenViewModel viewModel;
 
-  const BoardBackButton({super.key, required this.controller});
+  const BoardTopBar({super.key, required this.controller, required this.viewModel});
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: context.localizations.toolToolbar_close,
-      child: IconButton(
-        icon: const Icon(LucideIcons.arrowLeft, size: 20),
-        onPressed: () => unawaited(controller.requestClose()),
+    final theme = FluentTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.resources.cardBackgroundFillColorDefault,
+        border: Border(
+          bottom: BorderSide(color: theme.resources.controlStrokeColorDefault),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Left and right sections take equal flex so the centre section (the
+          // sub-board switcher) stays visually centred regardless of their widths.
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _ExitButton(controller: controller),
+            ),
+          ),
+          Observer(
+            builder: (_) => SubBoardTabBar(
+              subBoards: viewModel.subBoards.toList(),
+              activeSubBoardId: viewModel.activeSubBoardId,
+              onSwitchSubBoard: controller.onSwitchSubBoard,
+              onAddSubBoard: controller.onAddSubBoard,
+              onRemoveSubBoard: controller.onRemoveSubBoard,
+              onRenameSubBoard: controller.onRenameSubBoard,
+            ),
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _MenuControls(controller: controller, viewModel: viewModel),
+            ),
+          ),
+        ],
       ),
     );
   }
 
 }
 
-/// Save indicator + hamburger menu, pinned to the top-right screen corner. The
-/// menu holds the board- and app-settings entries as a [MenuFlyout].
-class BoardMenuControls extends StatelessWidget {
+/// Arrow + "Exit" label. Routes through the controller (like every other exit)
+/// so pending changes are flushed first.
+class _ExitButton extends StatelessWidget {
+
+  final BoardScreenController controller;
+
+  const _ExitButton({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Button(
+      style: ButtonStyle(
+        padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.symmetric(horizontal: 12, vertical: 6)),
+        backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+      ),
+      onPressed: () => unawaited(controller.requestClose()),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 8,
+        children: [
+          const Icon(LucideIcons.arrowLeft, size: 18),
+          Text(context.localizations.boardTopBar_exit),
+        ],
+      ),
+    );
+  }
+
+}
+
+/// Save indicator + vertical divider + hamburger menu, shown at the top-right.
+class _MenuControls extends StatelessWidget {
 
   final BoardScreenController controller;
   final BoardScreenViewModel viewModel;
 
-  const BoardMenuControls({super.key, required this.controller, required this.viewModel});
+  const _MenuControls({required this.controller, required this.viewModel});
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       spacing: 4,
       children: [
         Observer(builder: (_) => _SaveStatusIndicator(status: viewModel.saveStatus)),
+        Container(
+          width: 1,
+          height: 20,
+          color: theme.resources.controlStrokeColorDefault,
+        ),
         _MenuButton(controller: controller, viewModel: viewModel),
       ],
     );

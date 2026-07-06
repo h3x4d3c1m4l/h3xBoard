@@ -165,6 +165,8 @@
     "@toolToolbar_close": {},
     "toolToolbar_menu": "Menu",
     "@toolToolbar_menu": {},
+    "boardTopBar_exit": "Afsluiten",
+    "@boardTopBar_exit": {},
     "addWidgetMenu_digitalClock": "Digitale klok",
     "@addWidgetMenu_digitalClock": {},
     "addWidgetMenu_analogClock": "Analoge klok",
