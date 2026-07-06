@@ -145,6 +145,10 @@ class _MenuButtonState extends State<_MenuButton> {
   }
 
   void _openMenu() {
+    // The State's context outlives the flyout, so use it for actions that open a
+    // dialog after the flyout is dismissed (the flyout's own context is defunct
+    // once popped).
+    final rootContext = context;
     _flyoutController.showFlyout(
       builder: (context) => MenuFlyout(
         itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
@@ -154,17 +158,35 @@ class _MenuButtonState extends State<_MenuButton> {
             text: Text(widget.viewModel.isFullscreen
                 ? context.localizations.boardSettingsButton_exitFullscreen
                 : context.localizations.boardSettingsButton_fullscreen),
-            onPressed: widget.controller.onFullscreenToggle,
+            onPressed: () {
+              Navigator.of(context).pop();
+              widget.controller.onFullscreenToggle();
+            },
           ),
           MenuFlyoutItem(
             leading: const Icon(LucideIcons.settings),
             text: Text(context.localizations.boardSettingsButton_settings),
-            onPressed: () => unawaited(widget.controller.onShowBoardSettings()),
+            onPressed: () {
+              Navigator.of(context).pop();
+              unawaited(widget.controller.onShowBoardSettings());
+            },
           ),
           MenuFlyoutItem(
             leading: const Icon(LucideIcons.slidersHorizontal),
             text: Text(context.localizations.appSettingsButton_preferences),
-            onPressed: () => unawaited(showSettingsDialog(context)),
+            onPressed: () {
+              Navigator.of(context).pop();
+              unawaited(showSettingsDialog(rootContext));
+            },
+          ),
+          const MenuFlyoutSeparator(),
+          MenuFlyoutItem(
+            leading: const Icon(LucideIcons.layoutDashboard),
+            text: Text(context.localizations.boardTopBar_boards),
+            onPressed: () {
+              Navigator.of(context).pop();
+              unawaited(widget.controller.requestClose());
+            },
           ),
         ],
       ),
