@@ -29,6 +29,7 @@ class _BoardAppState extends State<BoardApp> {
   Widget build(BuildContext context) {
     final theme = FluentThemeData(
       accentColor: Color(0xFF00FF80).toAccentColor(),
+      scaffoldBackgroundColor: const Color(0xFFEAE9E6),
       typography: Typography.fromBrightness(
         brightness: Brightness.light,
       ).apply(fontFamily: GoogleFonts.lexend().fontFamily),

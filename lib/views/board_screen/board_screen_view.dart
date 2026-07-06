@@ -9,10 +9,9 @@ import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/board.dart';
-import 'package:h3xboard/views/board_screen/components/board_corner_controls.dart';
 import 'package:h3xboard/views/board_screen/components/board_scaffold.dart';
+import 'package:h3xboard/views/board_screen/components/toolbars/board_top_bar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/drawing_toolbar.dart';
-import 'package:h3xboard/views/board_screen/components/toolbars/sub_board_tab_bar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dart';
 
 class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenController> {
@@ -28,7 +27,11 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
         if (didPop) return;
         unawaited(controller.requestClose());
       },
-      child: _buildContent(),
+      // ScaffoldPage paints the theme's scaffoldBackgroundColor behind the board.
+      child: ScaffoldPage(
+        padding: EdgeInsets.zero,
+        content: _buildContent(),
+      ),
     );
   }
 
@@ -63,101 +66,77 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
   Widget _buildBoard() {
     final appSettings = GetIt.I<AppSettingsController>();
 
-    // The central content: sub-board tabs above the board canvas. The two bars
-    // are docked around (or over) this by BoardScaffold per the user's settings.
-    final center = Column(
-      spacing: 8,
-      // Shrink-wrap to the tab bar + board's real height so outside top/bottom
-      // bars can hug the board edge (BoardScaffold re-centers it). Without this
-      // the column fills all height and a width-limited board floats in the
-      // middle, leaving a gap between the board and a docked top/bottom bar.
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: .center,
-      children: [
-        Observer(
-          builder: (_) => SubBoardTabBar(
-            subBoards: viewModel.subBoards.toList(),
-            activeSubBoardId: viewModel.activeSubBoardId,
-            onSwitchSubBoard: controller.onSwitchSubBoard,
-            onAddSubBoard: controller.onAddSubBoard,
-            onRemoveSubBoard: controller.onRemoveSubBoard,
-            onRenameSubBoard: controller.onRenameSubBoard,
-          ),
-        ),
-        Flexible(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              viewModel.updateResizeFactor(constraints);
-              return Board(
-                drawingController: controller.drawingController,
-                viewModel: viewModel,
-                captureKey: controller.boardCaptureKey,
-                onDeleteWidget: controller.onDeleteWidget,
-                onWidgetConfigChanged: controller.onWidgetConfigChanged,
-                onWidgetVisibilityChanged: controller.onWidgetVisibilityChanged,
-                onWidgetTransformStart: controller.onWidgetTransformStart,
-                onWidgetTransformEnd: controller.onWidgetTransformEnd,
-                onDrawingStrokeStart: controller.onDrawingStrokeStart,
-                onDrawingStrokeEnd: controller.onDrawingStrokeEnd,
-                onMoveWidgetToTop: controller.onMoveWidgetToTop,
-                onMoveWidgetUp: controller.onMoveWidgetUp,
-                onMoveWidgetDown: controller.onMoveWidgetDown,
-                onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
-              );
-            },
-          ),
-        ),
-      ],
+    // The central content: the board canvas, locked to the 1920×1080 (16:9)
+    // canvas ratio so its rounded border hugs the actual (fully drawable) board
+    // and any outside-docked bar sits right against the board's real edge. The
+    // grey page background simply shows around it.
+    final center = AspectRatio(
+      aspectRatio: 1920 / 1080,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          viewModel.updateResizeFactor(constraints);
+          return Board(
+            drawingController: controller.drawingController,
+            viewModel: viewModel,
+            captureKey: controller.boardCaptureKey,
+            onDeleteWidget: controller.onDeleteWidget,
+            onWidgetConfigChanged: controller.onWidgetConfigChanged,
+            onWidgetVisibilityChanged: controller.onWidgetVisibilityChanged,
+            onWidgetTransformStart: controller.onWidgetTransformStart,
+            onWidgetTransformEnd: controller.onWidgetTransformEnd,
+            onDrawingStrokeStart: controller.onDrawingStrokeStart,
+            onDrawingStrokeEnd: controller.onDrawingStrokeEnd,
+            onMoveWidgetToTop: controller.onMoveWidgetToTop,
+            onMoveWidgetUp: controller.onMoveWidgetUp,
+            onMoveWidgetDown: controller.onMoveWidgetDown,
+            onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
+          );
+        },
+      ),
     );
 
-    // Back (top-left) and save+menu (top-right) float in the screen corners,
-    // above the board and its docked bars, independent of where the bars sit.
-    return Stack(
+    // The top bar holds the exit button, sub-board switcher and save+menu
+    // controls; the board and its docked bars fill the space below it.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: Observer(
-            builder: (_) {
-              final colorBarPos = appSettings.colorBarPosition;
-              final toolBarPos = appSettings.toolBarPosition;
-              final toolBar = DockedBar(
-                position: toolBarPos,
-                inside: appSettings.toolBarInside,
-                bar: ToolToolbar(
-                  controller: controller,
-                  viewModel: viewModel,
-                  direction: toolBarPos.axis,
-                ),
-              );
-              final colorBar = DockedBar(
-                position: colorBarPos,
-                inside: appSettings.colorBarInside,
-                bar: Observer(
-                  builder: (_) => DrawingToolbar(
-                    activeColor: viewModel.drawingTools.activeColor,
-                    onColorButtonPressed: controller.onColorButtonPressed,
-                    direction: colorBarPos.axis,
+        BoardTopBar(controller: controller, viewModel: viewModel),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Observer(
+              builder: (_) {
+                final colorBarPos = appSettings.colorBarPosition;
+                final toolBarPos = appSettings.toolBarPosition;
+                final toolBar = DockedBar(
+                  position: toolBarPos,
+                  inside: appSettings.toolBarInside,
+                  bar: ToolToolbar(
+                    controller: controller,
+                    viewModel: viewModel,
+                    direction: toolBarPos.axis,
                   ),
-                ),
-              );
-              // Order only matters when both bars share an edge (BoardScaffold stacks
-              // same-edge bars in list order); on different edges it's harmless.
-              return BoardScaffold(
-                center: center,
-                bars: appSettings.barOrder == BarOrder.colorBarFirst ? [colorBar, toolBar] : [toolBar, colorBar],
-              );
-            },
+                );
+                final colorBar = DockedBar(
+                  position: colorBarPos,
+                  inside: appSettings.colorBarInside,
+                  bar: Observer(
+                    builder: (_) => DrawingToolbar(
+                      activeColor: viewModel.drawingTools.activeColor,
+                      onColorButtonPressed: controller.onColorButtonPressed,
+                      direction: colorBarPos.axis,
+                    ),
+                  ),
+                );
+                // Order only matters when both bars share an edge (BoardScaffold stacks
+                // same-edge bars in list order); on different edges it's harmless.
+                return BoardScaffold(
+                  center: center,
+                  bars: appSettings.barOrder == BarOrder.colorBarFirst ? [colorBar, toolBar] : [toolBar, colorBar],
+                );
+              },
+            ),
           ),
-        ),
-        Positioned(
-          top: 8,
-          left: 8,
-          child: BoardBackButton(controller: controller),
-        ),
-        Positioned(
-          top: 8,
-          right: 8,
-          child: BoardMenuControls(controller: controller, viewModel: viewModel),
         ),
       ],
     );
