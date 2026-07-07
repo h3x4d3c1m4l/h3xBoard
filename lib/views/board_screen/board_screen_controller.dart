@@ -12,6 +12,7 @@ import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_content.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
+import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/services/fullscreen_service.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
@@ -19,9 +20,12 @@ import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/board_settings_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_dialog.dart';
+import 'package:h3xboard/views/board_screen/drawing_serialization.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
+import 'package:h3xboard/widgets/themable_content_dialog.dart';
 import 'package:h3xboard/widgets/themable_loading_dialog.dart';
+import 'package:mobx/mobx.dart';
 
 // Matches 'Board N' titles to pick the next auto-number.
 final _boardTitleRegex = RegExp(r'^Board (\d+)$');
@@ -67,6 +71,16 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   StreamSubscription<bool>? _fullscreenSubscription;
 
+  // External-display mirroring: pushes a read-only snapshot of the active board
+  // to a connected second screen on every observable change and drawing frame.
+  // The mirror is an app-wide singleton (already started at launch); the board
+  // screen only feeds it board content and blanks it back to idle on close.
+  final ExternalDisplayMirror _mirror = GetIt.I<ExternalDisplayMirror>();
+  ReactionDisposer? _mirrorReactionDisposer;
+  // Coalesces the flurry of drawingController notifications during a stroke into
+  // at most one push per frame.
+  bool _mirrorFrameScheduled = false;
+
   // Initialization/Deinitialization
 
   BoardScreenController({
@@ -80,7 +94,41 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     historyManager.onChange = _scheduleSave;
     // Refresh the thumbnail on a slow cadence while editing (no-op when clean).
     _screenshotTimer = Timer.periodic(_screenshotInterval, (_) => unawaited(_captureScreenshotIfDirty()));
+    _setUpExternalMirror();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadBoard());
+  }
+
+  // External display mirroring
+
+  void _setUpExternalMirror() {
+    // Re-push whenever any board observable changes (widget add/move/scale/
+    // rotate/config/visibility, sub-board switch, background/line settings).
+    // _pushToExternal reads viewModel.board and .visibleBoardWidgets, so autorun
+    // tracks them as dependencies and re-runs on any change.
+    _mirrorReactionDisposer = autorun((_) => _pushToExternal());
+    // Live drawing: the surface painter notifies on every finger move; coalesce
+    // to one push per frame so mid-stroke updates appear live on the mirror.
+    drawingController.painter?.addListener(_onDrawingRepaint);
+  }
+
+  void _onDrawingRepaint() {
+    if (_mirrorFrameScheduled) return;
+    _mirrorFrameScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mirrorFrameScheduled = false;
+      _pushToExternal();
+    });
+  }
+
+  /// Serializes the active board plus its live drawing (including any in-progress
+  /// stroke) and hands it to the mirror. Cheap and idempotent — safe to call on
+  /// every change; the mirror only forwards when a display is connected.
+  void _pushToExternal() {
+    if (viewModel.isLoading) return;
+    final drawing = drawingController.getJsonList();
+    final inProgress = drawingController.drawingContent ?? drawingController.eraserContent;
+    if (inProgress != null) drawing.add(inProgress.toJson());
+    _mirror.pushActiveBoard(viewModel.board, viewModel.visibleBoardWidgets, drawing);
   }
 
   @override
@@ -89,6 +137,11 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     _screenshotTimer?.cancel();
     _fullscreenSubscription?.cancel();
     _fullscreenService.dispose();
+    // Stop feeding the (app-wide) mirror and blank the external screen back to
+    // its idle placeholder — the mirror itself stays alive for the next screen.
+    _mirrorReactionDisposer?.call();
+    drawingController.painter?.removeListener(_onDrawingRepaint);
+    _mirror.pushClear();
     super.dispose();
     drawingController.dispose();
     drawStartSignal.dispose();
@@ -107,7 +160,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       drawingController.clear();
       final saved = viewModel.restoreSubBoardDrawing(viewModel.activeSubBoardId);
       if (saved.isNotEmpty) {
-        drawingController.addContents(_restoreDrawingContents(saved));
+        drawingController.addContents(restoreDrawingContents(saved));
       }
     } on H3xBoardApiException catch (e) {
       viewModel.setLoadError(e.message);
@@ -116,9 +169,42 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     } finally {
       viewModel.setIsLoading(false);
     }
+    if (viewModel.loadError != null) {
+      unawaited(_showLoadErrorDialog());
+    }
   }
 
-  void retryLoad() => unawaited(_loadBoard());
+  /// Presents the board-load failure as a modal dialog offering to retry the
+  /// load or return to the boards overview. Shown whenever [_loadBoard] fails,
+  /// replacing the inline error banner so the choice is always front-and-center.
+  Future<void> _showLoadErrorDialog() async {
+    final context = contextAccessor.buildContext;
+    final navigator = Navigator.of(context);
+    final retry = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => ThemableContentDialog(
+        severity: ThemableDialogSeverity.error,
+        title: Text(localizations.boardScreen_loadErrorTitle),
+        content: Text(localizations.boardScreen_loadErrorMessage),
+        actions: [
+          Button(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(localizations.boardScreen_loadErrorGoBack),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(localizations.boardScreen_loadErrorRetry),
+          ),
+        ],
+      ),
+    );
+    if (retry ?? false) {
+      unawaited(_loadBoard());
+    } else if (navigator.mounted) {
+      navigator.pop();
+    }
+  }
 
   void _scheduleSave() {
     _saveDirty = true;
@@ -353,12 +439,12 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       undo: () {
         _ensureActiveBoard(boardId);
         drawingController.clear();
-        if (before.isNotEmpty) drawingController.addContents(_restoreDrawingContents(before));
+        if (before.isNotEmpty) drawingController.addContents(restoreDrawingContents(before));
       },
       redo: () {
         _ensureActiveBoard(boardId);
         drawingController.clear();
-        if (after.isNotEmpty) drawingController.addContents(_restoreDrawingContents(after));
+        if (after.isNotEmpty) drawingController.addContents(restoreDrawingContents(after));
       },
     ));
   }
@@ -373,7 +459,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
         _ensureActiveBoard(boardId);
         drawingController
           ..clear()
-          ..addContents(_restoreDrawingContents(before));
+          ..addContents(restoreDrawingContents(before));
       },
       redo: () {
         _ensureActiveBoard(boardId);
@@ -499,12 +585,16 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     final currentId = viewModel.activeSubBoardId;
     if (currentId == id) return;
     viewModel.saveSubBoardDrawing(currentId, drawingController.getJsonList());
+    // Restore the target board's strokes into the canvas *before* flipping the
+    // active id. Switching the id is what fires the mirror's autorun, so the
+    // canvas must already hold the new drawing — otherwise the external screen
+    // gets pushed an empty board and stays blank until the next change.
     drawingController.clear();
-    viewModel.setActiveSubBoardId(id);
     final saved = viewModel.restoreSubBoardDrawing(id);
     if (saved.isNotEmpty) {
-      drawingController.addContents(_restoreDrawingContents(saved));
+      drawingController.addContents(restoreDrawingContents(saved));
     }
+    viewModel.setActiveSubBoardId(id);
   }
 
   void onWidgetVisibilityChanged(String widgetId, bool isGlobal) {
@@ -545,6 +635,18 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   void onWidgetConfigChanged(String id, BoardWidgetConfig newConfig) {
     final boardId = viewModel.activeSubBoardId;
     final old = viewModel.boardWidgets.firstWhere((w) => w.id == id);
+    // A running stopwatch/timer reports its tick anchor through this same path.
+    // Mirror it to the external screen (updateBoardWidgetConfig fires the mirror
+    // autorun), but keep it out of undo history and autosave — it is ephemeral
+    // runtime state, not a board edit.
+    if (isWidgetRuntimeOnlyChange(old.config, newConfig)) {
+      // Mirror it and persist it — so a running stopwatch/timer survives a crash
+      // or restart — but keep it out of undo history: a spontaneous timer-finish
+      // shouldn't leave an undo entry, and un-pausing a clock isn't a board edit.
+      viewModel.updateBoardWidgetConfig(id, newConfig);
+      _scheduleSave();
+      return;
+    }
     final oldConfig = old.config;
     final oldScale = old.scale;
     // A ruler's grid-match mode owns its scale; derive it from the current grid so
@@ -731,22 +833,6 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void _ensureActiveBoard(String boardId) {
     if (viewModel.activeSubBoardId != boardId) onSwitchSubBoard(boardId);
-  }
-
-  // Drawing restore helper
-
-  List<PaintContent> _restoreDrawingContents(List<Map<String, dynamic>> jsonList) {
-    return jsonList.map((json) {
-      return switch (json['type'] as String?) {
-        'SimpleLine' => SimpleLine.fromJson(json),
-        'SmoothLine' => SmoothLine.fromJson(json),
-        'StraightLine' => StraightLine.fromJson(json),
-        'Rectangle' => Rectangle.fromJson(json),
-        'Circle' => Circle.fromJson(json),
-        'Eraser' => Eraser.fromJson(json),
-        _ => null,
-      };
-    }).whereType<PaintContent>().toList();
   }
 
 }

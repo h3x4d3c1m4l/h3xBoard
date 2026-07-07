@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/views/base/build_context_accessor.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
@@ -39,7 +39,18 @@ class _ScreenBaseState<TViewModel extends ScreenViewModelBase, TController exten
   @override
   Widget build(BuildContext context) {
     _contextAccessor.buildContext = context;
-    return _view.body;
+    return ColoredBox(
+      color: FluentTheme.of(context).scaffoldBackgroundColor,
+      // Most screens let the bottom safe-area inset collapse when the keyboard
+      // opens (the default). A screen whose layout must not reflow behind a
+      // dialog's keyboard (the board — its aspect-locked canvas would rescale)
+      // opts into maintainBottomViewPadding via the view.
+      child: SafeArea(
+        bottom: _view.bottomSafeArea,
+        maintainBottomViewPadding: _view.maintainBottomViewPadding,
+        child: _view.body,
+      ),
+    );
   }
 
   @override

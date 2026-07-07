@@ -1,20 +1,31 @@
 import 'dart:async';
 
+import 'package:external_display/external_display.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/app_settings_enums.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
+import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/widgets/themable_panel_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:mobx/mobx.dart';
 import 'package:scroll_edge_hint/scroll_edge_hint.dart';
 
 /// Opens the app-wide Settings dialog. Used by the global Ctrl/Cmd+S shortcut
 /// (and any future menu entry) so every entry point shares one code path.
-Future<void> showSettingsDialog(BuildContext context) => showDialog<void>(
+/// Opens the preferences dialog.
+///
+/// [useRootNavigator] defaults to `true` (matching Flutter's `showDialog`). Pass
+/// `false` when opening from inside a flyout so the dialog lands on the same
+/// navigator the flyout is dismissing on — otherwise a root-level barrier stacks
+/// over the still-closing flyout and leaves it visible behind the dialog.
+Future<void> showSettingsDialog(BuildContext context, {bool useRootNavigator = true}) => showDialog<void>(
   context: context,
   barrierDismissible: true,
+  useRootNavigator: useRootNavigator,
   builder: (_) => const SettingsDialog(),
 );
 
@@ -33,6 +44,7 @@ class SettingsDialog extends StatefulWidget {
 class _SettingsDialogState extends State<SettingsDialog> {
 
   final AppSettingsController _settings = GetIt.I<AppSettingsController>();
+  final ExternalDisplayMirror _mirror = GetIt.I<ExternalDisplayMirror>();
 
   // Draft state, seeded from the current settings and mutated locally.
   late AppLanguage _language = _settings.language;
@@ -41,9 +53,56 @@ class _SettingsDialogState extends State<SettingsDialog> {
   late BarPosition _toolBarPosition = _settings.toolBarPosition;
   late bool _toolBarInside = _settings.toolBarInside;
   late BarOrder _barOrder = _settings.barOrder;
+  late String? _externalResolution = _settings.externalResolution;
+
+  // Resolutions the connected external display reports (empty when none is
+  // attached or the platform doesn't support listing them).
+  List<String> _externalModes = const [];
 
   bool _saving = false;
   String? _error;
+
+  ReactionDisposer? _connectionReactionDisposer;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadExternalModes());
+    // Reload the reported modes when a display is plugged in while the dialog is
+    // open (and drop them again on unplug), so the resolution list stays in sync.
+    _connectionReactionDisposer = reaction<bool>(
+      (_) => _mirror.isConnected,
+      (connected) {
+        if (connected) {
+          unawaited(_loadExternalModes());
+        } else if (mounted) {
+          setState(() => _externalModes = const []);
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _connectionReactionDisposer?.call();
+    super.dispose();
+  }
+
+  Future<void> _loadExternalModes() async {
+    try {
+      final modes = await externalDisplay.getModes();
+      final unique = modes.toSet().toList()..sort((a, b) => _modeArea(b).compareTo(_modeArea(a)));
+      if (mounted) setState(() => _externalModes = unique);
+    } catch (_) {
+      // No external display / unsupported — leave the list empty (Auto only).
+    }
+  }
+
+  static int _modeArea(String mode) {
+    final parts = mode.toLowerCase().split('x');
+    if (parts.length != 2) return 0;
+    return (int.tryParse(parts[0].trim()) ?? 0) * (int.tryParse(parts[1].trim()) ?? 0);
+  }
 
   Future<void> _confirm() async {
     setState(() {
@@ -58,6 +117,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         toolBarPosition: _toolBarPosition,
         toolBarInside: _toolBarInside,
         barOrder: _barOrder,
+        externalResolution: _externalResolution,
       );
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
@@ -158,6 +218,39 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                 control: _buildOrderCombo(loc),
                               ),
                             ],
+                            Observer(
+                              builder: (context) {
+                                final connected = _mirror.isConnected;
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _SectionLabel(
+                                      icon: LucideIcons.monitor,
+                                      text: loc.settingsDialog_section_externalDisplay,
+                                      trailing: _ConnectionBadge(
+                                        connected: connected,
+                                        connectedLabel: loc.settingsDialog_externalDisplay_connected,
+                                        notConnectedLabel: loc.settingsDialog_externalDisplay_notConnected,
+                                      ),
+                                    ),
+                                    if (!connected)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Text(
+                                          loc.settingsDialog_externalDisplay_notConnectedHint,
+                                          style: theme.typography.caption?.copyWith(
+                                            color: theme.resources.textFillColorSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    _SettingsRow(
+                                      label: loc.settingsDialog_resolution,
+                                      control: _buildResolutionCombo(loc, enabled: connected),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                             if (_error != null) ...[
                               const SizedBox(height: 8),
                               InfoBar(
@@ -270,6 +363,26 @@ class _SettingsDialogState extends State<SettingsDialog> {
     );
   }
 
+  Widget _buildResolutionCombo(AppLocalizations loc, {required bool enabled}) {
+    // Keep the saved value selectable even if the display isn't currently
+    // reporting it (e.g. it's unplugged while the dialog is open).
+    final options = [
+      ..._externalModes,
+      if (_externalResolution != null && !_externalModes.contains(_externalResolution)) _externalResolution!,
+    ];
+    return ComboBox<String?>(
+      value: _externalResolution,
+      placeholder: Text(loc.settingsDialog_resolution_auto),
+      items: [
+        ComboBoxItem<String?>(value: null, child: Text(loc.settingsDialog_resolution_auto)),
+        for (final m in options) ComboBoxItem<String?>(value: m, child: Text(m)),
+      ],
+      // A null handler disables the combo, so it's only interactive when a
+      // display is connected.
+      onChanged: enabled ? (v) => setState(() => _externalResolution = v) : null,
+    );
+  }
+
 }
 
 /// A small section header grouping related settings rows: an accent-tinted icon
@@ -278,8 +391,9 @@ class _SectionLabel extends StatelessWidget {
 
   final IconData icon;
   final String text;
+  final Widget? trailing;
 
-  const _SectionLabel({required this.icon, required this.text});
+  const _SectionLabel({required this.icon, required this.text, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +413,53 @@ class _SectionLabel extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(text, style: theme.typography.bodyStrong),
+          if (trailing != null) ...[
+            const Spacer(),
+            trailing!,
+          ],
+        ],
+      ),
+    );
+  }
+
+}
+
+/// A pill showing whether an external display is currently connected: a green
+/// checkmark + "Connected", or a muted "Not connected" so the state is always
+/// visible at a glance.
+class _ConnectionBadge extends StatelessWidget {
+
+  final bool connected;
+  final String connectedLabel;
+  final String notConnectedLabel;
+
+  const _ConnectionBadge({
+    required this.connected,
+    required this.connectedLabel,
+    required this.notConnectedLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final Color color = connected ? Colors.green : theme.resources.textFillColorSecondary;
+    final IconData icon = connected ? LucideIcons.circleCheck : LucideIcons.unplug;
+    final String label = connected ? connectedLabel : notConnectedLabel;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.typography.caption?.copyWith(color: color, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );

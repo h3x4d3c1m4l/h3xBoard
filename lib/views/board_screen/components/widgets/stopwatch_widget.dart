@@ -13,7 +13,25 @@ class StopwatchWidget extends StatefulWidget {
 
   final bool showCentiseconds;
 
-  const StopwatchWidget({super.key, this.showCentiseconds = true});
+  // Wall-clock anchor for the running state, carried in the widget's config so the
+  // external display reconstructs the exact same elapsed time from the same device
+  // clock. [startedAtEpochMs] is null while paused; elapsed = [elapsedMs] + (now -
+  // started) while running.
+  final int elapsedMs;
+  final int? startedAtEpochMs;
+
+  // Emits the new (elapsedMs, startedAtEpochMs) on start/pause/reset. A no-op on
+  // the read-only external mirror, so its controls do nothing — but the display
+  // still ticks from the anchor.
+  final void Function(int elapsedMs, int? startedAtEpochMs) onChanged;
+
+  const StopwatchWidget({
+    super.key,
+    this.showCentiseconds = true,
+    this.elapsedMs = 0,
+    this.startedAtEpochMs,
+    required this.onChanged,
+  });
 
   @override
   State<StopwatchWidget> createState() => _StopwatchWidgetState();
@@ -22,41 +40,66 @@ class StopwatchWidget extends StatefulWidget {
 
 class _StopwatchWidgetState extends State<StopwatchWidget> {
 
-  final _stopwatch = Stopwatch();
-  Timer? _timer;
+  // Refreshes the display while running; the authoritative state is the config
+  // anchor, so this only re-renders — it never holds elapsed time itself.
+  Timer? _ticker;
+
+  bool get _isRunning => widget.startedAtEpochMs != null;
+
+  Duration get _elapsed {
+    final started = widget.startedAtEpochMs;
+    if (started == null) return Duration(milliseconds: widget.elapsedMs);
+    final since = DateTime.now().millisecondsSinceEpoch - started;
+    return Duration(milliseconds: widget.elapsedMs + (since < 0 ? 0 : since));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _syncTicker();
+  }
+
+  @override
+  void didUpdateWidget(StopwatchWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.startedAtEpochMs != widget.startedAtEpochMs ||
+        oldWidget.showCentiseconds != widget.showCentiseconds) {
+      _syncTicker();
+    }
+  }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _ticker?.cancel();
     super.dispose();
   }
 
-  void _toggle() {
-    if (_stopwatch.isRunning) {
-      _stopwatch.stop();
-      _timer?.cancel();
-      _timer = null;
-    } else {
-      _stopwatch.start();
-      _timer = Timer.periodic(
+  void _syncTicker() {
+    _ticker?.cancel();
+    _ticker = null;
+    if (_isRunning) {
+      _ticker = Timer.periodic(
         widget.showCentiseconds ? const Duration(milliseconds: 50) : const Duration(seconds: 1),
         (_) => setState(() {}),
       );
     }
-    setState(() {});
   }
 
-  void _reset() {
-    _stopwatch.stop();
-    _timer?.cancel();
-    _timer = null;
-    _stopwatch.reset();
-    setState(() {});
+  void _toggle() {
+    if (_isRunning) {
+      // Pause: fold the running span into elapsedMs and drop the anchor.
+      widget.onChanged(_elapsed.inMilliseconds, null);
+    } else {
+      // Start: keep the accumulated elapsed and anchor to the current wall clock.
+      widget.onChanged(widget.elapsedMs, DateTime.now().millisecondsSinceEpoch);
+    }
   }
+
+  void _reset() => widget.onChanged(0, null);
 
   @override
   Widget build(BuildContext context) {
-    final elapsed = _stopwatch.elapsed;
+    final elapsed = _elapsed;
     final minutes = elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
 
@@ -97,7 +140,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _ControlButton(
-                icon: _stopwatch.isRunning ? LucideIcons.pause : LucideIcons.play,
+                icon: _isRunning ? LucideIcons.pause : LucideIcons.play,
                 onTap: _toggle,
                 highlighted: true,
               ),
@@ -167,7 +210,13 @@ class StopwatchWidgetDescriptor extends BoardWidgetDescriptor {
   @override
   Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged) {
     final c = config as StopwatchConfig;
-    return StopwatchWidget(showCentiseconds: c.showCentiseconds);
+    return StopwatchWidget(
+      showCentiseconds: c.showCentiseconds,
+      elapsedMs: c.elapsedMs,
+      startedAtEpochMs: c.startedAtEpochMs,
+      onChanged: (elapsedMs, startedAtEpochMs) =>
+          onConfigChanged(c.copyWith(elapsedMs: elapsedMs, startedAtEpochMs: startedAtEpochMs)),
+    );
   }
 
   @override

@@ -13,6 +13,9 @@ import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
+import 'package:h3xboard/widgets/continuous_text_box.dart';
+import 'package:h3xboard/widgets/scroll_shadow.dart';
+import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 import 'package:h3xboard/widgets/themable_content_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -26,12 +29,13 @@ const double _cardSpacing = 16;
 const double _maxContentWidth = 1240;
 
 class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScreenController> {
+  const BoardsScreenView({required super.viewModel, required super.controller, required super.contextAccessor});
 
-  const BoardsScreenView({
-    required super.viewModel,
-    required super.controller,
-    required super.contextAccessor,
-  });
+  // The board grid scrolls its own content, so let it run to the physical bottom
+  // edge (and under the scroll shadow) instead of stopping at a hard safe-area
+  // line. _BoardsBody adds the bottom inset back as scroll padding.
+  @override
+  bool get bottomSafeArea => false;
 
   @override
   Widget get body {
@@ -41,8 +45,10 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _TopBar(
-            onSearchChanged: controller.onSearchChanged,
-            onOpenSettings: () => showSettingsDialog(contextAccessor.buildContext),
+            // useRootNavigator: false so that when opened from the account
+            // flyout the dialog lands on the same navigator the flyout dismisses
+            // on (see _AccountMenu). The gear icon shares this and is unaffected.
+            onOpenSettings: () => showSettingsDialog(contextAccessor.buildContext, useRootNavigator: false),
             onSignOut: controller.onLogoutPressed,
             userDisplayName: controller.userDisplayName,
             userInitials: controller.userInitials,
@@ -61,10 +67,7 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
                       child: InfoBar(
                         title: Text(viewModel.errorMessage!),
                         severity: InfoBarSeverity.error,
-                        action: Button(
-                          onPressed: controller.loadBoards,
-                          child: Text(localizations.boardsScreen_retry),
-                        ),
+                        action: Button(onPressed: controller.loadBoards, child: Text(localizations.boardsScreen_retry)),
                       ),
                     ),
                   );
@@ -75,9 +78,11 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
                   totalCount: viewModel.boards.length,
                   reloadToken: viewModel.reloadTick,
                   firstName: controller.firstName,
+                  onSearchChanged: controller.onSearchChanged,
                   onCreateBoard: controller.onCreateBoardPressed,
                   onOpenBoard: controller.openBoard,
                   onDeleteBoard: controller.onDeleteBoard,
+                  onRenameBoard: controller.onRenameBoard,
                 );
               },
             ),
@@ -101,21 +106,17 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
       ),
     );
   }
-
 }
 
-/// The header bar: brand on the left, a live title filter in the middle, and the
-/// settings gear + account menu on the right.
+/// The header bar: brand on the left and the settings gear + account menu on the
+/// right.
 class _TopBar extends StatelessWidget {
-
-  final ValueChanged<String> onSearchChanged;
   final VoidCallback onOpenSettings;
   final VoidCallback onSignOut;
   final String userDisplayName;
   final String userInitials;
 
   const _TopBar({
-    required this.onSearchChanged,
     required this.onOpenSettings,
     required this.onSignOut,
     required this.userDisplayName,
@@ -126,47 +127,22 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(24, 12, 16, 12),
       decoration: BoxDecoration(
         color: theme.resources.cardBackgroundFillColorDefault,
-        border: Border(
-          bottom: BorderSide(color: theme.resources.controlStrokeColorDefault),
-        ),
+        border: Border(bottom: BorderSide(color: theme.resources.controlStrokeColorDefault)),
       ),
       child: Row(
         children: [
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
-              color: theme.accentColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: theme.accentColor, borderRadius: BorderRadius.circular(10)),
             child: const Icon(LucideIcons.pencil, size: 18, color: Colors.white),
           ),
           const SizedBox(width: 12),
           Text(_appName, style: theme.typography.subtitle),
           const Spacer(),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: TextBox(
-              placeholder: context.localizations.boardsScreen_searchPlaceholder,
-              prefix: const Padding(
-                padding: EdgeInsets.only(left: 10),
-                child: Icon(LucideIcons.search, size: 16),
-              ),
-              onChanged: onSearchChanged,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Tooltip(
-            message: context.localizations.appSettingsButton_preferences,
-            child: IconButton(
-              icon: const Icon(LucideIcons.settings, size: 18),
-              onPressed: onOpenSettings,
-            ),
-          ),
-          const SizedBox(width: 8),
           _AccountMenu(
             displayName: userDisplayName,
             initials: userInitials,
@@ -177,13 +153,11 @@ class _TopBar extends StatelessWidget {
       ),
     );
   }
-
 }
 
 /// The account chip in the top-right; tapping it opens a flyout with Preferences
 /// and Sign out.
 class _AccountMenu extends StatefulWidget {
-
   final String displayName;
   final String initials;
   final VoidCallback onOpenSettings;
@@ -198,38 +172,63 @@ class _AccountMenu extends StatefulWidget {
 
   @override
   State<_AccountMenu> createState() => _AccountMenuState();
-
 }
 
 class _AccountMenuState extends State<_AccountMenu> {
-
-  final _flyoutController = FlyoutController();
-
-  @override
-  void dispose() {
-    _flyoutController.dispose();
-    super.dispose();
-  }
+  final _flyoutController = StableFlyoutController();
 
   void _showMenu() {
     final loc = context.localizations;
+    final warningColor = ThemableDialogSeverity.warning.primaryColor;
     _flyoutController.showFlyout(
+      placementMode: FlyoutPlacementMode.bottomRight,
+      additionalOffset: 0,
       builder: (context) => MenuFlyout(
         items: [
           MenuFlyoutItem(
             leading: const Icon(LucideIcons.slidersHorizontal),
             text: Text(loc.appSettingsButton_preferences),
-            onPressed: widget.onOpenSettings,
+            onPressed: _onPreferencesPressed,
           ),
           const MenuFlyoutSeparator(),
           MenuFlyoutItem(
-            leading: const Icon(LucideIcons.logOut),
-            text: Text(loc.boardsScreen_signOut),
-            onPressed: widget.onSignOut,
+            leading: Icon(LucideIcons.logOut, color: warningColor),
+            text: Text(loc.boardsScreen_signOut, style: TextStyle(color: warningColor)),
+            onPressed: _onSignOutPressed,
           ),
         ],
       ),
     );
+  }
+
+  void _onPreferencesPressed() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onOpenSettings();
+    });
+  }
+
+  void _onSignOutPressed() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _confirmSignOut(context);
+    });
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final loc = context.localizations;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      useRootNavigator: false,
+      builder: (ctx) => ThemableContentDialog(
+        severity: ThemableDialogSeverity.warning,
+        title: Text(loc.boardsScreen_signOutConfirmTitle),
+        content: Text(loc.boardsScreen_signOutConfirmMessage),
+        actions: [
+          Button(onPressed: () => Navigator.of(ctx).pop(false), child: Text(loc.boardsScreen_signOutCancel)),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(loc.boardsScreen_signOutConfirm)),
+        ],
+      ),
+    );
+    if (confirmed == true) widget.onSignOut();
   }
 
   @override
@@ -244,7 +243,7 @@ class _AccountMenuState extends State<_AccountMenu> {
             duration: const Duration(milliseconds: 120),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: states.isHovered
+              color: states.isPressed || states.isHovered
                   ? theme.resources.subtleFillColorSecondary
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
@@ -260,16 +259,10 @@ class _AccountMenuState extends State<_AccountMenu> {
                   width: 32,
                   height: 32,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: theme.accentColor,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: theme.accentColor, shape: BoxShape.circle),
                   child: Text(
                     widget.initials,
-                    style: theme.typography.caption?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: theme.typography.caption?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -280,113 +273,122 @@ class _AccountMenuState extends State<_AccountMenu> {
     );
   }
 
+  @override
+  void dispose() {
+    _flyoutController.dispose();
+    super.dispose();
+  }
 }
 
 /// The scrollable content below the top bar: greeting, board count, the "New
 /// board" button, and the responsive grid of board cards.
 class _BoardsBody extends StatelessWidget {
-
   final List<BoardSummary> boards;
   final int totalCount;
   final int reloadToken;
   final String? firstName;
+  final ValueChanged<String> onSearchChanged;
   final VoidCallback onCreateBoard;
   final ValueChanged<BoardSummary> onOpenBoard;
   final ValueChanged<BoardSummary> onDeleteBoard;
+  final void Function(BoardSummary board, String newTitle) onRenameBoard;
 
   const _BoardsBody({
     required this.boards,
     required this.totalCount,
     required this.reloadToken,
     required this.firstName,
+    required this.onSearchChanged,
     required this.onCreateBoard,
     required this.onOpenBoard,
     required this.onDeleteBoard,
+    required this.onRenameBoard,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final loc = context.localizations;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: _maxContentWidth),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_greeting(loc, firstName), style: theme.typography.title),
-                        const SizedBox(height: 4),
-                        Text(
-                          loc.boardsScreen_boardCount(totalCount),
-                          style: theme.typography.body?.copyWith(
-                            color: theme.resources.textFillColorSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  FilledButton(
-                    onPressed: onCreateBoard,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+    // The screen opts its content out of the bottom SafeArea (bottomSafeArea =>
+    // false) so the grid scrolls under the shadow to the screen edge; add the
+    // bottom inset (home indicator) back as scroll padding so the last row still
+    // clears it when scrolled to the end.
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    return ScrollShadow(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _maxContentWidth),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(LucideIcons.plus, size: 16),
-                          const SizedBox(width: 8),
-                          Text(loc.boardsScreen_createBoard),
+                          Text(_greeting(loc, firstName), style: theme.typography.title),
+                          const SizedBox(height: 4),
+                          Text(
+                            loc.boardsScreen_boardCount(totalCount),
+                            style: theme.typography.body?.copyWith(color: theme.resources.textFillColorSecondary),
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Text(
-                loc.boardsScreen_allBoards.toUpperCase(),
-                style: theme.typography.caption?.copyWith(
-                  color: theme.resources.textFillColorSecondary,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: _cardSpacing,
-                runSpacing: _cardSpacing,
-                children: [
-                  _NewBoardCard(onPressed: onCreateBoard),
-                  for (final board in boards)
-                    _BoardCard(
-                      board: board,
-                      reloadToken: reloadToken,
-                      onOpen: () => onOpenBoard(board),
-                      onDelete: () => onDeleteBoard(board),
+                    const SizedBox(width: 16),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: ContinuousTextBox(
+                        placeholder: context.localizations.boardsScreen_searchPlaceholder,
+                        prefix: const Padding(
+                          padding: EdgeInsets.only(left: 10),
+                          child: Icon(LucideIcons.search, size: 16),
+                        ),
+                        onChanged: onSearchChanged,
+                      ),
                     ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  loc.boardsScreen_allBoards.toUpperCase(),
+                  style: theme.typography.caption?.copyWith(
+                    color: theme.resources.textFillColorSecondary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: _cardSpacing,
+                  runSpacing: _cardSpacing,
+                  children: [
+                    _NewBoardCard(onPressed: onCreateBoard),
+                    for (final board in boards)
+                      _BoardCard(
+                        board: board,
+                        reloadToken: reloadToken,
+                        onOpen: () => onOpenBoard(board),
+                        onDelete: () => onDeleteBoard(board),
+                        onRename: (newTitle) => onRenameBoard(board, newTitle),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
 }
 
 /// The dashed "create a fresh board" tile, always shown first in the grid.
 class _NewBoardCard extends StatelessWidget {
-
   final VoidCallback onPressed;
 
   const _NewBoardCard({required this.onPressed});
@@ -418,10 +420,7 @@ class _NewBoardCard extends StatelessWidget {
                   width: 44,
                   height: 44,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: theme.accentColor.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: theme.accentColor.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(LucideIcons.plus, color: theme.accentColor),
                 ),
                 const SizedBox(height: 12),
@@ -436,27 +435,27 @@ class _NewBoardCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 // A card's total height: thumbnail area + footer.
 const double _thumbHeight = 176;
-const double _cardHeight = _thumbHeight + 68;
+const double _cardHeight = _thumbHeight + 65;
 
 /// A single board tile: screenshot thumbnail on top, title + "edited" time and a
 /// "…" menu (delete) below. The whole card opens the board.
 class _BoardCard extends StatelessWidget {
-
   final BoardSummary board;
   final int reloadToken;
   final VoidCallback onOpen;
   final VoidCallback onDelete;
+  final ValueChanged<String> onRename;
 
   const _BoardCard({
     required this.board,
     required this.reloadToken,
     required this.onOpen,
     required this.onDelete,
+    required this.onRename,
   });
 
   @override
@@ -486,6 +485,9 @@ class _BoardCard extends StatelessWidget {
                   height: _thumbHeight,
                   child: _BoardThumbnail(board: board, reloadToken: reloadToken),
                 ),
+                // Separator between the thumbnail and the footer, matching the
+                // card's own border color.
+                Container(height: 1, color: theme.resources.controlStrokeColorDefault),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
                   child: Row(
@@ -505,14 +507,12 @@ class _BoardCard extends StatelessWidget {
                               _editedLabel(loc, board.updatedAt),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.typography.caption?.copyWith(
-                                color: theme.resources.textFillColorSecondary,
-                              ),
+                              style: theme.typography.caption?.copyWith(color: theme.resources.textFillColorSecondary),
                             ),
                           ],
                         ),
                       ),
-                      _CardMenu(title: board.title, onDelete: onDelete),
+                      _CardMenu(title: board.title, onDelete: onDelete, onRename: onRename),
                     ],
                   ),
                 ),
@@ -523,13 +523,11 @@ class _BoardCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 /// Loads and shows a board's screenshot, or a neutral placeholder while loading,
 /// on failure, or when the board has no screenshot yet.
 class _BoardThumbnail extends StatefulWidget {
-
   final BoardSummary board;
 
   /// Changes whenever the boards screen reloads; a new value re-fetches the
@@ -540,11 +538,9 @@ class _BoardThumbnail extends StatefulWidget {
 
   @override
   State<_BoardThumbnail> createState() => _BoardThumbnailState();
-
 }
 
 class _BoardThumbnailState extends State<_BoardThumbnail> {
-
   final _fileService = GetIt.I<H3xBoardFileService>();
   Uint8List? _bytes;
   bool _fetching = false;
@@ -599,11 +595,9 @@ class _BoardThumbnailState extends State<_BoardThumbnail> {
       errorBuilder: (context, error, stackTrace) => const _ThumbPlaceholder(),
     );
   }
-
 }
 
 class _ThumbPlaceholder extends StatelessWidget {
-
   final bool loading;
 
   const _ThumbPlaceholder({this.loading = false});
@@ -616,39 +610,26 @@ class _ThumbPlaceholder extends StatelessWidget {
       child: Center(
         child: loading
             ? const SizedBox(width: 18, height: 18, child: ProgressRing(strokeWidth: 2))
-            : Icon(
-                LucideIcons.layoutDashboard,
-                size: 28,
-                color: theme.resources.textFillColorDisabled,
-              ),
+            : Icon(LucideIcons.layoutDashboard, size: 28, color: theme.resources.textFillColorDisabled),
       ),
     );
   }
-
 }
 
-/// The per-card "…" overflow menu (currently just Delete, with confirmation).
+/// The per-card "…" overflow menu (Rename and Delete, each with a dialog).
 class _CardMenu extends StatefulWidget {
-
   final String title;
   final VoidCallback onDelete;
+  final ValueChanged<String> onRename;
 
-  const _CardMenu({required this.title, required this.onDelete});
+  const _CardMenu({required this.title, required this.onDelete, required this.onRename});
 
   @override
   State<_CardMenu> createState() => _CardMenuState();
-
 }
 
 class _CardMenuState extends State<_CardMenu> {
-
-  final _flyoutController = FlyoutController();
-
-  @override
-  void dispose() {
-    _flyoutController.dispose();
-    super.dispose();
-  }
+  final _flyoutController = StableFlyoutController();
 
   void _showMenu() {
     final loc = context.localizations;
@@ -656,32 +637,95 @@ class _CardMenuState extends State<_CardMenu> {
       builder: (context) => MenuFlyout(
         items: [
           MenuFlyoutItem(
+            leading: const Icon(LucideIcons.pencil),
+            text: Text(loc.boardsScreen_rename),
+            // See _onDeletePressed for why the dialog is deferred a frame and
+            // opened on the same (nested) navigator.
+            onPressed: _onRenamePressed,
+          ),
+          const MenuFlyoutSeparator(),
+          MenuFlyoutItem(
             leading: Icon(LucideIcons.trash2, color: Colors.red),
             text: Text(loc.boardsScreen_delete, style: TextStyle(color: Colors.red)),
-            onPressed: () => _confirmDelete(context),
+            // closeAfterClick (default true) pops the flyout on its own (nested)
+            // navigator. Defer the dialog a frame so that pop settles, and open
+            // it on the SAME navigator (useRootNavigator: false) — otherwise a
+            // root-level dialog barrier stacks over the still-dismissing flyout.
+            onPressed: _onDeletePressed,
           ),
         ],
       ),
     );
   }
 
+  void _onRenamePressed() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _promptRename(context);
+    });
+  }
+
+  void _onDeletePressed() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _confirmDelete(context);
+    });
+  }
+
+  Future<void> _promptRename(BuildContext context) async {
+    final loc = context.localizations;
+    final textController = TextEditingController(text: widget.title);
+    // Preselect the current name so the user can immediately overwrite it.
+    textController.selection = TextSelection(baseOffset: 0, extentOffset: textController.text.length);
+    try {
+      final newTitle = await showDialog<String>(
+        context: context,
+        useRootNavigator: false,
+        builder: (ctx) {
+          void submit() {
+            final value = textController.text.trim();
+            if (value.isNotEmpty) Navigator.of(ctx).pop(value);
+          }
+
+          return ThemableContentDialog(
+            title: Text(loc.boardsScreen_renameDialogTitle),
+            // The dialog gives its content a Flexible slot; a bare TextBox
+            // stretches to fill it. Cap the height to a single-line field by
+            // hugging content in a min-height column.
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ContinuousTextBox(
+                  controller: textController,
+                  placeholder: loc.boardsScreen_renamePlaceholder,
+                  autofocus: true,
+                  onSubmitted: (_) => submit(),
+                ),
+              ],
+            ),
+            actions: [
+              Button(onPressed: () => Navigator.of(ctx).pop(), child: Text(loc.boardsScreen_renameCancel)),
+              FilledButton(onPressed: submit, child: Text(loc.boardsScreen_renameConfirm)),
+            ],
+          );
+        },
+      );
+      if (newTitle != null) widget.onRename(newTitle);
+    } finally {
+      textController.dispose();
+    }
+  }
+
   Future<void> _confirmDelete(BuildContext context) async {
     final loc = context.localizations;
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => ThemableContentDialog(
         severity: ThemableDialogSeverity.error,
         title: Text(loc.boardsScreen_deleteConfirmTitle),
         content: Text(loc.boardsScreen_deleteConfirmMessage(widget.title)),
         actions: [
-          Button(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(loc.boardsScreen_deleteCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(loc.boardsScreen_deleteConfirm),
-          ),
+          Button(onPressed: () => Navigator.of(ctx).pop(false), child: Text(loc.boardsScreen_deleteCancel)),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(loc.boardsScreen_deleteConfirm)),
         ],
       ),
     );
@@ -692,13 +736,15 @@ class _CardMenuState extends State<_CardMenu> {
   Widget build(BuildContext context) {
     return FlyoutTarget(
       controller: _flyoutController,
-      child: IconButton(
-        icon: const Icon(LucideIcons.ellipsis, size: 18),
-        onPressed: _showMenu,
-      ),
+      child: IconButton(icon: const Icon(LucideIcons.ellipsis, size: 18), onPressed: _showMenu),
     );
   }
 
+  @override
+  void dispose() {
+    _flyoutController.dispose();
+    super.dispose();
+  }
 }
 
 /// Time-of-day greeting, personalised with [firstName] when we know it.
@@ -707,8 +753,8 @@ String _greeting(AppLocalizations loc, String? firstName) {
   final word = hour < 12
       ? loc.boardsScreen_goodMorning
       : hour < 18
-          ? loc.boardsScreen_goodAfternoon
-          : loc.boardsScreen_goodEvening;
+      ? loc.boardsScreen_goodAfternoon
+      : loc.boardsScreen_goodEvening;
   if (firstName == null) return word;
   return loc.boardsScreen_greetingNamed(word, firstName);
 }

@@ -11,6 +11,7 @@ import 'package:h3xboard/views/board_screen/components/backgrounds/board_backgro
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
 import 'package:h3xboard/widgets/color_picker_dialog.dart';
+import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 import 'package:h3xboard/widgets/themable_panel_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:scroll_edge_hint/scroll_edge_hint.dart';
@@ -67,15 +68,9 @@ class BoardSettingsDialog extends StatefulWidget {
 
 class _BoardSettingsDialogState extends State<BoardSettingsDialog> {
 
-  final FlyoutController _copyFromController = FlyoutController();
+  final FlyoutController _copyFromController = StableFlyoutController();
 
   late Board _draft = widget.board;
-
-  @override
-  void dispose() {
-    _copyFromController.dispose();
-    super.dispose();
-  }
 
   void _update(Board Function(Board) change) => setState(() => _draft = change(_draft));
 
@@ -447,6 +442,12 @@ class _BoardSettingsDialogState extends State<BoardSettingsDialog> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _copyFromController.dispose();
+    super.dispose();
   }
 
 }

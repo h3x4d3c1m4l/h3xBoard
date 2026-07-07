@@ -229,22 +229,25 @@ class ThemableContentDialog extends StatelessWidget {
           )
         : themedBody;
 
-    return Align(
-      alignment: AlignmentDirectional.center,
-      child: Container(
-        constraints: constraints,
-        decoration: decoration,
-        // Clip the content (notably the flat actions fill and the pattern) to
-        // the outer decoration's shape so nothing spills past rounded corners.
-        child: decoration == null
-            ? layered
-            : ClipPath(
-                clipper: DecorationClipper(
-                  decoration: decoration,
-                  textDirection: Directionality.maybeOf(context),
+    return buildKeyboardAwareDialog(
+      context,
+      child: Align(
+        alignment: AlignmentDirectional.center,
+        child: Container(
+          constraints: constraints,
+          decoration: decoration,
+          // Clip the content (notably the flat actions fill and the pattern) to
+          // the outer decoration's shape so nothing spills past rounded corners.
+          child: decoration == null
+              ? layered
+              : ClipPath(
+                  clipper: DecorationClipper(
+                    decoration: decoration,
+                    textDirection: Directionality.maybeOf(context),
+                  ),
+                  child: layered,
                 ),
-                child: layered,
-              ),
+        ),
       ),
     );
   }
@@ -325,6 +328,36 @@ class ThemableContentDialog extends StatelessWidget {
     );
   }
 
+}
+
+/// Wraps a centered dialog so it rises above the on-screen keyboard instead of
+/// being covered by it, mirroring Material's [Dialog].
+///
+/// The keyboard height ([MediaQueryData.viewInsets] bottom) becomes bottom
+/// padding under the dialog, animated in sync with the keyboard as it slides in;
+/// [MediaQuery.removeViewInsets] stops that inset from double-applying inside the
+/// dialog. A base vertical gap (like Material's `Dialog.insetPadding`) keeps the
+/// dialog from sitting flush against the keyboard.
+///
+/// Only [ThemableContentDialog] (the small confirmation/text dialogs) routes
+/// through here — the large content panels (Settings, Add Widget) are left
+/// keyboard-unaware, since shifting/shrinking them for the keyboard doesn't help.
+Widget buildKeyboardAwareDialog(BuildContext context, {required Widget child}) {
+  return AnimatedPadding(
+    // Match Material's Dialog.insetAnimationDuration / insetAnimationCurve so the
+    // dialog tracks the keyboard's own slide-in timing.
+    padding: MediaQuery.viewInsetsOf(context) + const EdgeInsets.symmetric(vertical: 24),
+    duration: const Duration(milliseconds: 100),
+    curve: Curves.decelerate,
+    child: MediaQuery.removeViewInsets(
+      removeLeft: true,
+      removeTop: true,
+      removeRight: true,
+      removeBottom: true,
+      context: context,
+      child: child,
+    ),
+  );
 }
 
 /// Clips its child to the shape produced by a [Decoration].

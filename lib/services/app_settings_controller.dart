@@ -22,6 +22,7 @@ abstract class AppSettingsControllerBase with Store {
   static const String keyToolBarPosition = 'ui.toolBar.position';
   static const String keyToolBarInside = 'ui.toolBar.inside';
   static const String keyBarOrder = 'ui.bars.order';
+  static const String keyExternalResolution = 'ui.externalDisplay.resolution';
 
   final H3xBoardApiClient _api;
 
@@ -50,6 +51,11 @@ abstract class AppSettingsControllerBase with Store {
   @readonly
   BarOrder _barOrder = BarOrder.toolBarFirst;
 
+  /// Preferred external-display resolution as `"WxH"` (pixels), or `null` to let
+  /// the display use its highest-resolution mode. Applied by [ExternalDisplayMirror].
+  @readonly
+  String? _externalResolution;
+
   /// Loads all settings from the server into the observables. Missing or invalid
   /// values fall back to their defaults; unknown keys are ignored. Never throws —
   /// a failed load simply leaves the defaults in place.
@@ -67,6 +73,7 @@ abstract class AppSettingsControllerBase with Store {
     _toolBarPosition = BarPosition.fromWire(values[keyToolBarPosition], BarPosition.top);
     _toolBarInside = values[keyToolBarInside] as bool? ?? false;
     _barOrder = BarOrder.fromWire(values[keyBarOrder]);
+    _externalResolution = values[keyExternalResolution] as String?;
   }
 
   /// Persists and applies a batch of edits, issuing a `settings.v1.set` only for
@@ -80,6 +87,7 @@ abstract class AppSettingsControllerBase with Store {
     required BarPosition toolBarPosition,
     required bool toolBarInside,
     required BarOrder barOrder,
+    required String? externalResolution,
   }) async {
     if (language != _language) {
       await _api.setSetting(keyLanguage, language.wireValue);
@@ -104,6 +112,10 @@ abstract class AppSettingsControllerBase with Store {
     if (barOrder != _barOrder) {
       await _api.setSetting(keyBarOrder, barOrder.wireValue);
       _barOrder = barOrder;
+    }
+    if (externalResolution != _externalResolution) {
+      await _api.setSetting(keyExternalResolution, externalResolution);
+      _externalResolution = externalResolution;
     }
   }
 

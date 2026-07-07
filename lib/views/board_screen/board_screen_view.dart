@@ -17,6 +17,12 @@ import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dar
 class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenController> {
   const BoardScreenView({required super.viewModel, required super.controller, required super.contextAccessor});
 
+  // Keep the bottom safe-area inset reserved while a dialog's keyboard is up, so
+  // the aspect-locked board canvas doesn't rescale (and its 8px margin visibly
+  // grow/shrink) behind the dialog. Dialogs handle the keyboard inset themselves.
+  @override
+  bool get maintainBottomViewPadding => true;
+
   @override
   Widget get body {
     // canPop is always false: every exit (close button, system/browser back)
@@ -42,20 +48,11 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
           return const Center(child: ProgressRing());
         }
 
+        // On a load failure the controller raises a modal dialog (Retry /
+        // Go back), so the body just sits blank behind it rather than showing
+        // its own inline error UI.
         if (viewModel.loadError != null) {
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: InfoBar(
-                title: Text(viewModel.loadError!),
-                severity: InfoBarSeverity.error,
-                action: Button(
-                  onPressed: controller.retryLoad,
-                  child: Text(localizations.boardScreen_retry),
-                ),
-              ),
-            ),
-          );
+          return const SizedBox.shrink();
         }
 
         return _buildBoard();

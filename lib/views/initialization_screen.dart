@@ -98,10 +98,13 @@ class _InitializationScreenState extends State<InitializationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: ThemableLoadingDialog(
-        message: nowInitializingText ?? 'Initializing ...',
-        subtitle: retries > 0 ? 'Tried $retries time(s)' : null,
+    return ColoredBox(
+      color: FluentTheme.of(context).scaffoldBackgroundColor,
+      child: SizedBox.expand(
+        child: ThemableLoadingDialog(
+          message: nowInitializingText ?? 'Initializing ...',
+          subtitle: retries > 0 ? 'Tried $retries time(s)' : null,
+        ),
       ),
     );
   }

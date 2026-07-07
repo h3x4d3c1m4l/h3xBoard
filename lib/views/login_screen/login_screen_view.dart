@@ -70,12 +70,14 @@ class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenCo
                       enabled: !viewModel.isLoading,
                       keyboardType: TextInputType.emailAddress,
                       autofillHints: const [AutofillHints.username, AutofillHints.email],
+                      textInputAction: TextInputAction.next,
                     ),
                     ContinuousTextBox(
                       controller: viewModel.passwordController,
                       placeholder: localizations.loginScreen_password,
                       obscureText: true,
                       enabled: !viewModel.isLoading,
+                      textInputAction: TextInputAction.done,
                       onSubmitted: (_) => controller.submit(),
                       autofillHints: [
                         if (viewModel.isRegisterMode) AutofillHints.newPassword else AutofillHints.password,

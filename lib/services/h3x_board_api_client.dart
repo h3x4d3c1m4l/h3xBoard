@@ -6,6 +6,9 @@ import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/board_detail.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
 import 'package:h3xboard/models/api/browse_files_result.dart';
+import 'package:h3xboard/services/cookies/cookie_store.dart';
+import 'package:h3xboard/services/websocket/websocket_connect_web.dart'
+    if (dart.library.io) 'package:h3xboard/services/websocket/websocket_connect_io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 enum H3xConnectionState { connected, reconnecting, disconnected }
@@ -16,6 +19,7 @@ class H3xBoardApiClient {
   /// at a different server (see [ServerController]); it is read afresh on every
   /// [connect]/reconnect, so a change takes effect on the next connection.
   String serverUrl;
+  final CookieStore cookieStore;
 
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _subscription;
@@ -39,7 +43,7 @@ class H3xBoardApiClient {
   final ValueNotifier<H3xConnectionState> connectionState =
       ValueNotifier(H3xConnectionState.disconnected);
 
-  H3xBoardApiClient({required this.serverUrl});
+  H3xBoardApiClient({required this.serverUrl, required this.cookieStore});
 
   bool get isConnected => _channel != null;
 
@@ -65,8 +69,7 @@ class H3xBoardApiClient {
         .replaceFirst('https://', 'wss://')
         .replaceFirst('http://', 'ws://');
     final uri = Uri.parse('$wsUrl/ws/v1');
-    final channel = WebSocketChannel.connect(uri);
-    await channel.ready;
+    final channel = await connectWebSocket(uri, cookieStore);
     _channel = channel;
     _subscription = channel.stream.listen(
       _onMessage,

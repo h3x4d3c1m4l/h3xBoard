@@ -12,43 +12,42 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// color while focused, mirroring fluent's default focus affordance.
 class ContinuousTextBox extends StatefulWidget {
 
-  /// Creates a text field with a continuous-rectangle border.
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final String? placeholder;
+  final Widget? prefix;
+  final bool enabled;
+  final bool autofocus;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final Iterable<String>? autofillHints;
+  final void Function(String)? onChanged;
+  final void Function(String)? onSubmitted;
+  final void Function(PointerDownEvent)? onTapOutside;
+  final TextStyle? style;
+  final int? minLines;
+  final int? maxLines;
+  final TextInputAction? textInputAction;
+
   const ContinuousTextBox({
     super.key,
     this.controller,
     this.focusNode,
     this.placeholder,
+    this.prefix,
     this.enabled = true,
+    this.autofocus = false,
     this.obscureText = false,
     this.keyboardType,
     this.autofillHints,
+    this.onChanged,
     this.onSubmitted,
+    this.onTapOutside,
     this.style,
     this.minLines,
     this.maxLines = 1,
+    this.textInputAction,
   });
-
-  final TextEditingController? controller;
-
-  final FocusNode? focusNode;
-
-  final String? placeholder;
-
-  final bool enabled;
-
-  final bool obscureText;
-
-  final TextInputType? keyboardType;
-
-  final Iterable<String>? autofillHints;
-
-  final void Function(String)? onSubmitted;
-
-  final TextStyle? style;
-
-  final int? minLines;
-
-  final int? maxLines;
 
   @override
   State<ContinuousTextBox> createState() => _ContinuousTextBoxState();
@@ -58,16 +57,11 @@ class ContinuousTextBox extends StatefulWidget {
 class _ContinuousTextBoxState extends State<ContinuousTextBox> {
 
   FocusNode? _internalNode;
-
   FocusNode get _focusNode => widget.focusNode ?? (_internalNode ??= FocusNode());
-
-  /// Whether the text is currently hidden. Only relevant when [widget.obscureText]
-  /// is set; the eye button toggles this so the user can reveal what they typed.
   late bool _obscured = widget.obscureText;
 
   @override
   void initState() {
-
     super.initState();
     _focusNode.addListener(_onFocusChanged);
   }
@@ -88,7 +82,6 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
   void _onFocusChanged() => setState(() {});
 
   Widget _buildVisibilityToggle(BuildContext context) {
-
     final label = _obscured
         ? context.localizations.continuousTextBox_showPassword
         : context.localizations.continuousTextBox_hidePassword;
@@ -103,16 +96,7 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
   }
 
   @override
-  void dispose() {
-
-    (widget.focusNode ?? _internalNode)?.removeListener(_onFocusChanged);
-    _internalNode?.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-
     final theme = FluentTheme.of(context);
     final res = theme.resources;
     final focused = _focusNode.hasFocus;
@@ -139,16 +123,21 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
           controller: widget.controller,
           focusNode: _focusNode,
           placeholder: widget.placeholder,
+          prefix: widget.prefix,
           enabled: widget.enabled,
+          autofocus: widget.autofocus,
           obscureText: _obscured,
           suffix: widget.obscureText ? _buildVisibilityToggle(context) : null,
           keyboardType: widget.keyboardType,
           autofillHints: widget.autofillHints,
+          onChanged: widget.onChanged,
           onSubmitted: widget.onSubmitted,
+          onTapOutside: widget.onTapOutside,
           style: widget.style,
           minLines: widget.minLines,
           maxLines: widget.maxLines,
           padding: kControlPadding,
+          textInputAction: widget.textInputAction,
           // Make the inner field transparent and borderless; the wrapper draws
           // the fill + continuous border. Border() (all sides none) overrides
           // fluent's default box border and focus underline.
@@ -161,6 +150,13 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    (widget.focusNode ?? _internalNode)?.removeListener(_onFocusChanged);
+    _internalNode?.dispose();
+    super.dispose();
   }
 
 }

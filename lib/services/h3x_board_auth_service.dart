@@ -5,7 +5,10 @@ import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/auth_response.dart';
 import 'package:h3xboard/models/api/server_info.dart';
 import 'package:h3xboard/models/api/whoami_response.dart';
-import 'package:http/browser_client.dart';
+import 'package:h3xboard/services/cookies/cookie_store.dart';
+import 'package:h3xboard/services/credentialed_http_client_web.dart'
+    if (dart.library.io) 'package:h3xboard/services/credentialed_http_client_io.dart';
+import 'package:http/http.dart' show Client;
 
 part 'h3x_board_auth_service.chopper.dart';
 
@@ -36,17 +39,17 @@ class H3xBoardAuthService {
 
   // The underlying HTTP client is reused across base-URL changes; only the
   // Chopper client (which captures the base URL) is rebuilt in [updateBaseUrl].
-  final BrowserClient _httpClient;
+  final Client _httpClient;
   _H3xBoardAuthChopperService _service;
 
   H3xBoardAuthService._(this._service, this._httpClient);
 
-  static H3xBoardAuthService create(String baseUrl) {
-    final httpClient = BrowserClient()..withCredentials = true;
+  static H3xBoardAuthService create(String baseUrl, CookieStore cookieStore) {
+    final httpClient = createCredentialedHttpClient(cookieStore);
     return H3xBoardAuthService._(_buildService(baseUrl, httpClient), httpClient);
   }
 
-  static _H3xBoardAuthChopperService _buildService(String baseUrl, BrowserClient httpClient) {
+  static _H3xBoardAuthChopperService _buildService(String baseUrl, Client httpClient) {
     final chopperClient = ChopperClient(
       baseUrl: Uri.parse(baseUrl),
       client: httpClient,

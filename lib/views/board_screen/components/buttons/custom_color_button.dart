@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 
 class CustomColorButton extends StatefulWidget {
 
@@ -16,7 +17,7 @@ class CustomColorButton extends StatefulWidget {
 class _CustomColorButtonState extends State<CustomColorButton> with SingleTickerProviderStateMixin {
 
   late final AnimationController _controller;
-  late final FlyoutController _colorSelectionController = FlyoutController();
+  late final FlyoutController _colorSelectionController = StableFlyoutController();
 
   Color _lastPicked = Colors.teal;
 
