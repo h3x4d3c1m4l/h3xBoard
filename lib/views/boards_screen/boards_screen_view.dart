@@ -6,7 +6,9 @@ import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
+import 'package:h3xboard/models/api/server_info.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
+import 'package:h3xboard/services/server_controller.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
@@ -79,6 +81,21 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
                 );
               },
             ),
+          ),
+          ValueListenableBuilder<ServerInfo?>(
+            valueListenable: GetIt.I<ServerController>().serverInfo,
+            builder: (context, serverInfo, _) {
+              final warning = serverInfo?.warning;
+              if (warning == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                child: InfoBar(
+                  title: Text(warning),
+                  severity: InfoBarSeverity.warning,
+                  isLong: true,
+                ),
+              );
+            },
           ),
         ],
       ),

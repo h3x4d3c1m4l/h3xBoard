@@ -58,23 +58,37 @@ Response<List<int>> _passThroughResponse(Response<dynamic> response) =>
 
 class H3xBoardFileService {
 
-  final _H3xBoardFileChopperService _service;
+  // The underlying HTTP client is reused across base-URL changes; only the
+  // Chopper client (which captures the base URL) is rebuilt in [updateBaseUrl].
+  final BrowserClient _httpClient;
+  _H3xBoardFileChopperService _service;
 
   // File bytes are immutable for a given id (every upload mints a fresh UUID),
   // so an in-flight/completed download can be reused across rebuilds.
   final Map<String, Future<Uint8List>> _downloadCache = {};
 
-  H3xBoardFileService._(this._service);
+  H3xBoardFileService._(this._service, this._httpClient);
 
   static H3xBoardFileService create(String baseUrl) {
     final httpClient = BrowserClient()..withCredentials = true;
+    return H3xBoardFileService._(_buildService(baseUrl, httpClient), httpClient);
+  }
+
+  static _H3xBoardFileChopperService _buildService(String baseUrl, BrowserClient httpClient) {
     final chopperClient = ChopperClient(
       baseUrl: Uri.parse(baseUrl),
       client: httpClient,
       converter: JsonConverter(),
       services: [],
     );
-    return H3xBoardFileService._(_H3xBoardFileChopperService._create(chopperClient));
+    return _H3xBoardFileChopperService._create(chopperClient);
+  }
+
+  /// Re-points this service at [baseUrl] for all subsequent requests, dropping
+  /// the download cache since cached ids belong to the previous server.
+  void updateBaseUrl(String baseUrl) {
+    _service = _buildService(baseUrl, _httpClient);
+    _downloadCache.clear();
   }
 
   /// Uploads [bytes] to the virtual folder [path] ("" = root) under the

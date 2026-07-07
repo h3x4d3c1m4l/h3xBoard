@@ -34,19 +34,31 @@ abstract class _H3xBoardAuthChopperService extends ChopperService {
 
 class H3xBoardAuthService {
 
-  final _H3xBoardAuthChopperService _service;
+  // The underlying HTTP client is reused across base-URL changes; only the
+  // Chopper client (which captures the base URL) is rebuilt in [updateBaseUrl].
+  final BrowserClient _httpClient;
+  _H3xBoardAuthChopperService _service;
 
-  H3xBoardAuthService._(this._service);
+  H3xBoardAuthService._(this._service, this._httpClient);
 
   static H3xBoardAuthService create(String baseUrl) {
     final httpClient = BrowserClient()..withCredentials = true;
+    return H3xBoardAuthService._(_buildService(baseUrl, httpClient), httpClient);
+  }
+
+  static _H3xBoardAuthChopperService _buildService(String baseUrl, BrowserClient httpClient) {
     final chopperClient = ChopperClient(
       baseUrl: Uri.parse(baseUrl),
       client: httpClient,
       converter: JsonConverter(),
       services: [],
     );
-    return H3xBoardAuthService._(_H3xBoardAuthChopperService._create(chopperClient));
+    return _H3xBoardAuthChopperService._create(chopperClient);
+  }
+
+  /// Re-points this service at [baseUrl] for all subsequent requests.
+  void updateBaseUrl(String baseUrl) {
+    _service = _buildService(baseUrl, _httpClient);
   }
 
   Future<AuthResponse> login({required String email, required String password}) async {

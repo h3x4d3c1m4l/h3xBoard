@@ -11,24 +11,31 @@ import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/services/pending_navigation_service.dart';
+import 'package:h3xboard/services/server_controller.dart';
+import 'package:h3xboard/services/server_settings_store.dart';
 import 'package:h3xboard/services/session_controller.dart';
 
-void main() {
-  setupServices();
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await setupServices();
   runApp(const BoardApp());
 }
 
 /// Registers the app-wide singletons before the widget tree is built, so the
 /// router can read [SessionController] for `reevaluateListenable` and guards.
-void setupServices() {
+Future<void> setupServices() async {
   final session = SessionController();
-  final auth = H3xBoardAuthService.create(Config.apiUrl);
-  final files = H3xBoardFileService.create(Config.apiUrl);
+  // The user-chosen server URL (if any) wins over the compile-time default; it
+  // is loaded before the services are created so they point at the right host.
+  final serverSettings = ServerSettingsStore();
+  final initialUrl = (await serverSettings.getServerUrl()) ?? Config.apiUrl;
+  final auth = H3xBoardAuthService.create(initialUrl);
+  final files = H3xBoardFileService.create(initialUrl);
   final appRouter = AppRouter();
 
   // After a dropped socket, ask REST whoami to tell a transient blip apart from
   // a real expiry: true = valid, false = 401 (invalid), null = network/unknown.
-  final api = H3xBoardApiClient(serverUrl: Config.apiUrl)
+  final api = H3xBoardApiClient(serverUrl: initialUrl)
     ..sessionValidator = (() async {
       try {
         return (await auth.whoami()) != null;
@@ -43,6 +50,14 @@ void setupServices() {
       unawaited(appRouter.replaceAll([LoginRoute()]));
     });
 
+  final serverController = ServerController(
+    initialUrl: initialUrl,
+    auth: auth,
+    files: files,
+    api: api,
+    store: serverSettings,
+  );
+
   GetIt.I
     ..registerSingleton<SessionController>(session)
     ..registerSingleton<H3xBoardAuthService>(auth)
@@ -50,5 +65,10 @@ void setupServices() {
     ..registerSingleton<H3xBoardApiClient>(api)
     ..registerSingleton<AppSettingsController>(AppSettingsController(api))
     ..registerSingleton<AppRouter>(appRouter)
-    ..registerSingleton<PendingNavigationService>(PendingNavigationService());
+    ..registerSingleton<PendingNavigationService>(PendingNavigationService())
+    ..registerSingleton<ServerController>(serverController);
+
+  // Prime the server info (warning banner, registration capability) before the
+  // first screen renders; it refreshes again on every later disconnect.
+  unawaited(serverController.refreshServerInfo());
 }

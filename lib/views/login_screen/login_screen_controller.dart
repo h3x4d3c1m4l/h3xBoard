@@ -10,6 +10,7 @@ import 'package:h3xboard/models/api/auth_response.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/pending_navigation_service.dart';
+import 'package:h3xboard/services/server_controller.dart';
 import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/login_screen/login_screen_view_model.dart';
@@ -19,6 +20,7 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
   final _auth = GetIt.I<H3xBoardAuthService>();
   final _wsClient = GetIt.I<H3xBoardApiClient>();
   final _session = GetIt.I<SessionController>();
+  final _server = GetIt.I<ServerController>();
 
   LoginScreenController({
     required super.viewModel,
@@ -32,16 +34,22 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
       );
       _session.consumeReason();
     }
-    unawaited(_loadServerInfo());
+    // The shared server info (kept fresh on every disconnect) tells us whether
+    // sign-ups are open; mirror it into the view model and stay subscribed so a
+    // server-URL change re-hides/re-shows the register UI.
+    _server.serverInfo.addListener(_syncFromServerInfo);
+    _syncFromServerInfo();
+    unawaited(_server.refreshServerInfo());
   }
 
-  /// Asks the server whether sign-ups are open so we can hide the register UI
-  /// when they are disabled. Failures leave the optimistic default (allowed).
-  Future<void> _loadServerInfo() async {
-    try {
-      final info = await _auth.serverInfo();
-      viewModel.setRegistrationAllowed(info.registrationAllowed);
-    } catch (_) {}
+  /// The API base URL the app is currently pointed at (for the "Server" chip).
+  String get serverUrl => _server.serverUrl;
+
+  /// Points the app at [url], persists it, and refreshes the server info.
+  Future<void> setServerUrl(String url) => _server.setServerUrl(url);
+
+  void _syncFromServerInfo() {
+    viewModel.setRegistrationAllowed(_server.serverInfo.value?.registrationAllowed ?? true);
   }
 
   void toggleMode() => viewModel.toggleMode();
@@ -85,6 +93,12 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
     } finally {
       viewModel.setIsLoading(false);
     }
+  }
+
+  @override
+  void dispose() {
+    _server.serverInfo.removeListener(_syncFromServerInfo);
+    super.dispose();
   }
 
 }

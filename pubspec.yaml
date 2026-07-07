@@ -38,6 +38,7 @@ dependencies:
   web: 1.1.1
   file_picker: 11.0.2
   scroll_edge_hint: 0.1.1
+  shared_preferences: 2.5.5
 
 dev_dependencies:
   flutter_test: { sdk: flutter }

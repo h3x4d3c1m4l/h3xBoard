@@ -26,6 +26,22 @@
     "@loginScreen_switchToLogin": {},
     "loginScreen_sessionExpired": "Your session expired, please sign in again.",
     "@loginScreen_sessionExpired": {},
+    "loginScreen_serverLabel": "Server: {host}",
+    "@loginScreen_serverLabel": {
+        "placeholders": {
+            "host": { "type": "String" }
+        }
+    },
+    "serverUrlDialog_title": "Server URL",
+    "@serverUrlDialog_title": {},
+    "serverUrlDialog_subtitle": "Choose which h3xBoard server this app connects to.",
+    "@serverUrlDialog_subtitle": {},
+    "serverUrlDialog_placeholder": "https://example.com",
+    "@serverUrlDialog_placeholder": {},
+    "serverUrlDialog_save": "Save",
+    "@serverUrlDialog_save": {},
+    "serverUrlDialog_cancel": "Cancel",
+    "@serverUrlDialog_cancel": {},
     "connectionBanner_reconnecting": "Reconnecting…",
     "@connectionBanner_reconnecting": {},
     "boardsScreen_title": "My boards",

@@ -12,7 +12,10 @@ enum H3xConnectionState { connected, reconnecting, disconnected }
 
 class H3xBoardApiClient {
 
-  final String serverUrl;
+  /// The base URL the WebSocket connects to. Mutable so the app can be re-pointed
+  /// at a different server (see [ServerController]); it is read afresh on every
+  /// [connect]/reconnect, so a change takes effect on the next connection.
+  String serverUrl;
 
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _subscription;
