@@ -62,6 +62,10 @@ class ExternalDisplayMirror {
   /// Start listening for plug/unplug and connect if a display is already
   /// attached. Idempotent: called once at app launch, so repeat calls are no-ops.
   Future<void> start() async {
+    // The external_display plugin has no web implementation; even touching the
+    // `externalDisplay` singleton wires up the `monitorStateListener` EventChannel
+    // in its constructor, which throws MissingPluginException on web. Skip it.
+    if (kIsWeb) return;
     if (_started) return;
     _started = true;
     externalDisplay.addStatusListener(_onDisplayStatusChange);
@@ -198,6 +202,7 @@ class ExternalDisplayMirror {
   }
 
   void dispose() {
+    if (kIsWeb) return;
     externalDisplay.removeStatusListener(_onDisplayStatusChange);
     _resolutionReactionDisposer?.call();
     // Best-effort: blank the external screen when leaving the board.

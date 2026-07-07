@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:external_display/external_display.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
@@ -89,6 +90,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
   }
 
   Future<void> _loadExternalModes() async {
+    // The external_display plugin has no web implementation; touching its
+    // singleton wires up a platform EventChannel that throws on web.
+    if (kIsWeb) return;
     try {
       final modes = await externalDisplay.getModes();
       final unique = modes.toSet().toList()..sort((a, b) => _modeArea(b).compareTo(_modeArea(a)));
