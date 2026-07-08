@@ -12,6 +12,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
+import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
@@ -20,11 +21,11 @@ import 'package:h3xboard/views/board_screen/components/widgets/board_widget_desc
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_header_bar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_selection_overlay.dart';
+import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class Board extends StatefulWidget {
-
   final DrawingController drawingController;
   final BoardScreenViewModel viewModel;
 
@@ -65,11 +66,9 @@ class Board extends StatefulWidget {
 
   @override
   State<Board> createState() => _BoardState();
-
 }
 
 class _BoardState extends State<Board> {
-
   Offset? _pointerPosition;
   double? _eraseStrokeWidth;
 
@@ -196,10 +195,7 @@ class _BoardState extends State<Board> {
     // action offered in the settings menu). Widgets without an editor are unwrapped.
     final edit = descriptor.editAction(context, bw.config, onChange);
     if (edit == null) return content;
-    return GestureDetector(
-      onDoubleTap: edit,
-      child: content,
-    );
+    return GestureDetector(onDoubleTap: edit, child: content);
   }
 
   Widget _buildHeader(BuildContext context, BoardWidget bw) {
@@ -250,10 +246,7 @@ class _BoardState extends State<Board> {
               children: [
                 Icon(descriptor.icon, size: 16),
                 const SizedBox(width: 8),
-                Text(
-                  descriptor.label(context.localizations),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+                Text(descriptor.label(context.localizations), style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -310,10 +303,7 @@ class _BoardState extends State<Board> {
         const MenuFlyoutSeparator(),
         MenuFlyoutItem(
           leading: Icon(LucideIcons.trash2, color: Colors.red),
-          text: Text(
-            context.localizations.boardWidget_remove,
-            style: TextStyle(color: Colors.red),
-          ),
+          text: Text(context.localizations.boardWidget_remove, style: TextStyle(color: Colors.red)),
           onPressed: () => widget.onDeleteWidget(bw.id),
         ),
       ],
@@ -428,10 +418,8 @@ class _BoardState extends State<Board> {
             final builder = _contextMenuBuilder;
             if (builder == null) return;
             _contextMenuController.showFlyout(
-              builder: (context) => MenuFlyout(
-                itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
-                items: builder(context),
-              ),
+              builder: (context) =>
+                  MenuFlyout(shape: continuousMenuShape(context), itemMargin: kMenuItemMargin, items: builder(context)),
               placementMode: FlyoutPlacementMode.auto,
             );
           });
@@ -451,7 +439,8 @@ class _BoardState extends State<Board> {
       // being arranged exits Arrange mode.
       if (widget.viewModel.arrangingWidgetId != null) {
         final p = event.localPosition;
-        final onSomething = _headerAt(p) != null ||
+        final onSomething =
+            _headerAt(p) != null ||
             _isPointOnArrangeHandle(p) ||
             widget.viewModel.visibleBoardWidgets.any((bw) => _isPointOnWidget(p, bw));
         if (!onSomething) widget.viewModel.setArrangingWidget(null);
@@ -607,187 +596,197 @@ class _BoardState extends State<Board> {
 
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (context) {
-      final board = widget.viewModel.board;
-      return Container(
-        decoration: BoxDecoration(
-          border: board.backgroundColor == Colors.white
-              ? BoxBorder.all(width: 1, color: Colors.black.withValues(alpha: 0.12), strokeAlign: BorderSide.strokeAlignOutside)
-              : null,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: FittedBox(
-          child: SizedBox(
-            width: 1920,
-            height: 1080,
-            child: Stack(
-              children: [
-                // Everything the screenshot should capture — background, drawings
-                // and widget bodies — lives under this RepaintBoundary. Header/
-                // overlay chrome and the gesture layer are stacked on top of it, so
-                // they stay out of the captured thumbnail.
-                Positioned.fill(
-                  child: RepaintBoundary(
-                    key: widget.captureKey,
-                    child: Stack(
-                      children: [
-                // Drawing is suppressed in Select mode (the user is managing
-                // widgets, not drawing) and while a widget is being arranged; the
-                // headers absorb pointers to block strokes underneath them, and
-                // interactive bodies capture their own taps.
-                IgnorePointer(
-                  ignoring: widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer ||
-                      widget.viewModel.arrangingWidgetId != null,
-                  child: DrawingBoard(
-                    controller: widget.drawingController,
-                    background: Observer(builder: (_) {
-                      final board = widget.viewModel.board;
-                      Widget box = BackgroundLines(
-                        pattern: board.linePattern,
-                        spacing: board.lineSpacing,
-                        color: board.lineColor,
-                        child: SizedBox(width: 1920, height: 1080),
-                      );
-                      final backgroundFileId = board.backgroundFileId;
-                      if (backgroundFileId != null) {
-                        return BoardBackgroundImage(
-                          fileId: backgroundFileId,
-                          fallbackColor: board.backgroundColor,
-                          fileService: GetIt.I<H3xBoardFileService>(),
-                          child: box,
-                        );
-                      }
-                      return board.isChalkboard
-                          ? ChalkboardBackground(
-                              boardColor: board.backgroundColor,
-                              child: box,
-                            )
-                          : ColoredBox(color: board.backgroundColor, child: box);
-                    }),
-                    onPointerDown: (pde) {
-                      setState(() => _pointerPosition = pde.localPosition);
-                      final tool = widget.viewModel.drawingTools.activeTool;
-                      if (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser) {
-                        widget.onDrawingStrokeStart();
-                      }
-                    },
-                    onPointerMove: (pme) => setState(() => _pointerPosition = pme.localPosition),
-                    onPointerUp: (pue) {
-                      setState(() => _pointerPosition = null);
-                      final tool = widget.viewModel.drawingTools.activeTool;
-                      if (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser) {
-                        widget.onDrawingStrokeEnd();
-                      }
-                    },
-                    boardPanEnabled: false,
-                    boardScaleEnabled: false,
-                  ),
-                ),
-                // Widget bodies. Bodies keep their own interactivity (stopwatch
-                // buttons, piano keys) and pointers fall through to the drawing layer
-                // over non-interactive ones. The widget being arranged is dimmed and
-                // its body interaction paused.
-                for (final bw in widget.viewModel.visibleBoardWidgets)
-                  ManipulableBoardWidget(
-                    key: ValueKey(bw.id),
-                    boardWidget: bw,
-                    child: IgnorePointer(
-                      ignoring: bw.id == widget.viewModel.arrangingWidgetId,
-                      child: Opacity(
-                        opacity: bw.id == widget.viewModel.arrangingWidgetId ? 0.6 : 1.0,
-                        child: _buildWidgetContent(bw),
-                      ),
-                    ),
-                  ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Header chrome — always mounted but faded out (and pointer-inert)
-                // outside Select mode, so toggling the mode animates in/out and the
-                // board stays uncluttered while drawing or presenting.
-                for (final bw in widget.viewModel.visibleBoardWidgets) _buildHeader(context, bw),
-                // Arrange overlay (solid border + resize/rotate handles) for the
-                // single widget being arranged. Sized at boardPixelRatio-scaled
-                // canvas units to appear at host scale.
-                for (final bw in widget.viewModel.visibleBoardWidgets)
-                  if (bw.id == widget.viewModel.arrangingWidgetId)
+    return Observer(
+      builder: (context) {
+        final board = widget.viewModel.board;
+        // Draw the border with a DecoratedBox that paints on top of a separately
+        // clipped child (rather than Container's clipBehavior, which clips the
+        // child to the same path the stroke is centered on and lets the canvas
+        // bleed over the inner half of the border).
+        final shape = ContinuousRectangleBorder(
+          borderRadius: BorderRadius.circular(kBoardCornerRadius),
+          side: board.backgroundColor == Colors.white
+              ? BorderSide(width: 1, color: Colors.black.withValues(alpha: 0.12))
+              : BorderSide.none,
+        );
+        return DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: ShapeDecoration(shape: shape),
+          child: ClipPath(
+            clipper: ShapeBorderClipper(shape: shape),
+            child: FittedBox(
+              child: SizedBox(
+                width: 1920,
+                height: 1080,
+                child: Stack(
+                  children: [
+                    // Everything the screenshot should capture — background, drawings
+                    // and widget bodies — lives under this RepaintBoundary. Header/
+                    // overlay chrome and the gesture layer are stacked on top of it, so
+                    // they stay out of the captured thumbnail.
                     Positioned.fill(
-                      child: WidgetSelectionOverlay(
-                        key: ValueKey('sel_${bw.id}'),
-                        boardWidget: bw,
-                        boardPixelRatio: widget.viewModel.boardPixelRatio,
-                        onHandleTransformStart: () {
-                          _handleDragActive = true;
-                          widget.onWidgetTransformStart(bw.id);
-                        },
-                        onHandleTransformUpdate: (rotation, scale) {
-                          widget.viewModel.updateBoardWidget(bw.id, bw.x, bw.y, rotation, scale);
-                        },
-                        onHandleTransformEnd: () {
-                          _handleDragActive = false;
-                          widget.onWidgetTransformEnd(bw.id);
-                        },
+                      child: RepaintBoundary(
+                        key: widget.captureKey,
+                        child: Stack(
+                          children: [
+                            // Drawing is suppressed in Select mode (the user is managing
+                            // widgets, not drawing) and while a widget is being arranged; the
+                            // headers absorb pointers to block strokes underneath them, and
+                            // interactive bodies capture their own taps.
+                            IgnorePointer(
+                              ignoring:
+                                  widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer ||
+                                  widget.viewModel.arrangingWidgetId != null,
+                              child: DrawingBoard(
+                                controller: widget.drawingController,
+                                background: Observer(
+                                  builder: (_) {
+                                    final board = widget.viewModel.board;
+                                    Widget box = BackgroundLines(
+                                      pattern: board.linePattern,
+                                      spacing: board.lineSpacing,
+                                      color: board.lineColor,
+                                      child: SizedBox(width: 1920, height: 1080),
+                                    );
+                                    final backgroundFileId = board.backgroundFileId;
+                                    if (backgroundFileId != null) {
+                                      return BoardBackgroundImage(
+                                        fileId: backgroundFileId,
+                                        fallbackColor: board.backgroundColor,
+                                        fileService: GetIt.I<H3xBoardFileService>(),
+                                        child: box,
+                                      );
+                                    }
+                                    return board.isChalkboard
+                                        ? ChalkboardBackground(boardColor: board.backgroundColor, child: box)
+                                        : ColoredBox(color: board.backgroundColor, child: box);
+                                  },
+                                ),
+                                onPointerDown: (pde) {
+                                  setState(() => _pointerPosition = pde.localPosition);
+                                  final tool = widget.viewModel.drawingTools.activeTool;
+                                  if (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser) {
+                                    widget.onDrawingStrokeStart();
+                                  }
+                                },
+                                onPointerMove: (pme) => setState(() => _pointerPosition = pme.localPosition),
+                                onPointerUp: (pue) {
+                                  setState(() => _pointerPosition = null);
+                                  final tool = widget.viewModel.drawingTools.activeTool;
+                                  if (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser) {
+                                    widget.onDrawingStrokeEnd();
+                                  }
+                                },
+                                boardPanEnabled: false,
+                                boardScaleEnabled: false,
+                              ),
+                            ),
+                            // Widget bodies. Bodies keep their own interactivity (stopwatch
+                            // buttons, piano keys) and pointers fall through to the drawing layer
+                            // over non-interactive ones. The widget being arranged is dimmed and
+                            // its body interaction paused.
+                            for (final bw in widget.viewModel.visibleBoardWidgets)
+                              ManipulableBoardWidget(
+                                key: ValueKey(bw.id),
+                                boardWidget: bw,
+                                child: IgnorePointer(
+                                  ignoring: bw.id == widget.viewModel.arrangingWidgetId,
+                                  child: Opacity(
+                                    opacity: bw.id == widget.viewModel.arrangingWidgetId ? 0.6 : 1.0,
+                                    child: _buildWidgetContent(bw),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                // Zero-size anchor for the right-click context menu flyout.
-                // Positioned at the cursor's canvas coordinates so the flyout
-                // appears exactly where the user right-clicked.
-                if (_contextMenuCanvasPos != null)
-                  Positioned(
-                    left: _contextMenuCanvasPos!.dx,
-                    top: _contextMenuCanvasPos!.dy,
-                    width: 0,
-                    height: 0,
-                    child: FlyoutTarget(
-                      controller: _contextMenuController,
-                      child: const SizedBox.shrink(),
+                    // Header chrome — always mounted but faded out (and pointer-inert)
+                    // outside Select mode, so toggling the mode animates in/out and the
+                    // board stays uncluttered while drawing or presenting.
+                    for (final bw in widget.viewModel.visibleBoardWidgets) _buildHeader(context, bw),
+                    // Arrange overlay (solid border + resize/rotate handles) for the
+                    // single widget being arranged. Sized at boardPixelRatio-scaled
+                    // canvas units to appear at host scale.
+                    for (final bw in widget.viewModel.visibleBoardWidgets)
+                      if (bw.id == widget.viewModel.arrangingWidgetId)
+                        Positioned.fill(
+                          child: WidgetSelectionOverlay(
+                            key: ValueKey('sel_${bw.id}'),
+                            boardWidget: bw,
+                            boardPixelRatio: widget.viewModel.boardPixelRatio,
+                            onHandleTransformStart: () {
+                              _handleDragActive = true;
+                              widget.onWidgetTransformStart(bw.id);
+                            },
+                            onHandleTransformUpdate: (rotation, scale) {
+                              widget.viewModel.updateBoardWidget(bw.id, bw.x, bw.y, rotation, scale);
+                            },
+                            onHandleTransformEnd: () {
+                              _handleDragActive = false;
+                              widget.onWidgetTransformEnd(bw.id);
+                            },
+                          ),
+                        ),
+                    // Zero-size anchor for the right-click context menu flyout.
+                    // Positioned at the cursor's canvas coordinates so the flyout
+                    // appears exactly where the user right-clicked.
+                    if (_contextMenuCanvasPos != null)
+                      Positioned(
+                        left: _contextMenuCanvasPos!.dx,
+                        top: _contextMenuCanvasPos!.dy,
+                        width: 0,
+                        height: 0,
+                        child: FlyoutTarget(controller: _contextMenuController, child: const SizedBox.shrink()),
+                      ),
+                    if (_eraseStrokeWidth != null && _pointerPosition != null)
+                      Positioned(
+                        left: _pointerPosition!.dx - (_eraseStrokeWidth! / 2),
+                        top: _pointerPosition!.dy - (_eraseStrokeWidth! / 2),
+                        width: _eraseStrokeWidth,
+                        height: _eraseStrokeWidth,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: BoxBorder.all(),
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    // Full-canvas gesture + pointer layer for widget manipulation.
+                    // Listener fires on PointerDown immediately (no slop) so we
+                    // can record the true initial touch for widget hit-testing.
+                    // GestureDetector is translucent so DrawingBoard's Listener
+                    // still fires for drawing strokes.
+                    // ValueKey keeps Flutter from discarding the RawGestureDetector
+                    // state when the Stack gains/loses WidgetSelectionOverlay children
+                    // (which shifts this child's index and would otherwise lose the
+                    // active recognizer state mid-gesture).
+                    Positioned.fill(
+                      key: const ValueKey('gesture-layer'),
+                      child: Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: _onPointerDown,
+                        onPointerMove: _onPointerMove,
+                        onPointerUp: _onPointerUp,
+                        onPointerCancel: _onPointerCancel,
+                        onPointerSignal: _onPointerSignal,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onScaleStart: _onScaleStart,
+                          onScaleUpdate: _onScaleUpdate,
+                          onScaleEnd: _onScaleEnd,
+                        ),
+                      ),
                     ),
-                  ),
-                if (_eraseStrokeWidth != null && _pointerPosition != null)
-                  Positioned(
-                    left: _pointerPosition!.dx - (_eraseStrokeWidth! / 2),
-                    top: _pointerPosition!.dy - (_eraseStrokeWidth! / 2),
-                    width: _eraseStrokeWidth,
-                    height: _eraseStrokeWidth,
-                    child: Container(
-                      decoration:
-                          BoxDecoration(border: BoxBorder.all(), shape: BoxShape.circle, color: Colors.white),
-                    ),
-                  ),
-                // Full-canvas gesture + pointer layer for widget manipulation.
-                // Listener fires on PointerDown immediately (no slop) so we
-                // can record the true initial touch for widget hit-testing.
-                // GestureDetector is translucent so DrawingBoard's Listener
-                // still fires for drawing strokes.
-                // ValueKey keeps Flutter from discarding the RawGestureDetector
-                // state when the Stack gains/loses WidgetSelectionOverlay children
-                // (which shifts this child's index and would otherwise lose the
-                // active recognizer state mid-gesture).
-                Positioned.fill(
-                  key: const ValueKey('gesture-layer'),
-                  child: Listener(
-                    behavior: HitTestBehavior.translucent,
-                    onPointerDown: _onPointerDown,
-                    onPointerMove: _onPointerMove,
-                    onPointerUp: _onPointerUp,
-                    onPointerCancel: _onPointerCancel,
-                    onPointerSignal: _onPointerSignal,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onScaleStart: _onScaleStart,
-                      onScaleUpdate: _onScaleUpdate,
-                      onScaleEnd: _onScaleEnd,
-                    ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   @override
@@ -800,5 +799,4 @@ class _BoardState extends State<Board> {
     if (kIsWeb) BrowserContextMenu.enableContextMenu();
     super.dispose();
   }
-
 }

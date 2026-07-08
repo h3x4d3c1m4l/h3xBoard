@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
+import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -253,7 +254,8 @@ class _HeaderSettingsButtonState extends State<_HeaderSettingsButton> {
   void _openSettings() {
     _flyoutController.showFlyout(
       builder: (context) => MenuFlyout(
-        itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
+        shape: continuousMenuShape(context),
+        itemMargin: kMenuItemMargin,
         items: widget.settingsBuilder(context),
       ),
       placementMode: FlyoutPlacementMode.bottomCenter,

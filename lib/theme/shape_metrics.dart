@@ -19,3 +19,9 @@ const double kControlCornerRadius = kDialogCornerRadius - kDialogPadding;
 
 /// Shared inner padding for buttons and text fields, so they line up in height.
 const EdgeInsetsGeometry kControlPadding = EdgeInsets.symmetric(vertical: 12, horizontal: 24);
+
+/// Corner radius of the whiteboard canvas's continuous-rectangle border.
+const double kBoardCornerRadius = 24;
+
+/// Corner radius of tooltips' continuous-rectangle border.
+const double kTooltipCornerRadius = 8;

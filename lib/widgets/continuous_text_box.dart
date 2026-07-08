@@ -29,6 +29,13 @@ class ContinuousTextBox extends StatefulWidget {
   final int? maxLines;
   final TextInputAction? textInputAction;
 
+  /// The selection toolbar (copy/paste/…) to show. Defaults to Flutter's
+  /// adaptive toolbar, which renders a platform-native menu — notably one
+  /// *without* the desktop keyboard shortcut labels ("Ctrl+C", …) that fluent's
+  /// own [TextBox.defaultContextMenuBuilder] always draws and which are
+  /// meaningless on touch devices.
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
+
   const ContinuousTextBox({
     super.key,
     this.controller,
@@ -47,7 +54,12 @@ class ContinuousTextBox extends StatefulWidget {
     this.minLines,
     this.maxLines = 1,
     this.textInputAction,
+    this.contextMenuBuilder = _defaultContextMenuBuilder,
   });
+
+  static Widget _defaultContextMenuBuilder(BuildContext context, EditableTextState editableTextState) {
+    return AdaptiveTextSelectionToolbar.editableText(editableTextState: editableTextState);
+  }
 
   @override
   State<ContinuousTextBox> createState() => _ContinuousTextBoxState();
@@ -138,6 +150,7 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
           maxLines: widget.maxLines,
           padding: kControlPadding,
           textInputAction: widget.textInputAction,
+          contextMenuBuilder: widget.contextMenuBuilder,
           // Make the inner field transparent and borderless; the wrapper draws
           // the fill + continuous border. Border() (all sides none) overrides
           // fluent's default box border and focus underline.

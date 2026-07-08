@@ -9,10 +9,12 @@ import 'package:h3xboard/models/api/board_summary.dart';
 import 'package:h3xboard/models/api/server_info.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/services/server_controller.dart';
+import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
+import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 import 'package:h3xboard/widgets/continuous_text_box.dart';
 import 'package:h3xboard/widgets/scroll_shadow.dart';
 import 'package:h3xboard/widgets/stable_flyout_controller.dart';
@@ -37,6 +39,17 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
   @override
   bool get bottomSafeArea => false;
 
+  // The top bar runs edge-to-edge; carry its color up under the status bar so
+  // the inset matches the bar (near-white) rather than the gray page background.
+  // cardBackgroundFillColorDefault is translucent (70% white), and the top bar
+  // shows it over the scaffold background — so composite it the same way here to
+  // get the exact opaque color the bar renders.
+  @override
+  Color? topSafeAreaColor(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    return Color.alphaBlend(theme.resources.cardBackgroundFillColorDefault, theme.scaffoldBackgroundColor);
+  }
+
   @override
   Widget get body {
     return ScaffoldPage(
@@ -50,6 +63,7 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
             // on (see _AccountMenu). The gear icon shares this and is unaffected.
             onOpenSettings: () => showSettingsDialog(contextAccessor.buildContext, useRootNavigator: false),
             onSignOut: controller.onLogoutPressed,
+            onSearchChanged: controller.onSearchChanged,
             userDisplayName: controller.userDisplayName,
             userInitials: controller.userInitials,
           ),
@@ -67,7 +81,10 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
                       child: InfoBar(
                         title: Text(viewModel.errorMessage!),
                         severity: InfoBarSeverity.error,
-                        action: Button(onPressed: controller.loadBoards, child: Text(localizations.boardsScreen_retry)),
+                        action: Button(
+                          onPressed: controller.loadBoards,
+                          child: Text(localizations.boardsScreen_retry),
+                        ),
                       ),
                     ),
                   );
@@ -78,7 +95,6 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
                   totalCount: viewModel.boards.length,
                   reloadToken: viewModel.reloadTick,
                   firstName: controller.firstName,
-                  onSearchChanged: controller.onSearchChanged,
                   onCreateBoard: controller.onCreateBoardPressed,
                   onOpenBoard: controller.openBoard,
                   onDeleteBoard: controller.onDeleteBoard,
@@ -93,7 +109,7 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
               final warning = serverInfo?.warning;
               if (warning == null) return const SizedBox.shrink();
               return Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
                 child: InfoBar(
                   title: Text(warning),
                   severity: InfoBarSeverity.warning,
@@ -113,12 +129,14 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
 class _TopBar extends StatelessWidget {
   final VoidCallback onOpenSettings;
   final VoidCallback onSignOut;
+  final ValueChanged<String> onSearchChanged;
   final String userDisplayName;
   final String userInitials;
 
   const _TopBar({
     required this.onOpenSettings,
     required this.onSignOut,
+    required this.onSearchChanged,
     required this.userDisplayName,
     required this.userInitials,
   });
@@ -142,7 +160,24 @@ class _TopBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(_appName, style: theme.typography.subtitle),
-          const Spacer(),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: ContinuousTextBox(
+                  placeholder: context.localizations.boardsScreen_searchPlaceholder,
+                  prefix: const Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: Icon(LucideIcons.search, size: 16),
+                  ),
+                  onChanged: onSearchChanged,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
           _AccountMenu(
             displayName: userDisplayName,
             initials: userInitials,
@@ -184,6 +219,8 @@ class _AccountMenuState extends State<_AccountMenu> {
       placementMode: FlyoutPlacementMode.bottomRight,
       additionalOffset: 0,
       builder: (context) => MenuFlyout(
+        shape: continuousMenuShape(context),
+        itemMargin: kMenuItemMargin,
         items: [
           MenuFlyoutItem(
             leading: const Icon(LucideIcons.slidersHorizontal),
@@ -287,7 +324,6 @@ class _BoardsBody extends StatelessWidget {
   final int totalCount;
   final int reloadToken;
   final String? firstName;
-  final ValueChanged<String> onSearchChanged;
   final VoidCallback onCreateBoard;
   final ValueChanged<BoardSummary> onOpenBoard;
   final ValueChanged<BoardSummary> onDeleteBoard;
@@ -298,7 +334,6 @@ class _BoardsBody extends StatelessWidget {
     required this.totalCount,
     required this.reloadToken,
     required this.firstName,
-    required this.onSearchChanged,
     required this.onCreateBoard,
     required this.onOpenBoard,
     required this.onDeleteBoard,
@@ -323,33 +358,14 @@ class _BoardsBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(_greeting(loc, firstName), style: theme.typography.title),
-                          const SizedBox(height: 4),
-                          Text(
-                            loc.boardsScreen_boardCount(totalCount),
-                            style: theme.typography.body?.copyWith(color: theme.resources.textFillColorSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 360),
-                      child: ContinuousTextBox(
-                        placeholder: context.localizations.boardsScreen_searchPlaceholder,
-                        prefix: const Padding(
-                          padding: EdgeInsets.only(left: 10),
-                          child: Icon(LucideIcons.search, size: 16),
-                        ),
-                        onChanged: onSearchChanged,
-                      ),
+                    Text(_greeting(loc, firstName), style: theme.typography.title),
+                    const SizedBox(height: 4),
+                    Text(
+                      loc.boardsScreen_boardCount(totalCount),
+                      style: theme.typography.body?.copyWith(color: theme.resources.textFillColorSecondary),
                     ),
                   ],
                 ),
@@ -402,15 +418,21 @@ class _NewBoardCard extends StatelessWidget {
       child: HoverButton(
         onPressed: onPressed,
         builder: (context, states) {
-          final active = states.isHovered || states.isFocused;
+          final active = states.isHovered || states.isFocused || states.isPressed;
           return AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             height: _cardHeight,
-            decoration: BoxDecoration(
-              color: active ? theme.accentColor.withValues(alpha: 0.06) : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: active ? theme.accentColor.withValues(alpha: 0.6) : theme.resources.controlStrokeColorDefault,
+            decoration: ShapeDecoration(
+              color: states.isPressed
+                  ? theme.accentColor.withValues(alpha: 0.12)
+                  : active
+                  ? theme.accentColor.withValues(alpha: 0.06)
+                  : Colors.transparent,
+              shape: ContinuousRectangleBorder(
+                borderRadius: BorderRadius.circular(kControlCornerRadius),
+                side: BorderSide(
+                  color: active ? theme.accentColor.withValues(alpha: 0.6) : theme.resources.controlStrokeColorDefault,
+                ),
               ),
             ),
             child: Column(
@@ -467,56 +489,77 @@ class _BoardCard extends StatelessWidget {
       child: HoverButton(
         onPressed: onOpen,
         builder: (context, states) {
-          final active = states.isHovered || states.isFocused;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            decoration: BoxDecoration(
-              color: theme.resources.cardBackgroundFillColorDefault,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: active ? theme.accentColor.withValues(alpha: 0.6) : theme.resources.controlStrokeColorDefault,
-              ),
+          final active = states.isHovered || states.isFocused || states.isPressed;
+          // Paint the border via a foreground DecoratedBox over a separately
+          // clipped child, rather than the container's clipBehavior — the latter
+          // clips the child to the same path the stroke is centered on, letting
+          // the thumbnail bleed over the inner half of the border.
+          final shape = ContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(kControlCornerRadius),
+            side: BorderSide(
+              color: active ? theme.accentColor.withValues(alpha: 0.6) : theme.resources.controlStrokeColorDefault,
             ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  height: _thumbHeight,
-                  child: _BoardThumbnail(board: board, reloadToken: reloadToken),
-                ),
-                // Separator between the thumbnail and the footer, matching the
-                // card's own border color.
-                Container(height: 1, color: theme.resources.controlStrokeColorDefault),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
-                  child: Row(
+          );
+          return AnimatedScale(
+            duration: const Duration(milliseconds: 120),
+            scale: states.isPressed ? 0.98 : 1,
+            child: DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: ShapeDecoration(shape: shape),
+              child: ClipPath(
+                clipper: ShapeBorderClipper(shape: shape),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  color: states.isPressed
+                      ? Color.alphaBlend(
+                          theme.accentColor.withValues(alpha: 0.08),
+                          theme.resources.cardBackgroundFillColorDefault,
+                        )
+                      : theme.resources.cardBackgroundFillColorDefault,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      SizedBox(
+                        height: _thumbHeight,
+                        child: _BoardThumbnail(board: board, reloadToken: reloadToken),
+                      ),
+                      // Separator between the thumbnail and the footer, matching
+                      // the card's own border color.
+                      Container(height: 1, color: theme.resources.controlStrokeColorDefault),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+                        child: Row(
                           children: [
-                            Text(
-                              board.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.typography.bodyStrong,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    board.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.typography.bodyStrong,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _editedLabel(loc, board.updatedAt),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.typography.caption?.copyWith(
+                                      color: theme.resources.textFillColorSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _editedLabel(loc, board.updatedAt),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.typography.caption?.copyWith(color: theme.resources.textFillColorSecondary),
-                            ),
+                            _CardMenu(title: board.title, onDelete: onDelete, onRename: onRename),
                           ],
                         ),
                       ),
-                      _CardMenu(title: board.title, onDelete: onDelete, onRename: onRename),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           );
         },
@@ -635,6 +678,8 @@ class _CardMenuState extends State<_CardMenu> {
     final loc = context.localizations;
     _flyoutController.showFlyout(
       builder: (context) => MenuFlyout(
+        shape: continuousMenuShape(context),
+        itemMargin: kMenuItemMargin,
         items: [
           MenuFlyoutItem(
             leading: const Icon(LucideIcons.pencil),

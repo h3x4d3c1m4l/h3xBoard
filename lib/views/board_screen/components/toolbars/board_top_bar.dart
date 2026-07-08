@@ -7,6 +7,7 @@ import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/sub_board_tab_bar.dart';
+import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// The board screen's top bar: an Exit button on the left, the sub-board switcher
@@ -151,7 +152,8 @@ class _MenuButtonState extends State<_MenuButton> {
     final rootContext = context;
     _flyoutController.showFlyout(
       builder: (context) => MenuFlyout(
-        itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
+        shape: continuousMenuShape(context),
+        itemMargin: kMenuItemMargin,
         items: [
           MenuFlyoutItem(
             leading: Icon(widget.viewModel.isFullscreen ? LucideIcons.minimize : LucideIcons.maximize),

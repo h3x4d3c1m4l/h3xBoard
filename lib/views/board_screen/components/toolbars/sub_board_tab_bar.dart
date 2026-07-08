@@ -1,9 +1,16 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/board.dart';
+import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 import 'package:h3xboard/widgets/continuous_text_box.dart';
 import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+// Continuous (squircle) corner radii for the sub-board tab bar. The tab's inner
+// button hugs the outer indicator concentrically (outer − 1), matching the app's
+// squircle surfaces instead of fluent's default rounded corners.
+const double _subBoardTabRadius = 8;
+const double _subBoardButtonRadius = 7;
 
 class SubBoardTabBar extends StatefulWidget {
 
@@ -109,7 +116,9 @@ class _SubBoardTabBarState extends State<SubBoardTabBar> {
         style: ButtonStyle(
           padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.all(6)),
           backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
-          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+          shape: WidgetStatePropertyAll(
+            ContinuousRectangleBorder(borderRadius: BorderRadius.circular(_subBoardTabRadius)),
+          ),
         ),
         onPressed: widget.onAddSubBoard,
         child: const Icon(LucideIcons.plus, size: 16),
@@ -164,7 +173,8 @@ class _SubBoardTabState extends State<_SubBoardTab> {
   void _openContextMenu(BuildContext context) {
     _flyoutController.showFlyout(
       builder: (ctx) => MenuFlyout(
-        itemMargin: const EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 4),
+        shape: continuousMenuShape(ctx),
+        itemMargin: kMenuItemMargin,
         items: [
           MenuFlyoutItem(
             leading: const Icon(LucideIcons.pencil),
@@ -203,12 +213,13 @@ class _SubBoardTabState extends State<_SubBoardTab> {
       onSecondaryTap: () => _openContextMenu(context),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        decoration: BoxDecoration(
+        decoration: ShapeDecoration(
           color: widget.isActive ? accentColor.withValues(alpha: 0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: widget.isActive ? accentColor : theme.resources.controlStrokeColorDefault,
-            width: 1,
+          shape: ContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(_subBoardTabRadius),
+            side: BorderSide(
+              color: widget.isActive ? accentColor : theme.resources.controlStrokeColorDefault,
+            ),
           ),
         ),
         child: widget.isEditing
@@ -234,7 +245,7 @@ class _SubBoardTabState extends State<_SubBoardTab> {
                     ),
                     backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
                     shape: WidgetStatePropertyAll(
-                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                      ContinuousRectangleBorder(borderRadius: BorderRadius.circular(_subBoardButtonRadius)),
                     ),
                   ),
                   onPressed: widget.onTap,

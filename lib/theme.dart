@@ -13,6 +13,33 @@ FluentThemeData buildAppTheme() {
   );
 
   return theme.copyWith(
+    infoBarTheme: InfoBarThemeData(
+      decoration: (severity) {
+        final res = theme.resources;
+        final Color color = switch (severity) {
+          InfoBarSeverity.info => res.systemFillColorAttentionBackground,
+          InfoBarSeverity.warning => res.systemFillColorCautionBackground,
+          InfoBarSeverity.success => res.systemFillColorSuccessBackground,
+          InfoBarSeverity.error => res.systemFillColorCriticalBackground,
+        };
+        return ShapeDecoration(
+          color: color,
+          shape: ContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(kControlCornerRadius),
+            side: BorderSide(color: res.cardStrokeColorDefault),
+          ),
+        );
+      },
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: ShapeDecoration(
+        color: theme.menuColor,
+        shape: ContinuousRectangleBorder(
+          borderRadius: BorderRadius.circular(kTooltipCornerRadius),
+          side: BorderSide(color: theme.resources.surfaceStrokeColorFlyout),
+        ),
+      ),
+    ),
     buttonTheme: ButtonThemeData.all(
       ButtonStyle(
         padding: WidgetStatePropertyAll(kControlPadding),

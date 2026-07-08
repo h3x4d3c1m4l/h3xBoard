@@ -23,6 +23,17 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
   @override
   bool get maintainBottomViewPadding => true;
 
+  // The board top bar runs edge-to-edge; carry its color up under the status bar
+  // so the inset matches the bar (near-white) rather than the gray page background.
+  // cardBackgroundFillColorDefault is translucent (70% white), and the top bar
+  // shows it over the scaffold background — so composite it the same way here to
+  // get the exact opaque color the bar renders.
+  @override
+  Color? topSafeAreaColor(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    return Color.alphaBlend(theme.resources.cardBackgroundFillColorDefault, theme.scaffoldBackgroundColor);
+  }
+
   @override
   Widget get body {
     // canPop is always false: every exit (close button, system/browser back)

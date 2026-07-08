@@ -39,16 +39,29 @@ class _ScreenBaseState<TViewModel extends ScreenViewModelBase, TController exten
   @override
   Widget build(BuildContext context) {
     _contextAccessor.buildContext = context;
+    final topSafeAreaColor = _view.topSafeAreaColor(context);
     return ColoredBox(
       color: FluentTheme.of(context).scaffoldBackgroundColor,
-      // Most screens let the bottom safe-area inset collapse when the keyboard
-      // opens (the default). A screen whose layout must not reflow behind a
-      // dialog's keyboard (the board — its aspect-locked canvas would rescale)
-      // opts into maintainBottomViewPadding via the view.
-      child: SafeArea(
-        bottom: _view.bottomSafeArea,
-        maintainBottomViewPadding: _view.maintainBottomViewPadding,
-        child: _view.body,
+      child: Stack(
+        children: [
+          if (topSafeAreaColor != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: MediaQuery.paddingOf(context).top,
+              child: ColoredBox(color: topSafeAreaColor),
+            ),
+          // Most screens let the bottom safe-area inset collapse when the keyboard
+          // opens (the default). A screen whose layout must not reflow behind a
+          // dialog's keyboard (the board — its aspect-locked canvas would rescale)
+          // opts into maintainBottomViewPadding via the view.
+          SafeArea(
+            bottom: _view.bottomSafeArea,
+            maintainBottomViewPadding: _view.maintainBottomViewPadding,
+            child: _view.body,
+          ),
+        ],
       ),
     );
   }

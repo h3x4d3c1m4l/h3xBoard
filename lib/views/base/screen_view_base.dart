@@ -39,6 +39,15 @@ abstract class ScreenViewBase<TViewModel extends ScreenViewModelBase, TControlle
   /// scroll padding so the last item still clears the home indicator.
   bool get bottomSafeArea => true;
 
+  /// The color painted behind the top safe-area inset (the strip under the OS
+  /// status bar / notch).
+  ///
+  /// Returns `null` by default, meaning the shell's [scaffoldBackgroundColor]
+  /// shows through (the app's light gray). Override on a screen whose top bar
+  /// runs edge-to-edge under the status bar so the inset matches the bar's own
+  /// color instead of the gray page background.
+  Color? topSafeAreaColor(BuildContext context) => null;
+
   @mustCallSuper
   void dispose() {}
 
