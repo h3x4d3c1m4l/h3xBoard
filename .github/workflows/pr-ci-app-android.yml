@@ -1,0 +1,53 @@
+name: PR CI App - Android
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths-ignore: [ README.md ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: ${{ startsWith(github.event.pull_request.head.ref, 'release/') != true && github.event.pull_request.draft != true }}
+
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Detect Flutter version
+      uses: kuhnroyal/flutter-fvm-config-action@v3
+
+    - name: Setup Flutter
+      uses: hrishikesh-kadam/setup-flutter@v1
+      with:
+        ref: ${{ env.FLUTTER_VERSION }}
+        setFlutterRootPath: 'true'
+        addPubCacheBinToPath: 'true'
+        flutterPrecache: '--android'
+
+    - name: Disable Flutter analytics and CLI animations
+      run: flutter config --no-analytics --no-cli-animations
+
+    - name: Install dependencies
+      run: flutter pub get --enforce-lockfile
+
+    - name: Generate l10n
+      run: flutter gen-l10n
+
+    - name: Code generation
+      run: dart run build_runner build --delete-conflicting-outputs
+
+    - name: Flutter analyze
+      run: flutter analyze
+
+    # PR builds are unsigned (debug-key fallback in android/app/build.gradle.kts) so
+    # they run without repository secrets, including on pull requests from forks.
+    - name: Build app bundle
+      run: flutter build appbundle -v --no-pub

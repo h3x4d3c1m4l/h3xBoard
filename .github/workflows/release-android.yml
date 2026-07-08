@@ -1,0 +1,98 @@
+name: Release - Android
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ closed ]
+
+# Sets permissions to allow version tag
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Check code and build app bundle
+
+    if: ${{ github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/') }}
+
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Detect Flutter version
+      uses: kuhnroyal/flutter-fvm-config-action@v3
+
+    - name: Setup Flutter
+      uses: hrishikesh-kadam/setup-flutter@v1
+      with:
+        ref: ${{ env.FLUTTER_VERSION }}
+        setFlutterRootPath: 'true'
+        addPubCacheBinToPath: 'true'
+        flutterPrecache: '--android'
+
+    - name: Disable Flutter analytics and CLI animations
+      run: flutter config --no-analytics --no-cli-animations
+
+    - name: Install dependencies
+      run: flutter pub get --enforce-lockfile
+
+    - name: Generate l10n
+      run: flutter gen-l10n
+
+    - name: Code generation
+      run: dart run build_runner build --delete-conflicting-outputs
+
+    - name: Flutter analyze
+      run: flutter analyze
+
+    - name: Build app bundle
+      env:
+        ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.ANDROID_KEYSTORE_KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_KEY_PASSWORD }}
+        STORE_FILE: /tmp/keystore.jks
+      run: |
+        echo $ANDROID_KEYSTORE | base64 --decode > $STORE_FILE
+        flutter build appbundle -v --no-pub
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-bundle
+        path: build/app/outputs/bundle/release/app-release.aab
+
+  upload:
+    name: Upload to Play Store
+
+    needs: build
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download artifact
+      uses: actions/download-artifact@v5
+      with:
+        name: app-bundle
+
+    - name: Install fastlane
+      run: |
+        GEM_INSTALL_PATH=$HOME/.local/share/gem/ruby/3.0.0/bin
+        PATH=$GEM_INSTALL_PATH:$PATH
+        gem install bundler --user-install
+        bundle config set --local path '$HOME/.gem'
+        bundle install
+        echo $GEM_INSTALL_PATH >> $GITHUB_PATH
+
+    - name: Upload to Play Store
+      env:
+        GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+      run: |
+        bundle exec fastlane ci_upload_to_play_store aab_path:app-release.aab

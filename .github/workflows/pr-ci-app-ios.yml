@@ -1,0 +1,95 @@
+name: PR CI App - iOS
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths-ignore: [ README.md ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    if: ${{ startsWith(github.event.pull_request.head.ref, 'release/') != true && github.event.pull_request.draft != true }}
+
+    runs-on: macos-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.ref }}
+
+    - name: Install build dependencies
+      run: brew install ruby
+
+    - uses: webfactory/ssh-agent@v0.9.1
+      with:
+        ssh-private-key: ${{ secrets.MATCH_CERTIFICATES_GIT_ACCESS_TOKEN }}
+
+    - name: Install keys, certificates and profiles
+      env:
+        MATCH_CERTIFICATES_GIT_URL: ${{ secrets.MATCH_CERTIFICATES_GIT_URL }}
+        MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+      run: |
+        PATH=/opt/homebrew/opt/ruby/bin:$HOME/.gem:$PATH
+        gem install bundler --user-install
+        bundle install
+        bundle exec fastlane ci_install_ios_appstore_cert_using_api
+
+    - name: Detect Flutter version
+      uses: kuhnroyal/flutter-fvm-config-action@v3
+
+    - name: Setup Flutter
+      uses: hrishikesh-kadam/setup-flutter@v1
+      with:
+        ref: ${{ env.FLUTTER_VERSION }}
+        setFlutterRootPath: 'true'
+        addPubCacheBinToPath: 'true'
+        flutterPrecache: '--ios'
+
+    - name: Disable Flutter analytics and CLI animations
+      run: flutter config --no-analytics --no-cli-animations
+
+    - name: Install dependencies
+      run: flutter pub get --enforce-lockfile
+
+    - name: Generate l10n
+      run: flutter gen-l10n
+
+    - name: Code generation
+      run: dart run build_runner build --delete-conflicting-outputs
+
+    - name: Flutter analyze
+      run: flutter analyze
+
+    - name: Build project
+      run: |
+        rm -f ios/Podfile.lock
+        flutter build ipa -v --no-pub --export-options-plist=ios/exportOptions.plist
+
+    - name: Commit changes to iOS build files and create PR
+      id: cpr
+      uses: peter-evans/create-pull-request@v7
+      with:
+        add-paths: ios
+        commit-message: Update iOS build files
+        title: Update iOS build files
+        body: This PR is created by the iOS CI pipeline, to help keeping the iOS build working.
+        branch: chore/update-ios-build-files
+
+    - name: Add comment to remind of created PR
+      if: ${{ steps.cpr.outputs.pull-request-number }}
+      uses: thollander/actions-comment-pull-request@v3
+      with:
+        message: I created PR \#${{ steps.cpr.outputs.pull-request-number }} for you to update the iOS build.

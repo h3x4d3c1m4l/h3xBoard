@@ -1,0 +1,113 @@
+name: Release - iOS
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ closed ]
+
+# Sets permissions to allow version tag
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Check code and build app
+
+    if: ${{ github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/') }}
+
+    runs-on: macos-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install build dependencies
+      run: brew install ruby
+
+    - uses: webfactory/ssh-agent@v0.9.1
+      with:
+        ssh-private-key: ${{ secrets.MATCH_CERTIFICATES_GIT_ACCESS_TOKEN }}
+
+    - name: Install keys, certificates and profiles
+      env:
+        MATCH_CERTIFICATES_GIT_URL: ${{ secrets.MATCH_CERTIFICATES_GIT_URL }}
+        MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+      run: |
+        PATH=/opt/homebrew/opt/ruby/bin:$HOME/.gem:$PATH
+        gem install bundler --user-install
+        bundle install
+        bundle exec fastlane ci_install_ios_appstore_cert_using_api
+
+    - name: Detect Flutter version
+      uses: kuhnroyal/flutter-fvm-config-action@v3
+
+    - name: Setup Flutter
+      uses: hrishikesh-kadam/setup-flutter@v1
+      with:
+        ref: ${{ env.FLUTTER_VERSION }}
+        setFlutterRootPath: 'true'
+        addPubCacheBinToPath: 'true'
+        flutterPrecache: '--ios'
+
+    - name: Disable Flutter analytics and CLI animations
+      run: flutter config --no-analytics --no-cli-animations
+
+    - name: Install dependencies
+      run: flutter pub get --enforce-lockfile
+
+    - name: Generate l10n
+      run: flutter gen-l10n
+
+    - name: Code generation
+      run: dart run build_runner build --delete-conflicting-outputs
+
+    - name: Flutter analyze
+      run: flutter analyze
+
+    - name: Build project
+      run: |
+        rm -f ios/Podfile.lock
+        flutter build ipa -v --no-pub --export-options-plist=ios/exportOptions.plist
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ipa
+        path: build/ios/ipa/*.ipa
+
+  upload:
+    name: Upload to App Store Connect
+
+    needs: build
+
+    runs-on: macos-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download artifact
+      uses: actions/download-artifact@v5
+      with:
+        name: ipa
+
+    - name: Install keys, certificates and profiles
+      run: |
+        GEM_HOME=$HOME/.gem
+        PATH=/opt/homebrew/opt/ruby/bin:$GEM_HOME:$PATH
+        gem install bundler --user-install
+        bundle install
+        echo $GEM_HOME >> $GITHUB_PATH
+
+    - name: Upload to App Store Connect
+      env:
+        APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+      run: |
+        bundle exec fastlane ci_upload_to_testflight ipa_path:"$(ls *.ipa)"
