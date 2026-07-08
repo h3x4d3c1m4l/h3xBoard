@@ -21,6 +21,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/board_widget_desc
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_header_bar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_selection_overlay.dart';
+import 'package:h3xboard/widgets/app_menu_flyout.dart';
 import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 import 'package:h3xboard/widgets/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -255,7 +256,7 @@ class _BoardState extends State<Board> {
       ],
       ...typeItems,
       if (typeItems.isNotEmpty) const MenuFlyoutSeparator(),
-      MenuFlyoutSubItem(
+      AppMenuFlyoutSubItem(
         leading: const Icon(LucideIcons.layers),
         text: Text(context.localizations.layerMenu_title),
         items: (_) => [
@@ -281,7 +282,7 @@ class _BoardState extends State<Board> {
           ),
         ],
       ),
-      MenuFlyoutSubItem(
+      AppMenuFlyoutSubItem(
         leading: const Icon(LucideIcons.eye),
         text: Text(context.localizations.boardVisibilityMenu_title),
         items: (_) => [
@@ -419,7 +420,7 @@ class _BoardState extends State<Board> {
             if (builder == null) return;
             _contextMenuController.showFlyout(
               builder: (context) =>
-                  MenuFlyout(shape: continuousMenuShape(context), itemMargin: kMenuItemMargin, items: builder(context)),
+                  AppMenuFlyout(shape: continuousMenuShape(context), itemMargin: kMenuItemMargin, items: builder(context)),
               placementMode: FlyoutPlacementMode.auto,
             );
           });

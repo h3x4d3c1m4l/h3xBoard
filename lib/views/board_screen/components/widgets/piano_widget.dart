@@ -6,6 +6,7 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/piano_audio.dart';
+import 'package:h3xboard/widgets/app_menu_flyout.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 // Semitone offset (relative to the octave's C) for each of the 7 white keys.
@@ -192,7 +193,7 @@ class PianoWidgetDescriptor extends BoardWidgetDescriptor {
     }
 
     return [
-      MenuFlyoutSubItem(
+      AppMenuFlyoutSubItem(
         text: Text(l.pianoSettingsMenu_octaves),
         items: (_) => [
           octavesItem(1, l.pianoSettingsMenu_octaves1),
