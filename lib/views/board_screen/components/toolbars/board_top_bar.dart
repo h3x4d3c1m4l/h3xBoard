@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
+import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/sub_board_tab_bar.dart';
+import 'package:h3xboard/widgets/app_menu_flyout.dart';
 import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -23,41 +25,51 @@ class BoardTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: theme.resources.cardBackgroundFillColorDefault,
         border: Border(
           bottom: BorderSide(color: theme.resources.controlStrokeColorDefault),
         ),
       ),
-      child: Row(
-        children: [
-          // Left and right sections take equal flex so the centre section (the
-          // sub-board switcher) stays visually centred regardless of their widths.
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _ExitButton(controller: controller),
+      // Gutter + max-width constraint mirror the Boards screen so both top bars
+      // line up with the board grid's content width.
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: kContentHorizontalPadding),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  _ExitButton(controller: controller),
+                  // The sub-board switcher fills the space between the fixed exit
+                  // button and menu controls, and stays centred within it. When
+                  // there are too many tabs it collapses the overflow behind a
+                  // "more" button instead of pushing the bar wider.
+                  Expanded(
+                    child: Container(
+                      margin: .symmetric(horizontal: 64),
+                      alignment: .center,
+                      child: Observer(
+                        builder: (_) => SubBoardTabBar(
+                          subBoards: viewModel.subBoards.toList(),
+                          activeSubBoardId: viewModel.activeSubBoardId,
+                          onSwitchSubBoard: controller.onSwitchSubBoard,
+                          onAddSubBoard: controller.onAddSubBoard,
+                          onRemoveSubBoard: controller.onRemoveSubBoard,
+                          onRenameSubBoard: controller.onRenameSubBoard,
+                        ),
+                      ),
+                    ),
+                  ),
+                  _MenuControls(controller: controller, viewModel: viewModel),
+                ],
+              ),
             ),
           ),
-          Observer(
-            builder: (_) => SubBoardTabBar(
-              subBoards: viewModel.subBoards.toList(),
-              activeSubBoardId: viewModel.activeSubBoardId,
-              onSwitchSubBoard: controller.onSwitchSubBoard,
-              onAddSubBoard: controller.onAddSubBoard,
-              onRemoveSubBoard: controller.onRemoveSubBoard,
-              onRenameSubBoard: controller.onRenameSubBoard,
-            ),
-          ),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _MenuControls(controller: controller, viewModel: viewModel),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -104,17 +116,11 @@ class _MenuControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       spacing: 4,
       children: [
         Observer(builder: (_) => _SaveStatusIndicator(status: viewModel.saveStatus)),
-        Container(
-          width: 1,
-          height: 20,
-          color: theme.resources.controlStrokeColorDefault,
-        ),
         _MenuButton(controller: controller, viewModel: viewModel),
       ],
     );
@@ -151,7 +157,7 @@ class _MenuButtonState extends State<_MenuButton> {
     // once popped).
     final rootContext = context;
     _flyoutController.showFlyout(
-      builder: (context) => MenuFlyout(
+      builder: (context) => AppMenuFlyout(
         shape: continuousMenuShape(context),
         itemMargin: kMenuItemMargin,
         items: [

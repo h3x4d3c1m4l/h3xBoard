@@ -20,6 +20,56 @@ import 'package:flutter/foundation.dart';
 /// The default padding for the [AppMenuFlyout] content.
 const _kDefaultMenuPadding = EdgeInsetsDirectional.symmetric(vertical: 2);
 
+/// Tight gap between item highlights. The comfortable touch height comes from
+/// [_kMenuTileTextPadding] *inside* the row (part of the clickable, highlighted
+/// area) rather than from the item margin — fluent's `itemMargin` sits outside
+/// each item's `HoverButton`, so using it for spacing leaves dead, unclickable
+/// gaps between rows.
+const _kMenuTileMargin = EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 1);
+
+/// Vertical padding added around each item's label, growing the highlighted &
+/// tappable row into a comfortable touch target (≈40px tall).
+const _kMenuTileTextPadding = EdgeInsetsDirectional.symmetric(vertical: 7);
+
+/// Renders a single [MenuFlyoutItem]-style row as a [FlyoutListTile] with a
+/// generous, fully-clickable padding. Shared by leaf items and sub-item rows so
+/// every menu row reads and behaves the same.
+///
+/// [useIconPlaceholder] reserves the leading-icon column for items without an
+/// icon so their labels still line up with icon-bearing siblings (mirrors
+/// fluent's own `_useIconPlaceholder`).
+Widget _buildAppMenuTile(
+  BuildContext context, {
+  required Widget text,
+  required VoidCallback? onPressed,
+  required bool useIconPlaceholder,
+  Widget? leading,
+  Widget? trailing,
+  VoidCallback? onLongPress,
+  FocusNode? focusNode,
+  bool selected = false,
+  bool closeAfterClick = true,
+}) {
+  return FlyoutListTile(
+    margin: _kMenuTileMargin,
+    selected: selected,
+    showSelectedIndicator: false,
+    icon: leading ?? (useIconPlaceholder ? const Icon(null) : null),
+    text: Padding(padding: _kMenuTileTextPadding, child: text),
+    trailing: trailing == null
+        ? null
+        : IconTheme.merge(data: const IconThemeData(size: 12), child: trailing),
+    onPressed: onPressed == null
+        ? null
+        : () {
+            if (closeAfterClick) Navigator.of(context).maybePop();
+            onPressed();
+          },
+    onLongPress: onLongPress,
+    focusNode: focusNode,
+  );
+}
+
 /// Menu flyouts are used in menu and context menu scenarios to display a list
 /// of commands or options when requested by the user.
 ///
@@ -93,6 +143,10 @@ class _AppMenuFlyoutState extends State<AppMenuFlyout> {
     final menuInfo = MenuInfoProvider.of(context);
     final parent = Flyout.maybeOf(context);
 
+    // Reserve the leading-icon column for icon-less items whenever any sibling
+    // has an icon, so labels line up (mirrors fluent's own placeholder logic).
+    final hasLeading = widget.items.whereType<MenuFlyoutItem>().any((item) => item.leading != null);
+
     Widget content = IntrinsicWidth(
       child: FlyoutContent(
         color: widget.color,
@@ -110,18 +164,37 @@ class _AppMenuFlyoutState extends State<AppMenuFlyout> {
               mainAxisSize: MainAxisSize.min,
               children: List.generate(widget.items.length, (index) {
                 final item = widget.items[index];
-                if (item is AppMenuFlyoutSubItem && keys.isNotEmpty) {
-                  item
-                    .._key = keys[index] as GlobalKey<_AppMenuFlyoutSubItemState>?
-                    ..disableAcyrlic = DisableAcrylic.of(context) != null;
+                final Widget child;
+                if (item is AppMenuFlyoutSubItem) {
+                  if (keys.isNotEmpty) {
+                    item
+                      .._key = keys[index] as GlobalKey<_AppMenuFlyoutSubItemState>?
+                      ..disableAcyrlic = DisableAcrylic.of(context) != null;
+                  }
+                  item.useIconPlaceholder = hasLeading;
+                  // The sub-item builds its own (padded) tile via its state.
+                  child = item.build(context);
+                } else if (item is MenuFlyoutItem) {
+                  // Leaf items (including Toggle/Radio) — render as a padded,
+                  // fully-clickable tile instead of fluent's tight row + dead
+                  // outer margin.
+                  child = _buildAppMenuTile(
+                    context,
+                    text: item.text,
+                    leading: item.leading,
+                    trailing: item.trailing,
+                    onPressed: item.onPressed,
+                    onLongPress: item.onLongPress,
+                    focusNode: item.focusNode,
+                    selected: item.selected,
+                    closeAfterClick: item.closeAfterClick,
+                    useIconPlaceholder: hasLeading,
+                  );
+                } else {
+                  // Separators and other bespoke item types keep the margin.
+                  child = Padding(padding: widget.itemMargin, child: item.build(context));
                 }
-                return KeyedSubtree(
-                  key: item.key,
-                  child: Padding(
-                    padding: widget.itemMargin,
-                    child: item.build(context),
-                  ),
-                );
+                return KeyedSubtree(key: item.key, child: child);
               }),
             ),
           ),
@@ -233,6 +306,10 @@ class AppMenuFlyoutSubItem extends MenuFlyoutItem {
   /// This is set internally by [AppMenuFlyout].
   bool disableAcyrlic = false;
 
+  /// Whether the parent menu reserves a leading-icon column. Set internally by
+  /// [AppMenuFlyout] so an icon-less sub-item row still aligns with its siblings.
+  bool useIconPlaceholder = false;
+
   @override
   Widget build(BuildContext context) {
     return _AppMenuFlyoutSubItem(key: _key, item: this, items: items);
@@ -295,17 +372,18 @@ class _AppMenuFlyoutSubItemState extends State<_AppMenuFlyoutSubItem> with Singl
   Widget build(BuildContext context) {
     final menuInfo = MenuInfoProvider.of(context);
 
-    final item = MenuFlyoutItem(
-      key: widget.item.key,
+    final item = _buildAppMenuTile(
+      context,
       text: widget.item.text,
       leading: widget.item.leading,
-      selected: isShowing(menuInfo),
       trailing: widget.item.trailing,
+      selected: isShowing(menuInfo),
       closeAfterClick: false,
+      useIconPlaceholder: widget.item.useIconPlaceholder,
       onPressed: () {
         show(menuInfo);
       },
-    ).build(context);
+    );
 
     if (widget.item.showBehavior == SubItemShowAction.hover) {
       return MouseRegion(

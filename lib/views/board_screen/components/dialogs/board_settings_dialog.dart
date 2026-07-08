@@ -10,6 +10,7 @@ import 'package:h3xboard/views/board_screen/components/backgrounds/background_li
 import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
+import 'package:h3xboard/widgets/app_menu_flyout.dart';
 import 'package:h3xboard/widgets/color_picker_dialog.dart';
 import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 import 'package:h3xboard/widgets/stable_flyout_controller.dart';
@@ -158,7 +159,7 @@ class _BoardSettingsDialogState extends State<BoardSettingsDialog> {
 
   void _openCopyFromMenu() {
     _copyFromController.showFlyout(
-      builder: (ctx) => MenuFlyout(
+      builder: (ctx) => AppMenuFlyout(
         shape: continuousMenuShape(ctx),
         itemMargin: kMenuItemMargin,
         items: [

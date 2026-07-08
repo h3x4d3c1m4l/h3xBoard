@@ -14,6 +14,7 @@ import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
+import 'package:h3xboard/widgets/app_menu_flyout.dart';
 import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 import 'package:h3xboard/widgets/continuous_text_box.dart';
 import 'package:h3xboard/widgets/scroll_shadow.dart';
@@ -28,7 +29,6 @@ const _appName = 'h3xBoard';
 // Card sizing for the responsive board grid.
 const double _cardWidth = 300;
 const double _cardSpacing = 16;
-const double _maxContentWidth = 1240;
 
 class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScreenController> {
   const BoardsScreenView({required super.viewModel, required super.controller, required super.contextAccessor});
@@ -144,47 +144,59 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 16, 12),
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: theme.resources.cardBackgroundFillColorDefault,
         border: Border(bottom: BorderSide(color: theme.resources.controlStrokeColorDefault)),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: theme.accentColor, borderRadius: BorderRadius.circular(10)),
-            child: const Icon(LucideIcons.pencil, size: 18, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Text(_appName, style: theme.typography.subtitle),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: ContinuousTextBox(
-                  placeholder: context.localizations.boardsScreen_searchPlaceholder,
-                  prefix: const Padding(
-                    padding: EdgeInsets.only(left: 10),
-                    child: Icon(LucideIcons.search, size: 16),
+      // Gutter + max-width constraint mirror _BoardsBody so the header content
+      // lines up with the board grid below it.
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: kContentHorizontalPadding),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(color: theme.accentColor, borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(LucideIcons.pencil, size: 18, color: Colors.white),
                   ),
-                  onChanged: onSearchChanged,
-                ),
+                  const SizedBox(width: 12),
+                  Text(_appName, style: theme.typography.subtitle),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 360),
+                        child: ContinuousTextBox(
+                          placeholder: context.localizations.boardsScreen_searchPlaceholder,
+                          prefix: const Padding(
+                            padding: EdgeInsets.only(left: 10),
+                            child: Icon(LucideIcons.search, size: 16),
+                          ),
+                          onChanged: onSearchChanged,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  _AccountMenu(
+                    displayName: userDisplayName,
+                    initials: userInitials,
+                    onOpenSettings: onOpenSettings,
+                    onSignOut: onSignOut,
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: 16),
-          _AccountMenu(
-            displayName: userDisplayName,
-            initials: userInitials,
-            onOpenSettings: onOpenSettings,
-            onSignOut: onSignOut,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -218,7 +230,7 @@ class _AccountMenuState extends State<_AccountMenu> {
     _flyoutController.showFlyout(
       placementMode: FlyoutPlacementMode.bottomRight,
       additionalOffset: 0,
-      builder: (context) => MenuFlyout(
+      builder: (context) => AppMenuFlyout(
         shape: continuousMenuShape(context),
         itemMargin: kMenuItemMargin,
         items: [
@@ -351,10 +363,10 @@ class _BoardsBody extends StatelessWidget {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     return ScrollShadow(
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+        padding: EdgeInsets.fromLTRB(kContentHorizontalPadding, 24, kContentHorizontalPadding, 24 + bottomInset),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _maxContentWidth),
+            constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -677,7 +689,7 @@ class _CardMenuState extends State<_CardMenu> {
   void _showMenu() {
     final loc = context.localizations;
     _flyoutController.showFlyout(
-      builder: (context) => MenuFlyout(
+      builder: (context) => AppMenuFlyout(
         shape: continuousMenuShape(context),
         itemMargin: kMenuItemMargin,
         items: [

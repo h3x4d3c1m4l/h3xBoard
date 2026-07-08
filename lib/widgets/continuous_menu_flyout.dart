@@ -11,11 +11,12 @@ import 'package:fluent_ui/fluent_ui.dart';
 /// Corner radius of the continuous-rectangle menu border.
 const double kMenuCornerRadius = 12;
 
-/// Vertical spacing around each menu item. Fluent's own item padding is a tight
-/// 4px top/bottom (hardcoded, not themeable), so we widen the per-item margin to
-/// grow the effective row pitch into a comfortable touch target. The horizontal
-/// value matches fluent's default so item highlights still hug the menu edges.
-const EdgeInsetsGeometry kMenuItemMargin = EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 6);
+/// Outer margin for menu items that [AppMenuFlyout] does **not** render as a
+/// padded tile (notably [MenuFlyoutSeparator]). Regular item rows get their
+/// comfortable, fully-clickable touch height from padding *inside* the row
+/// instead — see `_buildAppMenuTile` in `app_menu_flyout.dart` — so this stays
+/// horizontal-only to avoid re-introducing dead, unclickable gaps between rows.
+const EdgeInsetsGeometry kMenuItemMargin = EdgeInsetsDirectional.symmetric(horizontal: 4);
 
 /// The continuous (squircle) border for menu flyouts, matching the app's other
 /// squircle surfaces instead of fluent's default rounded corner. Pass to

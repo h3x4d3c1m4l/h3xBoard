@@ -25,3 +25,11 @@ const double kBoardCornerRadius = 24;
 
 /// Corner radius of tooltips' continuous-rectangle border.
 const double kTooltipCornerRadius = 8;
+
+/// Max width of centered page content — the board grid on the Boards screen and
+/// the top bars on both the Boards and Board screens. Beyond this the content is
+/// centered with equal gutters so the two top bars line up with the grid.
+const double kMaxContentWidth = 1240;
+
+/// Horizontal gutter between the screen edge and centered page content.
+const double kContentHorizontalPadding = 24;
