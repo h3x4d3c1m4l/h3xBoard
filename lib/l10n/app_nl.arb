@@ -26,8 +26,8 @@
     "@loginScreen_switchToLogin": {},
     "loginScreen_sessionExpired": "Je sessie is verlopen, meld je opnieuw aan.",
     "@loginScreen_sessionExpired": {},
-    "loginScreen_serverLabel": "Server: {host}",
-    "@loginScreen_serverLabel": {
+    "serverChip_serverLabel": "Server: {host}",
+    "@serverChip_serverLabel": {
         "placeholders": {
             "host": { "type": "String" }
         }
