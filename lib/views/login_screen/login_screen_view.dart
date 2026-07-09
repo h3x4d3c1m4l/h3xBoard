@@ -26,105 +26,107 @@ class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenCo
       content: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
-          child: Observer(
-            builder: (context) => ValueListenableBuilder<ServerInfo?>(
-              valueListenable: server.serverInfo,
-              builder: (context, serverInfo, _) => AutofillGroup(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  spacing: 16,
-                  children: [
-                    if (serverInfo?.warning != null)
-                      InfoBar(
-                        title: Text(serverInfo!.warning!),
-                        severity: InfoBarSeverity.warning,
-                        isLong: true,
+          child: ValueListenableBuilder<ServerInfo?>(
+            valueListenable: server.serverInfo,
+            builder: (context, serverInfo, _) => Observer(
+              builder: (context) {
+                return AutofillGroup(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 16,
+                    children: [
+                      if (serverInfo?.warning != null)
+                        InfoBar(
+                          title: Text(serverInfo!.warning!),
+                          severity: InfoBarSeverity.warning,
+                          isLong: true,
+                        ),
+                      Text(
+                        viewModel.isRegisterMode
+                            ? localizations.loginScreen_createAccount
+                            : localizations.loginScreen_signIn,
+                        style: FluentTheme.of(context).typography.title,
+                        textAlign: TextAlign.center,
                       ),
-                    Text(
-                      viewModel.isRegisterMode
-                          ? localizations.loginScreen_createAccount
-                          : localizations.loginScreen_signIn,
-                      style: FluentTheme.of(context).typography.title,
-                      textAlign: TextAlign.center,
-                    ),
-                    if (viewModel.isRegisterMode) ...[
+                      if (viewModel.isRegisterMode) ...[
+                        ContinuousTextBox(
+                          controller: viewModel.firstNameController,
+                          placeholder: localizations.loginScreen_firstName,
+                          enabled: !viewModel.isLoading,
+                          keyboardType: TextInputType.name,
+                          autofillHints: const [AutofillHints.givenName],
+                        ),
+                        ContinuousTextBox(
+                          controller: viewModel.lastNameController,
+                          placeholder: localizations.loginScreen_lastName,
+                          enabled: !viewModel.isLoading,
+                          keyboardType: TextInputType.name,
+                          autofillHints: const [AutofillHints.familyName],
+                        ),
+                      ],
                       ContinuousTextBox(
-                        controller: viewModel.firstNameController,
-                        placeholder: localizations.loginScreen_firstName,
+                        controller: viewModel.emailController,
+                        placeholder: localizations.loginScreen_email,
                         enabled: !viewModel.isLoading,
-                        keyboardType: TextInputType.name,
-                        autofillHints: const [AutofillHints.givenName],
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.username, AutofillHints.email],
+                        textInputAction: TextInputAction.next,
                       ),
                       ContinuousTextBox(
-                        controller: viewModel.lastNameController,
-                        placeholder: localizations.loginScreen_lastName,
+                        controller: viewModel.passwordController,
+                        placeholder: localizations.loginScreen_password,
+                        obscureText: true,
                         enabled: !viewModel.isLoading,
-                        keyboardType: TextInputType.name,
-                        autofillHints: const [AutofillHints.familyName],
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => controller.submit(),
+                        autofillHints: [
+                          if (viewModel.isRegisterMode) AutofillHints.newPassword else AutofillHints.password,
+                        ],
+                      ),
+                      if (viewModel.infoMessage != null)
+                        InfoBar(
+                          title: Text(viewModel.infoMessage!),
+                          severity: InfoBarSeverity.warning,
+                        ),
+                      if (viewModel.errorMessage != null)
+                        InfoBar(
+                          title: Text(viewModel.errorMessage!),
+                          severity: InfoBarSeverity.error,
+                        ),
+                      FilledButton(
+                        onPressed: viewModel.isLoading ? null : controller.submit,
+                        child: viewModel.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: ProgressRing(strokeWidth: 2),
+                              )
+                            : Text(
+                                viewModel.isRegisterMode
+                                    ? localizations.loginScreen_createAccountButton
+                                    : localizations.loginScreen_signInButton,
+                              ),
+                      ),
+                      if (viewModel.registrationAllowed)
+                        Button(
+                          onPressed: viewModel.isLoading ? null : controller.toggleMode,
+                          child: Text(
+                            viewModel.isRegisterMode
+                                ? localizations.loginScreen_switchToLogin
+                                : localizations.loginScreen_switchToRegister,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      _ServerChip(
+                        serverUrl: controller.serverUrl,
+                        enabled: !viewModel.isLoading,
+                        onEdit: () => _showServerUrlDialog(context, controller),
                       ),
                     ],
-                    ContinuousTextBox(
-                      controller: viewModel.emailController,
-                      placeholder: localizations.loginScreen_email,
-                      enabled: !viewModel.isLoading,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.username, AutofillHints.email],
-                      textInputAction: TextInputAction.next,
-                    ),
-                    ContinuousTextBox(
-                      controller: viewModel.passwordController,
-                      placeholder: localizations.loginScreen_password,
-                      obscureText: true,
-                      enabled: !viewModel.isLoading,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => controller.submit(),
-                      autofillHints: [
-                        if (viewModel.isRegisterMode) AutofillHints.newPassword else AutofillHints.password,
-                      ],
-                    ),
-                    if (viewModel.infoMessage != null)
-                      InfoBar(
-                        title: Text(viewModel.infoMessage!),
-                        severity: InfoBarSeverity.warning,
-                      ),
-                    if (viewModel.errorMessage != null)
-                      InfoBar(
-                        title: Text(viewModel.errorMessage!),
-                        severity: InfoBarSeverity.error,
-                      ),
-                    FilledButton(
-                      onPressed: viewModel.isLoading ? null : controller.submit,
-                      child: viewModel.isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: ProgressRing(strokeWidth: 2),
-                            )
-                          : Text(
-                              viewModel.isRegisterMode
-                                  ? localizations.loginScreen_createAccountButton
-                                  : localizations.loginScreen_signInButton,
-                            ),
-                    ),
-                    if (viewModel.registrationAllowed)
-                      Button(
-                        onPressed: viewModel.isLoading ? null : controller.toggleMode,
-                        child: Text(
-                          viewModel.isRegisterMode
-                              ? localizations.loginScreen_switchToLogin
-                              : localizations.loginScreen_switchToRegister,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    _ServerChip(
-                      serverUrl: controller.serverUrl,
-                      enabled: !viewModel.isLoading,
-                      onEdit: () => _showServerUrlDialog(context, controller),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
           ),
         ),
