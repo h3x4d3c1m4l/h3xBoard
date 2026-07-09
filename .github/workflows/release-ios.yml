@@ -63,7 +63,7 @@ jobs:
       run: flutter gen-l10n
 
     - name: Code generation
-      run: dart run build_runner build --delete-conflicting-outputs
+      run: dart run build_runner build
 
     - name: Flutter analyze
       run: flutter analyze
@@ -71,7 +71,7 @@ jobs:
     - name: Build project
       run: |
         rm -f ios/Podfile.lock
-        flutter build ipa -v --no-pub --export-options-plist=ios/exportOptions.plist
+        flutter build ipa -v --no-pub --export-options-plist=ios/exportOptions.plist --build-number=${{ github.run_number }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v7

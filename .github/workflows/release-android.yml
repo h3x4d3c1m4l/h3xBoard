@@ -43,7 +43,7 @@ jobs:
       run: flutter gen-l10n
 
     - name: Code generation
-      run: dart run build_runner build --delete-conflicting-outputs
+      run: dart run build_runner build
 
     - name: Flutter analyze
       run: flutter analyze
@@ -57,7 +57,7 @@ jobs:
         STORE_FILE: /tmp/keystore.jks
       run: |
         echo $ANDROID_KEYSTORE | base64 --decode > $STORE_FILE
-        flutter build appbundle -v --no-pub
+        flutter build appbundle -v --no-pub --build-number=${{ github.run_number }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v7
