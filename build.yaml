@@ -1,0 +1,54 @@
+# Scopes each code generator to only the files it actually generates for.
+# Without this, every builder runs against all ~125 source files in lib/ and
+# treats the vast majority as no-ops. `generate_for` restricts each builder's
+# inputs, cutting analyzer passes and speeding up `just gen-code`.
+#
+# When adding a source file that needs generation, make sure it matches the
+# relevant include glob below (or add a new one).
+targets:
+  $default:
+    builders:
+      # Freezed data classes — all live under lib/models/.
+      freezed:freezed:
+        generate_for:
+          include:
+            - lib/models/**.dart
+
+      # JSON (de)serialization — only the freezed models in lib/models/.
+      json_serializable:json_serializable:
+        generate_for:
+          include:
+            - lib/models/**.dart
+
+      # MobX stores — view models plus a couple of standalone stores.
+      mobx_codegen:mobx_generator:
+        generate_for:
+          include:
+            - lib/views/**_view_model.dart
+            - lib/views/board_screen/history/history_manager.dart
+            - lib/services/app_settings_controller.dart
+
+      # auto_route — @RoutePage screens (all under lib/views/) plus the router.
+      auto_route_generator:auto_route_generator:
+        generate_for:
+          include:
+            - lib/app_router.dart
+            - lib/views/**.dart
+
+      # auto_route aggregator — only the @AutoRouterConfig router file.
+      auto_route_generator:auto_router_generator:
+        generate_for:
+          include:
+            - lib/app_router.dart
+
+      # Chopper API services.
+      chopper_generator:chopper_generator:
+        generate_for:
+          include:
+            - lib/services/h3x_board_*_service.dart
+
+      # Envied compile-time env — single file.
+      envied_generator:envied:
+        generate_for:
+          include:
+            - lib/env.dart
