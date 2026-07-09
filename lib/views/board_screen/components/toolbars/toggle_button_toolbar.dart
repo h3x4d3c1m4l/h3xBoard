@@ -7,7 +7,10 @@ class ToggleButtonToolbar extends StatelessWidget {
   /// Lay the buttons out along this axis, matching the parent toolbar.
   final Axis direction;
 
-  const ToggleButtonToolbar({super.key, required this.buttons, this.direction = Axis.horizontal})
+  /// Concentric with the parent toolbar: its radius minus its inner padding.
+  final double borderRadius;
+
+  const ToggleButtonToolbar({super.key, required this.buttons, this.direction = Axis.horizontal, this.borderRadius = 28})
     : assert(buttons.length > 0, 'ToggleButtonToolbar needs at least 1 button');
 
   @override
@@ -30,7 +33,7 @@ class ToggleButtonToolbar extends StatelessWidget {
   }
 
   ShapeBorder _getShapeBorder() {
-    return ContinuousRectangleBorder(borderRadius: BorderRadius.circular(16));
+    return ContinuousRectangleBorder(borderRadius: BorderRadius.circular(borderRadius));
   }
 
   ToggleButtonThemeData _getToggleButtonTheme(FluentThemeData theme) {
@@ -51,7 +54,7 @@ class ToggleButtonToolbar extends StatelessWidget {
       defaultButtonStyle: ButtonStyle(
         backgroundColor: WidgetStateProperty.all(Colors.transparent),
         shape: WidgetStateProperty.resolveWith(
-          (states) => ContinuousRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          (states) => _getShapeBorder(),
         ),
       ),
     );
