@@ -48,6 +48,20 @@ class SessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resets the session to [SessionStatus.unknown] so the bootstrap
+  /// (InitializationScreen) is allowed to run again. Used after switching
+  /// servers: the new host may already have a valid session cookie, so the
+  /// "checking session" step has to be redone before deciding where to land.
+  void markUnknown() {
+    _userId = null;
+    _email = null;
+    _firstName = null;
+    _lastName = null;
+    _status = SessionStatus.unknown;
+    _reason = UnauthReason.none;
+    notifyListeners();
+  }
+
   /// Clears the [reason] after the login screen has shown the matching message,
   /// so it is not shown again on a later visit.
   void consumeReason() {

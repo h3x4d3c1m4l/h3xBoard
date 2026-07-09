@@ -45,8 +45,17 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
   /// The API base URL the app is currently pointed at (for the "Server" chip).
   String get serverUrl => _server.serverUrl;
 
-  /// Points the app at [url], persists it, and refreshes the server info.
-  Future<void> setServerUrl(String url) => _server.setServerUrl(url);
+  /// Points the app at [url], persists it, refreshes the server info, and then
+  /// re-runs the bootstrap: the new server may already have a valid session
+  /// cookie, in which case the user should land on their boards instead of
+  /// being asked to sign in again.
+  Future<void> setServerUrl(String url) async {
+    await _server.setServerUrl(url);
+    _session.markUnknown();
+    if (contextAccessor.buildContext.mounted) {
+      await contextAccessor.buildContext.router.replaceAll([InitializationRoute()]);
+    }
+  }
 
   void _syncFromServerInfo() {
     viewModel.setRegistrationAllowed(_server.serverInfo.value?.registrationAllowed ?? true);
