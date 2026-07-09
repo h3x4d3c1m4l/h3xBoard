@@ -436,10 +436,10 @@ class _NewBoardCard extends StatelessWidget {
             height: _cardHeight,
             decoration: ShapeDecoration(
               color: states.isPressed
-                  ? theme.accentColor.withValues(alpha: 0.12)
+                  ? Color.alphaBlend(theme.accentColor.withValues(alpha: 0.12), Colors.white)
                   : active
-                  ? theme.accentColor.withValues(alpha: 0.06)
-                  : Colors.transparent,
+                  ? Color.alphaBlend(theme.accentColor.withValues(alpha: 0.06), Colors.white)
+                  : Colors.white,
               shape: ContinuousRectangleBorder(
                 borderRadius: BorderRadius.circular(kControlCornerRadius),
                 side: BorderSide(
