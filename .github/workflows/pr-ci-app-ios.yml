@@ -23,14 +23,14 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         ref: ${{ github.event.pull_request.head.ref }}
 
     - name: Install build dependencies
       run: brew install ruby
 
-    - uses: webfactory/ssh-agent@v0.9.1
+    - uses: webfactory/ssh-agent@v0.10.0
       with:
         ssh-private-key: ${{ secrets.MATCH_CERTIFICATES_GIT_ACCESS_TOKEN }}
 
@@ -77,3 +77,19 @@ jobs:
       run: |
         rm -f ios/Podfile.lock
         flutter build ipa -v --no-pub --export-options-plist=ios/exportOptions.plist
+
+    - name: Commit changes to iOS build files and create PR
+      id: cpr
+      uses: peter-evans/create-pull-request@v8
+      with:
+        add-paths: ios
+        commit-message: Update iOS build files
+        title: Update iOS build files
+        body: This PR is created by the iOS CI pipeline, to help keeping the iOS build working.
+        branch: chore/update-ios-build-files
+
+    - name: Add comment to remind of created PR
+      if: ${{ steps.cpr.outputs.pull-request-number }}
+      uses: thollander/actions-comment-pull-request@v3
+      with:
+        message: I created PR \#${{ steps.cpr.outputs.pull-request-number }} for you to update the iOS build.
