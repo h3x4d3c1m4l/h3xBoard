@@ -12,6 +12,8 @@ concurrency:
 
 jobs:
   build:
+    name: Build
+
     if: ${{ startsWith(github.event.pull_request.head.ref, 'release/') != true && github.event.pull_request.draft != true }}
 
     runs-on: ubuntu-24.04
