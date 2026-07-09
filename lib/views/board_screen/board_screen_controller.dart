@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:auto_route/auto_route.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:get_it/get_it.dart';
+import 'package:h3xboard/app_router.gr.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_content.dart';
@@ -179,7 +181,6 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   /// replacing the inline error banner so the choice is always front-and-center.
   Future<void> _showLoadErrorDialog() async {
     final context = contextAccessor.buildContext;
-    final navigator = Navigator.of(context);
     final retry = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -201,8 +202,8 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     );
     if (retry ?? false) {
       unawaited(_loadBoard());
-    } else if (navigator.mounted) {
-      navigator.pop();
+    } else {
+      await _goToBoards();
     }
   }
 
@@ -281,7 +282,6 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     _isClosing = true;
     try {
       final context = contextAccessor.buildContext;
-      final navigator = Navigator.of(context);
 
       if (_saveDirty || _activeSave != null) {
         BuildContext? dialogContext;
@@ -320,9 +320,32 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
           }
         }
       }
-      if (navigator.mounted) navigator.pop();
+      await _goToBoards();
     } finally {
       _isClosing = false;
+    }
+  }
+
+  /// Leaves the board for the boards overview, however the board was reached.
+  ///
+  /// A plain `pop()` only works when the overview is actually underneath us.
+  /// Reloading the web app on `/board/:id` (or following a deep link) bootstraps
+  /// straight into [BoardRoute] as the sole entry on the stack, and popping that
+  /// empties the navigator — the white screen. So pop only when there is
+  /// something to pop back to (which also lets the overview's `await pushRoute`
+  /// resume and refresh the list), and otherwise rebuild the stack from scratch.
+  ///
+  /// Pageless routes are ignored: any dialog this controller opened is already
+  /// dismissed by the time we get here, and an open one must not be mistaken for
+  /// a page to return to.
+  Future<void> _goToBoards() async {
+    final context = contextAccessor.buildContext;
+    if (!context.mounted) return;
+    final router = context.router;
+    if (router.canPop(ignorePagelessRoutes: true)) {
+      router.pop();
+    } else {
+      await router.replaceAll([const BoardsRoute()]);
     }
   }
 
