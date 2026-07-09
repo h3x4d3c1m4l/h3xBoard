@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Detect Flutter version
       uses: kuhnroyal/flutter-fvm-config-action@v3
@@ -60,7 +60,7 @@ jobs:
         flutter build appbundle -v --no-pub
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: app-bundle
         path: build/app/outputs/bundle/release/app-release.aab
@@ -75,10 +75,10 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Download artifact
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v8
       with:
         name: app-bundle
 
