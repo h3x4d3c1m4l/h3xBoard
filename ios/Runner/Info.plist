@@ -26,6 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>H3xboard does not use the camera. This entry is required because the file picker component links Apple's media picker APIs.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>H3xboard does not use your location. This entry is required because the file picker component links Apple's media picker APIs.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>H3xboard needs access to your photo library so you can place your own images on a board.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
