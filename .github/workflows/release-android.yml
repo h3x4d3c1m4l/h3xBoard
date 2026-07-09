@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Check code and build app bundle
+    name: Build
 
     if: ${{ github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/') }}
 
