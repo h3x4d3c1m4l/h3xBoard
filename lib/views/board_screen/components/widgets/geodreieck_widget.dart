@@ -16,6 +16,16 @@ class GeodreieckWidget extends StatelessWidget {
   // that triangle tightly (no empty area below the apex).
   static const Size naturalSize = Size(160, 88);
 
+  // The set square's actual outline: full-width top edge plus the two hypotenuses
+  // meeting at the apex. Used to hit-test the body so that pointers over the
+  // transparent corners (outside this triangle) fall through to the drawing
+  // canvas instead of being swallowed by the widget's rectangular bounding box.
+  static final Path outline = Path()
+    ..moveTo(0, 0)
+    ..lineTo(naturalSize.width, 0)
+    ..lineTo(naturalSize.width / 2, naturalSize.width / 2)
+    ..close();
+
   const GeodreieckWidget({super.key});
 
   @override
@@ -172,6 +182,12 @@ class _GeodreieckPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+
+  // Only the painted triangle absorbs pointers; the transparent corners of the
+  // bounding box report no hit, so drawing strokes pass through them. (Without
+  // this, CustomPainter.hitTest defaults to `true` for the whole rectangle.)
+  @override
+  bool? hitTest(Offset position) => GeodreieckWidget.outline.contains(position);
 
 }
 
