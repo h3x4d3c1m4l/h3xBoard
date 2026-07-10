@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
 
 /// A patched copy of fluent_ui 4.16.0's `MenuFlyout` / `MenuFlyoutSubItem`
 /// (`lib/src/controls/flyouts/menu_flyout.dart`).
@@ -25,15 +26,24 @@ const _kDefaultMenuPadding = EdgeInsetsDirectional.symmetric(vertical: 2);
 /// area) rather than from the item margin — fluent's `itemMargin` sits outside
 /// each item's `HoverButton`, so using it for spacing leaves dead, unclickable
 /// gaps between rows.
-const _kMenuTileMargin = EdgeInsetsDirectional.symmetric(horizontal: 4, vertical: 1);
+const _kMenuTileMargin = EdgeInsetsDirectional.symmetric(horizontal: kMenuItemHorizontalMargin, vertical: 1);
 
 /// Vertical padding added around each item's label, growing the highlighted &
 /// tappable row into a comfortable touch target (≈40px tall).
 const _kMenuTileTextPadding = EdgeInsetsDirectional.symmetric(vertical: 7);
 
-/// Renders a single [MenuFlyoutItem]-style row as a [FlyoutListTile] with a
-/// generous, fully-clickable padding. Shared by leaf items and sub-item rows so
-/// every menu row reads and behaves the same.
+/// Renders a single [MenuFlyoutItem]-style row with a generous, fully-clickable
+/// padding. Shared by leaf items and sub-item rows so every menu row reads and
+/// behaves the same.
+///
+/// This is a trimmed reimplementation of fluent's [FlyoutListTile] (which hard-
+/// codes a `BorderRadius.circular(4)` rounded-rect highlight). The row's
+/// hover/pressed highlight uses a [ContinuousRectangleBorder] at
+/// [kMenuItemCornerRadius] instead, so it stays concentric with — and part of
+/// the same squircle family as — the menu's own continuous border. The layout
+/// (icon gutter, paddings, foreground colors) mirrors [FlyoutListTile] so
+/// spacing and alignment are unchanged; the selected indicator strip is dropped
+/// because the app never renders it (`showSelectedIndicator: false`).
 ///
 /// [useIconPlaceholder] reserves the leading-icon column for items without an
 /// icon so their labels still line up with icon-bearing siblings (mirrors
@@ -50,23 +60,86 @@ Widget _buildAppMenuTile(
   bool selected = false,
   bool closeAfterClick = true,
 }) {
-  return FlyoutListTile(
-    margin: _kMenuTileMargin,
-    selected: selected,
-    showSelectedIndicator: false,
-    icon: leading ?? (useIconPlaceholder ? const Icon(null) : null),
-    text: Padding(padding: _kMenuTileTextPadding, child: text),
-    trailing: trailing == null
-        ? null
-        : IconTheme.merge(data: const IconThemeData(size: 12), child: trailing),
-    onPressed: onPressed == null
-        ? null
-        : () {
-            if (closeAfterClick) Navigator.of(context).maybePop();
-            onPressed();
-          },
+  final icon = leading ?? (useIconPlaceholder ? const Icon(null) : null);
+  final resolvedTrailing = trailing == null
+      ? null
+      : IconTheme.merge(data: const IconThemeData(size: 12), child: trailing);
+  final onTap = onPressed == null
+      ? null
+      : () {
+          if (closeAfterClick) Navigator.of(context).maybePop();
+          onPressed();
+        };
+
+  // The highlight's corner matches the menu's own continuous corner, inset by
+  // the tile margin (see kMenuItemCornerRadius). A focus ring reuses the same
+  // radius — FocusThemeData only takes a BorderRadius, so it stays a plain
+  // rounded rect, but it only shows under keyboard focus.
+  final highlightShape = ContinuousRectangleBorder(borderRadius: BorderRadius.circular(kMenuItemCornerRadius));
+  final focusRadius = BorderRadius.circular(kMenuItemCornerRadius);
+
+  return HoverButton(
+    onPressed: onTap,
     onLongPress: onLongPress,
     focusNode: focusNode,
+    builder: (context, states) {
+      final theme = FluentTheme.of(context);
+      // A selected row (e.g. the parent of an open sub-menu) reads as hovered so
+      // it stays lit while its sub-menu is open.
+      final effectiveStates = selected ? {WidgetState.hovered} : states;
+      final foregroundColor = ButtonThemeData.buttonForegroundColor(context, effectiveStates);
+
+      final content = DecoratedBox(
+        decoration: ShapeDecoration(
+          color: ButtonThemeData.uncheckedInputColor(theme, effectiveStates, transparentWhenNone: true),
+          shape: highlightShape,
+        ),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(top: 4, bottom: 4, start: 10, end: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 10),
+                  child: IconTheme.merge(
+                    data: IconThemeData(size: 16, color: foregroundColor),
+                    child: icon,
+                  ),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 10),
+                  child: DefaultTextStyle.merge(
+                    style: TextStyle(fontSize: 14, letterSpacing: -0.15, color: foregroundColor),
+                    child: Padding(padding: _kMenuTileTextPadding, child: text),
+                  ),
+                ),
+              ),
+              if (resolvedTrailing != null)
+                DefaultTextStyle.merge(
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.resources.controlStrokeColorDefault,
+                    height: 0.7,
+                  ),
+                  child: resolvedTrailing,
+                ),
+            ],
+          ),
+        ),
+      );
+
+      return Padding(
+        padding: _kMenuTileMargin,
+        child: FocusBorder(
+          focused: states.isFocused,
+          renderOutside: true,
+          style: FocusThemeData(borderRadius: focusRadius),
+          child: content,
+        ),
+      );
+    },
   );
 }
 
