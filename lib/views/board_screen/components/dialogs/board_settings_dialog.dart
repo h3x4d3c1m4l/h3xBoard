@@ -9,12 +9,12 @@ import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/color_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
-import 'package:h3xboard/widgets/app_menu_flyout.dart';
-import 'package:h3xboard/widgets/color_picker_dialog.dart';
-import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
-import 'package:h3xboard/widgets/stable_flyout_controller.dart';
-import 'package:h3xboard/widgets/themable_panel_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
+import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:scroll_edge_hint/scroll_edge_hint.dart';
 

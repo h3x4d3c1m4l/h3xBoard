@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
-import 'package:h3xboard/widgets/continuous_text_box.dart';
-import 'package:h3xboard/widgets/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// A tappable chip showing which server the app is connected to and

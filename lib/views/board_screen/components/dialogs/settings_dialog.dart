@@ -10,7 +10,7 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/app_settings_enums.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
-import 'package:h3xboard/widgets/themable_panel_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scroll_edge_hint/scroll_edge_hint.dart';

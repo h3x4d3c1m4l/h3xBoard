@@ -22,6 +22,39 @@ After modifying any `@observable`, `@action`, `@freezed`, or `@RoutePage()` anno
 
 ## Architecture
 
+### Widget File Placement
+
+Every widget lives under `lib/views/`. The only exception is `lib/board_app.dart` (the app shell) and `lib/external_display/`, which is a second app entry point running in its own isolate and keeps its views next to its protocol.
+
+Placement is **scoped by usage** — a widget lives as close to its only consumer as possible, and only moves up to the shared folder once a second screen needs it:
+
+```text
+lib/views/
+  base/                     # ScreenBase & friends — closed; nothing goes in or out
+  components/               # widgets used by 2+ screens (or by the app shell)
+    dialogs/
+    flyouts/
+    server_chip.dart        # loose files are fine when there is no group to form
+  <some>_screen/
+    <some>_screen.dart      # the four-file Screen pattern (see below)
+    <some>_screen_controller.dart
+    <some>_screen_view.dart
+    <some>_screen_view_model.dart
+    components/             # widgets used only by this screen
+      dialogs/
+      toolbars/
+```
+
+Rules of thumb:
+
+- **One consumer → screen's own `components/`. Two or more (or the app shell) → the shared `lib/views/components/`.** Applies to primitives too: a "generic-looking" widget that only one screen actually uses stays scoped to that screen. Promote it when a second consumer appears, don't pre-promote it.
+- Subfolders (`buttons/`, `dialogs/`, `toolbars/`, ...) are created inside a `components/` folder when there is **more than one** of a kind, or when there is a good reason to group.
+- Imports point inward-to-outward: a screen-scoped widget may import from `lib/views/components/`, never the reverse.
+
+### Moving files
+
+`build.yaml` scopes each code generator with `generate_for` globs that name **concrete paths** (e.g. `lib/routing/app_router.dart`, `lib/config/env.dart`). Moving or renaming such a file silently disables its generator — the build still "succeeds" and the stale generated output on disk keeps working until someone runs `build_runner clean`. **When you move a file, grep `build.yaml` for its old path and update the glob.**
+
 ### Screen Pattern
 
 Every screen is composed of four classes wired together by `ScreenBase<TViewModel, TController, TView>` (in `lib/views/base/`):

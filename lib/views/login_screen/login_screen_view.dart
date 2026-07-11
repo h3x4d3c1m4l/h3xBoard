@@ -4,10 +4,10 @@ import 'package:get_it/get_it.dart';
 import 'package:h3xboard/models/api/server_info.dart';
 import 'package:h3xboard/services/server_controller.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
+import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/server_chip.dart';
 import 'package:h3xboard/views/login_screen/login_screen_controller.dart';
 import 'package:h3xboard/views/login_screen/login_screen_view_model.dart';
-import 'package:h3xboard/widgets/continuous_text_box.dart';
-import 'package:h3xboard/widgets/server_chip.dart';
 
 class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenController> {
 

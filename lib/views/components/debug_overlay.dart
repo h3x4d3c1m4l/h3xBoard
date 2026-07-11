@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/routing/app_router.dart';
-import 'package:h3xboard/widgets/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 
 /// Wraps the whole app and listens for Alt+D to pop up a developer-only debug
 /// panel from anywhere in the application. The panel is just a list of buttons

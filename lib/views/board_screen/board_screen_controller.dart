@@ -25,8 +25,8 @@ import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_di
 import 'package:h3xboard/views/board_screen/drawing_serialization.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
-import 'package:h3xboard/widgets/themable_content_dialog.dart';
-import 'package:h3xboard/widgets/themable_loading_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
 import 'package:mobx/mobx.dart';
 
 // Matches 'Board N' titles to pick the next auto-number.

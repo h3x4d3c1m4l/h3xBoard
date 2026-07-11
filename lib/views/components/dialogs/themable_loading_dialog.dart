@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:h3xboard/widgets/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 
 /// A loading indicator styled like a [ThemableContentDialog]: a themed card
 /// (rounded corners, accent tint, animated background pattern) holding a spinner

@@ -3,9 +3,9 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
-import 'package:h3xboard/widgets/app_menu_flyout.dart';
-import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
-import 'package:h3xboard/widgets/stable_flyout_controller.dart';
+import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 // Header dimensions in OS pixels. board.dart multiplies these by boardPixelRatio

@@ -8,7 +8,7 @@ import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/file_summary.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
-import 'package:h3xboard/widgets/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Virtual folders that file uploads are organised into. Decoupled from any single

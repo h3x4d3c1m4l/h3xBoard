@@ -1,11 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/board.dart';
-import 'package:h3xboard/widgets/app_menu_flyout.dart';
-import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
-import 'package:h3xboard/widgets/continuous_text_box.dart';
-import 'package:h3xboard/widgets/stable_flyout_controller.dart';
-import 'package:h3xboard/widgets/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 // Continuous (squircle) corner radii for the sub-board tab bar. The tab's inner

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get_it/get_it.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:h3xboard/routing/app_router.gr.dart';
@@ -11,21 +10,11 @@ import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/pending_navigation_service.dart';
 import 'package:h3xboard/services/server_controller.dart';
 import 'package:h3xboard/services/session_controller.dart';
-import 'package:h3xboard/widgets/server_chip.dart';
-import 'package:h3xboard/widgets/themable_loading_dialog.dart';
+import 'package:h3xboard/views/base/screen_controller_base.dart';
+import 'package:h3xboard/views/initialization_screen/initialization_screen_view_model.dart';
 import 'package:polly_dart/polly_dart.dart';
 
-@RoutePage()
-class InitializationScreen extends StatefulWidget {
-
-  const InitializationScreen({super.key});
-
-  @override
-  State<InitializationScreen> createState() => _InitializationScreenState();
-
-}
-
-class _InitializationScreenState extends State<InitializationScreen> {
+class InitializationScreenController extends ScreenControllerBase<InitializationScreenViewModel> {
 
   // Exponential backoff with max 15 seconds wait time and infinite tries.
   static final ResiliencePipeline pipeline = ResiliencePipelineBuilder()
@@ -39,16 +28,19 @@ class _InitializationScreenState extends State<InitializationScreen> {
   /// current one is stale and must not touch state or navigate.
   ResilienceContext? _runContext;
 
-  String? nowInitializingText;
-  int retries = 0;
+  bool _disposed = false;
 
-  @override
-  void initState() {
-    super.initState();
+  InitializationScreenController({
+    required super.viewModel,
+    required super.contextAccessor,
+  }) {
     unawaited(initializeApp());
   }
 
-  /// Bootstraps the app, then navigates to Start (authenticated) or Login (not).
+  /// The API base URL the app is currently pointed at (for the "Server" chip).
+  String get serverUrl => _server.serverUrl;
+
+  /// Bootstraps the app, then navigates to Boards (authenticated) or Login (not).
   /// Navigation is driven explicitly via [replaceAll] rather than the guard's
   /// `reevaluateListenable` redirect, which does not fire reliably when a
   /// deep-link route from a web reload is still pending.
@@ -64,12 +56,23 @@ class _InitializationScreenState extends State<InitializationScreen> {
     }
   }
 
+  /// Re-points the app at [url] and restarts the bootstrap from scratch, so the
+  /// session check runs again against the new server (which may well have a
+  /// valid cookie of its own).
+  Future<void> changeServer(String url) async {
+    _runContext?.cancel();
+    await _server.setServerUrl(url);
+    if (_disposed) return;
+    viewModel.resetProgress();
+    await initializeApp();
+  }
+
   Future<void> _bootstrap(ResilienceContext runContext) async {
-    bool isStale() => !mounted || _runContext != runContext;
+    bool isStale() => _disposed || _runContext != runContext;
 
     await pipeline.execute(
       (ctx) async {
-        updateProgress(runContext, nowInitializingText: 'Loading fonts ...', retries: ctx.attemptNumber);
+        _updateProgress(runContext, nowInitializingText: 'Loading fonts ...', retries: ctx.attemptNumber);
         await GoogleFonts.pendingFonts([GoogleFonts.ubuntu(), GoogleFonts.patrickHand()]);
       },
       context: runContext,
@@ -83,7 +86,7 @@ class _InitializationScreenState extends State<InitializationScreen> {
     // a network failure throws and is retried by the pipeline.
     final user = await pipeline.execute(
       (ctx) async {
-        updateProgress(runContext, nowInitializingText: 'Checking session ...', retries: ctx.attemptNumber);
+        _updateProgress(runContext, nowInitializingText: 'Checking session ...', retries: ctx.attemptNumber);
         return authService.whoami();
       },
       context: runContext,
@@ -96,14 +99,14 @@ class _InitializationScreenState extends State<InitializationScreen> {
       // Drive navigation explicitly: a web reload funnels here with the original
       // protected route still pending, so relying on the guard's reevaluate +
       // redirectUntil chain leaves us stranded. replaceAll resets the stack.
-      if (mounted) await context.router.replaceAll([LoginRoute()]);
+      await _replaceAll([LoginRoute()]);
       return;
     }
 
-    // Establish the socket before flipping the status, so Start lands ready.
+    // Establish the socket before flipping the status, so Boards lands ready.
     await pipeline.execute(
       (ctx) async {
-        updateProgress(runContext, nowInitializingText: 'Connecting to server ...', retries: ctx.attemptNumber);
+        _updateProgress(runContext, nowInitializingText: 'Connecting to server ...', retries: ctx.attemptNumber);
         await wsClient.connect();
       },
       context: runContext,
@@ -120,74 +123,32 @@ class _InitializationScreenState extends State<InitializationScreen> {
       firstName: user.firstName,
       lastName: user.lastName,
     );
-    if (mounted) {
-      final pending = GetIt.I<PendingNavigationService>().consumePendingRoute();
-      await context.router.replaceAll([pending ?? const BoardsRoute()]);
-    }
-  }
-
-  /// Re-points the app at [url] and restarts the bootstrap from scratch, so the
-  /// session check runs again against the new server (which may well have a
-  /// valid cookie of its own).
-  Future<void> changeServer(String url) async {
-    _runContext?.cancel();
-    await _server.setServerUrl(url);
-    if (!mounted) return;
-    setState(() {
-      nowInitializingText = null;
-      retries = 0;
-    });
-    await initializeApp();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: FluentTheme.of(context).scaffoldBackgroundColor,
-      child: SizedBox.expand(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ThemableLoadingDialog(
-              message: nowInitializingText ?? 'Initializing ...',
-              subtitle: retries > 0 ? 'Tried $retries time(s)' : null,
-            ),
-            // The escape hatch when the configured server is unreachable: the
-            // steps above would otherwise retry forever with no way to see, let
-            // alone fix, which host the app is stuck on.
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 368),
-              child: ServerChip(
-                serverUrl: _server.serverUrl,
-                onEdit: () => showServerUrlDialog(
-                  context,
-                  currentUrl: _server.serverUrl,
-                  onSave: changeServer,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    final pending = GetIt.I<PendingNavigationService>().consumePendingRoute();
+    await _replaceAll([pending ?? const BoardsRoute()]);
   }
 
   /// Applies progress from [runContext]'s run, ignoring updates from a run that
   /// has since been superseded by a server change.
-  void updateProgress(
+  void _updateProgress(
     ResilienceContext runContext, {
     required String nowInitializingText,
     required int retries,
   }) {
-    if (!mounted || _runContext != runContext) return;
-    setState(() {
-      this.nowInitializingText = nowInitializingText;
-      this.retries = retries;
-    });
+    if (_disposed || _runContext != runContext) return;
+    viewModel.setProgress(nowInitializingText: nowInitializingText, retries: retries);
+  }
+
+  /// Resets the navigation stack to [routes], unless the screen is already gone.
+  /// Guarded on [_disposed] first: [BuildContextAccessor.buildContext] is only
+  /// assigned once the screen has built, so it must not be touched before then.
+  Future<void> _replaceAll(List<PageRouteInfo<dynamic>> routes) async {
+    if (_disposed || !contextAccessor.buildContext.mounted) return;
+    await contextAccessor.buildContext.router.replaceAll(routes);
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _runContext?.cancel();
     super.dispose();
   }

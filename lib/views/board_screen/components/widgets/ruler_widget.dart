@@ -3,7 +3,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
-import 'package:h3xboard/widgets/app_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 // Blank margin on each end of the bar so the scale doesn't run flush to the edges.

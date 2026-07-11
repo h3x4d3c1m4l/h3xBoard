@@ -8,8 +8,8 @@ import 'package:h3xboard/routing/app_router.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/theme/theme.dart';
-import 'package:h3xboard/views/connection_banner.dart';
-import 'package:h3xboard/views/debug/debug_overlay.dart';
+import 'package:h3xboard/views/components/connection_banner.dart';
+import 'package:h3xboard/views/components/debug_overlay.dart';
 
 class BoardApp extends StatefulWidget {
 

@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
-import 'package:h3xboard/widgets/stable_flyout_controller.dart';
+import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ToolButton extends StatefulWidget {

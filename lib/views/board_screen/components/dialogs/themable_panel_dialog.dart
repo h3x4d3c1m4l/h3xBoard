@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:h3xboard/widgets/themable_content_dialog.dart' show DecorationClipper;
+import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart' show DecorationClipper;
 
 /// A plain, content-focused dialog for larger panels (Add Widget, Board
 /// Settings): a calm white surface with a defined gray border and no animated

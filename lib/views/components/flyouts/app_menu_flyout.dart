@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 
 /// A patched copy of fluent_ui 4.16.0's `MenuFlyout` / `MenuFlyoutSubItem`
 /// (`lib/src/controls/flyouts/menu_flyout.dart`).

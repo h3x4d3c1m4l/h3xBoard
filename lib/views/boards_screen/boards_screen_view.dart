@@ -14,12 +14,12 @@ import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
-import 'package:h3xboard/widgets/app_menu_flyout.dart';
-import 'package:h3xboard/widgets/continuous_menu_flyout.dart';
-import 'package:h3xboard/widgets/continuous_text_box.dart';
-import 'package:h3xboard/widgets/scroll_shadow.dart';
-import 'package:h3xboard/widgets/stable_flyout_controller.dart';
-import 'package:h3xboard/widgets/themable_content_dialog.dart';
+import 'package:h3xboard/views/boards_screen/components/scroll_shadow.dart';
+import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
+import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
