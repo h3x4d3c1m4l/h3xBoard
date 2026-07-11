@@ -3,11 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
-import 'package:h3xboard/app_router.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
+import 'package:h3xboard/routing/app_router.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/session_controller.dart';
-import 'package:h3xboard/theme.dart';
+import 'package:h3xboard/theme/theme.dart';
 import 'package:h3xboard/views/connection_banner.dart';
 import 'package:h3xboard/views/debug/debug_overlay.dart';
 

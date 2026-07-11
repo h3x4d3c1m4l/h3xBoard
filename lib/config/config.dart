@@ -1,4 +1,4 @@
-import 'package:h3xboard/config_web.dart' if (dart.library.io) 'package:h3xboard/config_io.dart';
+import 'package:h3xboard/config/config_web.dart' if (dart.library.io) 'package:h3xboard/config/config_io.dart';
 
 class Config {
 

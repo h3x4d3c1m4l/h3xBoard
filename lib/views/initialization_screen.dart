@@ -4,7 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get_it/get_it.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
-import 'package:h3xboard/app_router.gr.dart';
+import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';

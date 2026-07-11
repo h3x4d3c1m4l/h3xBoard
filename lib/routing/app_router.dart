@@ -1,5 +1,5 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:h3xboard/app_router.gr.dart';
+import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/routing/auth_guard.dart';
 
 @AutoRouterConfig()

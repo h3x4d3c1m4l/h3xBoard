@@ -1,6 +1,6 @@
 import 'dart:js_interop';
 
-import 'package:h3xboard/env.dart';
+import 'package:h3xboard/config/env.dart';
 
 @JS('h3xboardConfig')
 external _RuntimeConfig? get _runtimeConfig;

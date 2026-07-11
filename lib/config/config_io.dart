@@ -1,4 +1,4 @@
-import 'package:h3xboard/env.dart';
+import 'package:h3xboard/config/env.dart';
 
 /// Non-web (Android/iOS/desktop) implementation: there is no injected JS
 /// runtime config, so the compile-time value is authoritative:

@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:h3xboard/external_display/external_display_view.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
-import 'package:h3xboard/theme.dart';
+import 'package:h3xboard/theme/theme.dart';
 
 /// The root widget of the external-display isolate. Kept minimal (no router, no
 /// GetIt, no API client): it shares nothing with the main app except the theme

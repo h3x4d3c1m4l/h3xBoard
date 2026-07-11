@@ -32,14 +32,14 @@ targets:
       auto_route_generator:auto_route_generator:
         generate_for:
           include:
-            - lib/app_router.dart
+            - lib/routing/app_router.dart
             - lib/views/**.dart
 
       # auto_route aggregator — only the @AutoRouterConfig router file.
       auto_route_generator:auto_router_generator:
         generate_for:
           include:
-            - lib/app_router.dart
+            - lib/routing/app_router.dart
 
       # Chopper API services.
       chopper_generator:chopper_generator:
@@ -51,4 +51,4 @@ targets:
       envied_generator:envied:
         generate_for:
           include:
-            - lib/env.dart
+            - lib/config/env.dart

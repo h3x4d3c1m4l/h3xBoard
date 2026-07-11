@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:get_it/get_it.dart';
-import 'package:h3xboard/app_router.gr.dart';
+import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/pending_navigation_service.dart';
 import 'package:h3xboard/services/session_controller.dart';
 
