@@ -13,6 +13,7 @@ get-deps:
   fvm flutter pub get
 
 gen-code:
+  fvm dart run build_runner clean
   fvm dart run build_runner build
 
 gen-l10n:

@@ -44,9 +44,9 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
         if (didPop) return;
         unawaited(controller.requestClose());
       },
-      // ScaffoldPage paints the theme's scaffoldBackgroundColor behind the board.
       child: ScaffoldPage(
         padding: EdgeInsets.zero,
+        resizeToAvoidBottomInset: false,
         content: _buildContent(),
       ),
     );
