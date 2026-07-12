@@ -52,4 +52,4 @@ jobs:
     # PR builds are unsigned (debug-key fallback in android/app/build.gradle.kts) so
     # they run without repository secrets, including on pull requests from forks.
     - name: Build app bundle
-      run: flutter build appbundle -v --no-pub
+      run: flutter build appbundle -v --no-pub --dart-define API_URL=${{ vars.DEFAULT_API_URL }}

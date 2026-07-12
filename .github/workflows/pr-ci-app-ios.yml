@@ -78,7 +78,7 @@ jobs:
     - name: Build project
       run: |
         rm -f ios/Podfile.lock
-        flutter build ipa -v --no-pub --export-options-plist=ios/exportOptions.plist
+        flutter build ipa -v --no-pub --export-options-plist=ios/exportOptions.plist --dart-define API_URL=${{ vars.DEFAULT_API_URL }}
 
     - name: Commit changes to iOS build files and create PR
       id: cpr

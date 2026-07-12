@@ -53,7 +53,7 @@ jobs:
       run: flutter analyze
 
     - name: Build web
-      run: flutter build web --release --wasm --base-href '/h3xBoard/'
+      run: flutter build web --release --wasm --base-href '/h3xBoard/' --dart-define API_URL=${{ vars.DEFAULT_API_URL }}
 
     - name: Fix permissions
       run: |

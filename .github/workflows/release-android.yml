@@ -58,7 +58,7 @@ jobs:
         STORE_FILE: /tmp/keystore.jks
       run: |
         echo $ANDROID_KEYSTORE | base64 --decode > $STORE_FILE
-        flutter build appbundle -v --no-pub --build-number=${{ github.run_number }}
+        flutter build appbundle -v --no-pub --build-number=${{ github.run_number }} --dart-define API_URL=${{ vars.DEFAULT_API_URL }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v7

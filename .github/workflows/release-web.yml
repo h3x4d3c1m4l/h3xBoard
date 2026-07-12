@@ -53,7 +53,7 @@ jobs:
     - name: Build web app
       run: |
         rm -rf build/web
-        flutter build web -v --no-pub --release --wasm --build-number=${{ github.run_number }}
+        flutter build web -v --no-pub --release --wasm --build-number=${{ github.run_number }} --dart-define API_URL=${{ vars.DEFAULT_API_URL }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v7
