@@ -72,7 +72,7 @@ jobs:
     - name: Build project
       run: |
         rm -f ios/Podfile.lock
-        flutter build ipa -v --no-pub --export-options-plist=ios/exportOptions.plist --build-number=${{ github.run_number }}
+        flutter build ipa -v --no-pub --export-options-plist=ios/exportOptions.plist --build-number=${{ github.run_number }} --dart-define=${{ env.DEFAULT_API_URL }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v7
