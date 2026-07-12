@@ -43,6 +43,7 @@ dependencies:
   external_display: 0.4.3
   cookie_jar: 4.0.9
   flutter_secure_storage: 10.3.1
+  pretty_qr_code: 3.6.0
 
 dependency_overrides:
   external_display:

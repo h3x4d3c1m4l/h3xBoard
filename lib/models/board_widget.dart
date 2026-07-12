@@ -11,6 +11,8 @@ enum AnalogClockStyle { trainStation, classic, roman }
 
 enum RulerUnit { cm, inch }
 
+enum QrCodeStyle { smooth, square, dots }
+
 // Off, or which "1 square = X" mapping the ruler is locked to. Only [cmPerSquare]
 // is valid when the unit is cm; only the two inch mappings are valid for inch.
 enum RulerGridMatch { none, cmPerSquare, quarterInchPerSquare, fifthInchPerSquare }
@@ -149,6 +151,11 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     double? width,
     double? height,
   }) = ImageConfig;
+
+  const factory BoardWidgetConfig.qrCode({
+    @Default('') String data,
+    @Default(QrCodeStyle.smooth) QrCodeStyle style,
+  }) = QrCodeConfig;
 
   factory BoardWidgetConfig.fromJson(Map<String, dynamic> json) => _$BoardWidgetConfigFromJson(json);
 
