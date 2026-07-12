@@ -156,9 +156,21 @@ class ImageWidgetDescriptor extends BoardWidgetDescriptor {
       return;
     }
 
+    onChange(await configForFile(fileService, fileId, base: config));
+  }
+
+  /// The [ImageConfig] showing the file [fileId]: its id plus the frame the image
+  /// should occupy, derived from the image's own intrinsic size. Shared by the
+  /// settings-menu picker and the board's drag & drop, so a dropped image is
+  /// framed at its true aspect ratio just like a picked one.
+  static Future<ImageConfig> configForFile(
+    H3xBoardFileService fileService,
+    String fileId, {
+    ImageConfig base = const ImageConfig(),
+  }) async {
     final intrinsic = await _intrinsicSize(fileService, fileId);
     final framed = intrinsic == null ? null : _framedSize(intrinsic);
-    onChange(config.copyWith(fileId: fileId, width: framed?.width, height: framed?.height));
+    return base.copyWith(fileId: fileId, width: framed?.width, height: framed?.height);
   }
 
   // Scales the image's intrinsic pixel size to fit within the default frame while

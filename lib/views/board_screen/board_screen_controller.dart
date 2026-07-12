@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:auto_route/auto_route.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
@@ -21,7 +22,9 @@ import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/board_settings_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/image_widget.dart';
 import 'package:h3xboard/views/board_screen/drawing_serialization.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
@@ -506,19 +509,22 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     onAddWidget(config);
   }
 
-  void onAddWidget(BoardWidgetConfig config) {
+  /// Adds [config] to the board, centred at the canvas-space point [at] when
+  /// given (a drag & drop lands the widget under the cursor) and dead-centre
+  /// otherwise.
+  void onAddWidget(BoardWidgetConfig config, {Offset? at}) {
     // Switch to Select mode so the new widget's header is visible and it can be
     // positioned right away (headers are hidden in Draw/Erase mode).
     if (viewModel.drawingTools.activeTool != SelectableEditTool.pointer) {
       onSelectableToolButtonPressed(SelectableEditTool.pointer);
     }
-    final id = '${config.runtimeType}_${DateTime.now().millisecondsSinceEpoch}';
+    final id = _newWidgetId(config);
     final boardId = viewModel.activeSubBoardId;
     final widget = BoardWidget(
       id: id,
       config: config,
-      x: 960,
-      y: 540,
+      x: at?.dx ?? 960,
+      y: at?.dy ?? 540,
       visibleOnBoardIds: [boardId],
     );
     viewModel.addBoardWidget(widget);
@@ -532,6 +538,103 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
         viewModel.addBoardWidget(widget);
       },
     ));
+  }
+
+  // Widget ids are stamped from the clock, so adding several in one go (dropping
+  // a handful of images) would hand out the same id twice within a millisecond.
+  // Disambiguate against the ids already on the board.
+  String _newWidgetId(BoardWidgetConfig config) {
+    final base = '${config.runtimeType}_${DateTime.now().millisecondsSinceEpoch}';
+    if (viewModel.boardWidgets.every((w) => w.id != base)) return base;
+    var suffix = 1;
+    while (viewModel.boardWidgets.any((w) => w.id == '${base}_$suffix')) {
+      suffix++;
+    }
+    return '${base}_$suffix';
+  }
+
+  /// Handles image files dragged onto the board from the desktop. They are
+  /// uploaded to the shared [imagesFolder] — dropping is a shortcut, so it never
+  /// asks where to put them.
+  ///
+  /// Dropping onto an existing image widget ([onto]) replaces its picture;
+  /// dropping anywhere else creates one new image widget per file at
+  /// [canvasPosition], fanned out so they don't land exactly on top of each other.
+  Future<void> onImagesDropped(
+    List<DropItem> files,
+    Offset canvasPosition, {
+    BoardWidget? onto,
+  }) async {
+    if (files.isEmpty) return;
+    final context = contextAccessor.buildContext;
+
+    BuildContext? dialogContext;
+    unawaited(showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        dialogContext = ctx;
+        return ThemableLoadingDialog(message: localizations.board_dropUploading);
+      },
+    ));
+
+    final DroppedUploadResult result;
+    try {
+      result = await uploadDroppedImages(
+        fileService: _fileService,
+        // Replacing one widget's picture with several images is meaningless, so
+        // only the first of a multi-file drop is used in that case.
+        files: onto == null ? files : files.take(1).toList(),
+        path: imagesFolder,
+      );
+      // Each upload becomes an ImageConfig carrying the image's own frame, so a
+      // dropped photo keeps its aspect ratio exactly like a picked one.
+      final configs = <ImageConfig>[];
+      for (final file in result.uploaded) {
+        configs.add(await ImageWidgetDescriptor.configForFile(
+          _fileService,
+          file.id,
+          base: onto?.config is ImageConfig ? onto!.config as ImageConfig : const ImageConfig(),
+        ));
+      }
+
+      if (onto != null) {
+        final config = configs.firstOrNull;
+        if (config != null) onWidgetConfigChanged(onto.id, config);
+      } else {
+        for (var i = 0; i < configs.length; i++) {
+          onAddWidget(configs[i], at: canvasPosition + Offset(i * 24, i * 24));
+        }
+      }
+    } finally {
+      if (dialogContext != null && dialogContext!.mounted) {
+        Navigator.of(dialogContext!).pop();
+      }
+    }
+
+    if (result.hasProblems) await _showDropProblem(result);
+  }
+
+  Future<void> _showDropProblem(DroppedUploadResult result) async {
+    final context = contextAccessor.buildContext;
+    if (!context.mounted) return;
+    final message = result.failed > 0
+        ? (result.serverMessage ?? localizations.board_dropError)
+        : localizations.filePicker_dropSkipped;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => ThemableContentDialog(
+        severity: ThemableDialogSeverity.error,
+        title: Text(localizations.board_dropErrorTitle),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(localizations.board_dropErrorOk),
+          ),
+        ],
+      ),
+    );
   }
 
   void onAddSubBoard() {

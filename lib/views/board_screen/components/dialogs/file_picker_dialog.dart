@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
@@ -77,6 +78,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
   List<FileSummary>? _files;
   bool _loadError = false;
   bool _busy = false;
+  bool _dragging = false;
   String? _errorMessage;
 
   @override
@@ -127,7 +129,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
       final summary = await widget.fileService.upload(
         bytes: bytes,
         fileName: file.name,
-        contentType: _contentTypeForExtension(file.extension),
+        contentType: contentTypeForImageExtension(file.extension),
         path: _path,
       );
       if (!mounted) return;
@@ -149,6 +151,49 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
 
   void _select(String fileId) => Navigator.of(context).pop(FilePickerResult(fileId));
 
+  // Files dragged in from the desktop land in the folder currently being browsed
+  // — the same destination the "Upload here…" button uses.
+  Future<void> _onDrop(DropDoneDetails details) async {
+    if (_busy) return;
+    setState(() {
+      _dragging = false;
+      _busy = true;
+      _errorMessage = null;
+    });
+
+    final result = await uploadDroppedImages(
+      fileService: widget.fileService,
+      files: details.files,
+      path: _path,
+    );
+    if (!mounted) return;
+
+    // A single dropped image behaves like picking one: it is selected and the
+    // dialog closes. Several at once stay in the grid so the user can see them
+    // all and choose, since only one can be returned.
+    if (result.uploaded.length == 1 && !result.hasProblems) {
+      Navigator.of(context).pop(FilePickerResult(result.uploaded.single.id));
+      return;
+    }
+
+    // Refresh first: _loadFolder clears the error message, so setting it
+    // afterwards is what keeps a partial failure ("3 uploaded, 1 too large")
+    // visible next to the files that did make it.
+    if (result.uploaded.isNotEmpty) await _loadFolder(_path);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _errorMessage = _dropErrorMessage(result);
+    });
+  }
+
+  String? _dropErrorMessage(DroppedUploadResult result) {
+    final loc = context.localizations;
+    if (result.failed > 0) return result.serverMessage ?? loc.filePicker_uploadError;
+    if (result.skipped > 0) return loc.filePicker_dropSkipped;
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.localizations;
@@ -156,17 +201,30 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
     return ThemableContentDialog(
       constraints: const BoxConstraints(maxWidth: 560, maxHeight: 680),
       title: Text(widget.title),
-      content: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-        child: SizedBox(
-          height: 400,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildBreadcrumb(loc),
-              const SizedBox(height: 8),
-              Expanded(child: _buildBody(loc)),
-            ],
+      content: DropTarget(
+        enable: !_busy,
+        onDragEntered: (_) => setState(() => _dragging = true),
+        onDragExited: (_) => setState(() => _dragging = false),
+        onDragDone: _onDrop,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+          child: SizedBox(
+            height: 400,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildBreadcrumb(loc),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(child: _buildBody(loc)),
+                      if (_dragging) Positioned.fill(child: _DropHint(message: loc.filePicker_dropHere)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -402,6 +460,38 @@ class _ThumbError extends StatelessWidget {
 
 }
 
+/// Overlay shown while files are being dragged over the dialog, covering the grid
+/// so the drop destination (the folder being browsed) is unmistakable.
+class _DropHint extends StatelessWidget {
+
+  final String message;
+
+  const _DropHint({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.accentColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.accentColor, width: 2),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.upload, size: 32, color: theme.accentColor),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center, style: theme.typography.bodyStrong),
+          ],
+        ),
+      ),
+    );
+  }
+
+}
+
 class _CenteredMessage extends StatelessWidget {
 
   final IconData icon;
@@ -430,9 +520,106 @@ class _CenteredMessage extends StatelessWidget {
 
 }
 
+/// The outcome of [uploadDroppedImages]. Callers render their own error UI, so
+/// the failures are reported as counts plus the server's message (when it gave
+/// one, e.g. "file too large") rather than as pre-formatted text.
+class DroppedUploadResult {
+
+  /// Metadata of the files that made it to the server, in drop order.
+  final List<FileSummary> uploaded;
+
+  /// Dropped entries that were never attempted: folders and non-image files.
+  final int skipped;
+
+  /// Uploads that were attempted but threw.
+  final int failed;
+
+  /// The first server-provided error message, or `null` when the failures (if
+  /// any) were not server-reported.
+  final String? serverMessage;
+
+  const DroppedUploadResult({
+    required this.uploaded,
+    required this.skipped,
+    required this.failed,
+    required this.serverMessage,
+  });
+
+  bool get hasProblems => skipped > 0 || failed > 0;
+
+}
+
+/// Uploads every image among [files] into the virtual folder [path], skipping
+/// folders and non-image files. Shared by the drop targets on [FilePickerDialog]
+/// and on the board, so both agree on what counts as an image and how the
+/// content type is derived.
+///
+/// Uploads run sequentially: dropping a dozen photos should not open a dozen
+/// concurrent multipart requests. One file failing does not abort the rest.
+Future<DroppedUploadResult> uploadDroppedImages({
+  required H3xBoardFileService fileService,
+  required List<DropItem> files,
+  required String path,
+}) async {
+  final uploaded = <FileSummary>[];
+  var skipped = 0;
+  var failed = 0;
+  String? serverMessage;
+
+  for (final file in files) {
+    // A dropped folder arrives as a DropItemDirectory; there is nothing to upload.
+    if (file is DropItemDirectory) {
+      skipped++;
+      continue;
+    }
+    final contentType = _imageContentTypeFor(file);
+    if (contentType == null) {
+      skipped++;
+      continue;
+    }
+    try {
+      final bytes = await file.readAsBytes();
+      uploaded.add(await fileService.upload(
+        bytes: bytes,
+        fileName: file.name,
+        contentType: contentType,
+        path: path,
+      ));
+    } on H3xBoardApiException catch (e) {
+      // Surfaces the server's own wording, e.g. the maxUploadBytes limit.
+      failed++;
+      serverMessage ??= e.message;
+    } catch (_) {
+      failed++;
+    }
+  }
+
+  return DroppedUploadResult(
+    uploaded: uploaded,
+    skipped: skipped,
+    failed: failed,
+    serverMessage: serverMessage,
+  );
+}
+
+/// The image MIME type to upload [file] as, or `null` when it is not an image.
+/// The browser fills in the dropped file's MIME type, so trust that first and
+/// fall back to the extension for the platforms (and edge cases) that don't.
+String? _imageContentTypeFor(DropItem file) {
+  final mimeType = file.mimeType;
+  if (mimeType != null && mimeType.startsWith('image/')) return mimeType;
+
+  final name = file.name;
+  final dot = name.lastIndexOf('.');
+  if (dot < 0) return null;
+
+  final contentType = contentTypeForImageExtension(name.substring(dot + 1));
+  return contentType.startsWith('image/') ? contentType : null;
+}
+
 /// Maps a file extension to an image MIME type for the upload's content type
 /// (file_picker does not surface the MIME). Falls back to a generic binary type.
-String _contentTypeForExtension(String? extension) {
+String contentTypeForImageExtension(String? extension) {
   switch (extension?.toLowerCase()) {
     case 'png':
       return 'image/png';
