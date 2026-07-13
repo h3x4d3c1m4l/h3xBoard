@@ -189,6 +189,23 @@ class _MenuButtonState extends State<_MenuButton> {
           ),
           const MenuFlyoutSeparator(),
           MenuFlyoutItem(
+            leading: const Icon(LucideIcons.share2),
+            text: Text(context.localizations.boardTopBar_export),
+            onPressed: () {
+              Navigator.of(context).pop();
+              unawaited(widget.controller.onShowExportDialog());
+            },
+          ),
+          MenuFlyoutItem(
+            leading: const Icon(LucideIcons.printer),
+            text: Text(context.localizations.boardTopBar_print),
+            onPressed: () {
+              Navigator.of(context).pop();
+              unawaited(widget.controller.onShowPrintDialog());
+            },
+          ),
+          const MenuFlyoutSeparator(),
+          MenuFlyoutItem(
             leading: const Icon(LucideIcons.layoutDashboard),
             text: Text(context.localizations.boardTopBar_boards),
             onPressed: () {

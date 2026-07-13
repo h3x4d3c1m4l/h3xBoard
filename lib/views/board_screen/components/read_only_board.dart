@@ -2,10 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
-import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
-import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
-import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
-import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
+import 'package:h3xboard/views/board_screen/components/board_canvas.dart';
 
 /// A non-interactive render of a single board: background, drawing strokes, and
 /// widgets, at the canonical 1920×1080 canvas scaled with [FittedBox]. Used by
@@ -47,45 +44,18 @@ class ReadOnlyBoard extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: FittedBox(
-            child: SizedBox(
-              width: 1920,
-              height: 1080,
-              child: Stack(
-                children: [
-                  IgnorePointer(
-                    child: DrawingBoard(
-                      controller: drawingController,
-                      background: _buildBackground(),
-                      boardPanEnabled: false,
-                      boardScaleEnabled: false,
-                    ),
-                  ),
-                  for (final bw in widgets)
-                    ManipulableBoardWidget(
-                      key: ValueKey(bw.id),
-                      boardWidget: bw,
-                      // Read-only mirror: widgets never edit their own config here.
-                      child: descriptorFor(bw.config).buildWidget(bw.config, (_) {}),
-                    ),
-                ],
-              ),
+            // No file service: this runs in the external display's own app entry
+            // point, which has no way to download a background image (see
+            // [BoardCanvas.fileService]).
+            child: BoardCanvas(
+              board: board,
+              widgets: widgets,
+              drawingController: drawingController,
             ),
           ),
         ),
       ),
     );
-  }
-
-  Widget _buildBackground() {
-    final Widget box = BackgroundLines(
-      pattern: board.linePattern,
-      spacing: board.lineSpacing,
-      color: board.lineColor,
-      child: const SizedBox(width: 1920, height: 1080),
-    );
-    return board.isChalkboard
-        ? ChalkboardBackground(boardColor: board.backgroundColor, child: box)
-        : ColoredBox(color: board.backgroundColor, child: box);
   }
 
 }

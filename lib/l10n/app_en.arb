@@ -223,6 +223,10 @@
     "@boardTopBar_exit": {},
     "boardTopBar_boards": "Boards",
     "@boardTopBar_boards": {},
+    "boardTopBar_export": "Export…",
+    "@boardTopBar_export": {},
+    "boardTopBar_print": "Print…",
+    "@boardTopBar_print": {},
     "addWidgetMenu_digitalClock": "Digital clock",
     "@addWidgetMenu_digitalClock": {},
     "addWidgetMenu_analogClock": "Analog clock",
@@ -568,5 +572,75 @@
     "externalDisplay_selectBoard_title": "No board selected",
     "@externalDisplay_selectBoard_title": {},
     "externalDisplay_selectBoard_message": "Select a board on your device to display it on this screen.",
-    "@externalDisplay_selectBoard_message": {}
+    "@externalDisplay_selectBoard_message": {},
+    "exportDialog_title": "Export board",
+    "@exportDialog_title": {},
+    "exportDialog_pdfSubtitle": "All selected sub-boards land in a single PDF, one page each.",
+    "@exportDialog_pdfSubtitle": {},
+    "exportDialog_imageSubtitle": "{count, plural, =0{Select at least one sub-board to export} =1{Exports as 1 image file} other{Exports as {count} image files, one per sub-board}}",
+    "@exportDialog_imageSubtitle": {
+        "placeholders": {
+            "count": { "type": "int" }
+        }
+    },
+    "exportDialog_format": "Format",
+    "@exportDialog_format": {},
+    "exportDialog_formatPdf": "PDF",
+    "@exportDialog_formatPdf": {},
+    "exportDialog_formatPng": "PNG",
+    "@exportDialog_formatPng": {},
+    "exportDialog_formatJpeg": "JPEG",
+    "@exportDialog_formatJpeg": {},
+    "exportDialog_quality": "Quality",
+    "@exportDialog_quality": {},
+    "exportDialog_qualityLow": "Low",
+    "@exportDialog_qualityLow": {},
+    "exportDialog_qualityNormal": "Normal",
+    "@exportDialog_qualityNormal": {},
+    "exportDialog_qualityHigh": "High",
+    "@exportDialog_qualityHigh": {},
+    "exportDialog_qualityResolution": "{width}×{height}",
+    "@exportDialog_qualityResolution": {
+        "placeholders": {
+            "width": { "type": "int" },
+            "height": { "type": "int" }
+        }
+    },
+    "exportDialog_subBoards": "Sub-boards",
+    "@exportDialog_subBoards": {},
+    "exportDialog_subBoardsSelected": "{selected} of {total} selected",
+    "@exportDialog_subBoardsSelected": {
+        "placeholders": {
+            "selected": { "type": "int" },
+            "total": { "type": "int" }
+        }
+    },
+    "exportDialog_selectAll": "All",
+    "@exportDialog_selectAll": {},
+    "exportDialog_cancel": "Cancel",
+    "@exportDialog_cancel": {},
+    "exportDialog_export": "Export",
+    "@exportDialog_export": {},
+    "exportDialog_exporting": "Preparing your export…",
+    "@exportDialog_exporting": {},
+    "exportDialog_errorTitle": "Export failed",
+    "@exportDialog_errorTitle": {},
+    "exportDialog_errorMessage": "The board could not be exported. Please try again.",
+    "@exportDialog_errorMessage": {},
+    "exportDialog_errorOk": "OK",
+    "@exportDialog_errorOk": {},
+    "printDialog_title": "Print board",
+    "@printDialog_title": {},
+    "printDialog_subtitle": "Each selected sub-board is printed on its own page.",
+    "@printDialog_subtitle": {},
+    "printDialog_cancel": "Cancel",
+    "@printDialog_cancel": {},
+    "printDialog_print": "Print",
+    "@printDialog_print": {},
+    "printDialog_preparing": "Preparing your print…",
+    "@printDialog_preparing": {},
+    "printDialog_errorTitle": "Printing failed",
+    "@printDialog_errorTitle": {},
+    "printDialog_errorMessage": "The board could not be printed. Please try again.",
+    "@printDialog_errorMessage": {}
 }

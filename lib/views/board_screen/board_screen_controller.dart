@@ -15,6 +15,7 @@ import 'package:h3xboard/models/board_content.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
+import 'package:h3xboard/services/board_export_service.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/services/fullscreen_service.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
@@ -22,7 +23,9 @@ import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/board_settings_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/export_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/print_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/image_widget.dart';
 import 'package:h3xboard/views/board_screen/drawing_serialization.dart';
@@ -56,6 +59,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   final FullscreenService _fullscreenService = FullscreenService();
   final _wsClient = GetIt.I<H3xBoardApiClient>();
   final _fileService = GetIt.I<H3xBoardFileService>();
+  late final BoardExportService _exportService = BoardExportService(fileService: _fileService);
 
   // Pending state captured at gesture/stroke boundaries for history recording.
   List<Map<String, dynamic>>? _drawingBefore;
@@ -161,7 +165,9 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     try {
       final detail = await _wsClient.getBoard(boardId);
       final content = detail.data.isEmpty ? const BoardContent() : BoardContent.fromJson(detail.data);
-      viewModel.setInitialContent(content);
+      viewModel
+        ..setBoardTitle(detail.title)
+        ..setInitialContent(content);
       drawingController.clear();
       final saved = viewModel.restoreSubBoardDrawing(viewModel.activeSubBoardId);
       if (saved.isNotEmpty) {
@@ -959,6 +965,118 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   void _ensureActiveBoard(String boardId) {
     if (viewModel.activeSubBoardId != boardId) onSwitchSubBoard(boardId);
+  }
+
+  // Export & print handlers
+
+  /// Asks what to export, then renders it and hands it to the share sheet — which
+  /// on web is a plain file download.
+  Future<void> onShowExportDialog() async {
+    final context = contextAccessor.buildContext;
+    final request = await showExportDialog(
+      context,
+      subBoards: viewModel.subBoards.toList(),
+      activeSubBoardId: viewModel.activeSubBoardId,
+    );
+    if (request == null) return;
+    await _runExport(
+      progressMessage: localizations.exportDialog_exporting,
+      errorTitle: localizations.exportDialog_errorTitle,
+      errorMessage: localizations.exportDialog_errorMessage,
+      run: (context, content) => _exportService.share(
+        context: context,
+        content: content,
+        boardTitle: viewModel.boardTitle,
+        request: request,
+        // iPad shows the share sheet as a popover anchored to this rect.
+        sharePositionOrigin: _shareOrigin(context),
+      ),
+    );
+  }
+
+  /// Asks which sub-boards to print, then opens the platform print preview.
+  Future<void> onShowPrintDialog() async {
+    final context = contextAccessor.buildContext;
+    final request = await showPrintDialog(
+      context,
+      subBoards: viewModel.subBoards.toList(),
+      activeSubBoardId: viewModel.activeSubBoardId,
+    );
+    if (request == null) return;
+    await _runExport(
+      progressMessage: localizations.printDialog_preparing,
+      errorTitle: localizations.printDialog_errorTitle,
+      errorMessage: localizations.printDialog_errorMessage,
+      run: (context, content) => _exportService.print(
+        context: context,
+        content: content,
+        boardTitle: viewModel.boardTitle,
+        request: request,
+      ),
+    );
+  }
+
+  /// Runs [run] against a fresh snapshot of the board behind a modal spinner
+  /// (rasterising a 4K, multi-page board is slow enough to need one), surfacing
+  /// any failure as an error dialog.
+  ///
+  /// The snapshot comes from [_buildContent], so the active sub-board's live
+  /// strokes — which only reach the view model on a sub-board switch — are
+  /// included.
+  Future<void> _runExport({
+    required String progressMessage,
+    required String errorTitle,
+    required String errorMessage,
+    required Future<void> Function(BuildContext context, BoardContent content) run,
+  }) async {
+    final context = contextAccessor.buildContext;
+    final content = _buildContent();
+
+    BuildContext? dialogContext;
+    unawaited(showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        dialogContext = ctx;
+        return ThemableLoadingDialog(message: progressMessage);
+      },
+    ));
+
+    var failed = false;
+    try {
+      await run(context, content);
+    } catch (_) {
+      failed = true;
+    } finally {
+      if (dialogContext != null && dialogContext!.mounted) {
+        Navigator.of(dialogContext!).pop();
+      }
+    }
+
+    if (!failed || !context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => ThemableContentDialog(
+        severity: ThemableDialogSeverity.error,
+        title: Text(errorTitle),
+        content: Text(errorMessage),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(localizations.exportDialog_errorOk),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The rect the iPad share popover points at: the board screen itself, so the
+  /// sheet lands centred. Any non-empty on-screen rect will do; an absent or
+  /// zero-size one makes the sheet throw on iPad.
+  Rect? _shareOrigin(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
   }
 
 }

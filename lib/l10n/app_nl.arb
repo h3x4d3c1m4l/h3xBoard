@@ -223,6 +223,10 @@
     "@boardTopBar_exit": {},
     "boardTopBar_boards": "Borden",
     "@boardTopBar_boards": {},
+    "boardTopBar_export": "Exporteren…",
+    "@boardTopBar_export": {},
+    "boardTopBar_print": "Afdrukken…",
+    "@boardTopBar_print": {},
     "addWidgetMenu_digitalClock": "Digitale klok",
     "@addWidgetMenu_digitalClock": {},
     "addWidgetMenu_analogClock": "Analoge klok",
@@ -568,5 +572,75 @@
     "externalDisplay_selectBoard_title": "Geen bord geselecteerd",
     "@externalDisplay_selectBoard_title": {},
     "externalDisplay_selectBoard_message": "Selecteer een bord op je apparaat om het op dit scherm te tonen.",
-    "@externalDisplay_selectBoard_message": {}
+    "@externalDisplay_selectBoard_message": {},
+    "exportDialog_title": "Bord exporteren",
+    "@exportDialog_title": {},
+    "exportDialog_pdfSubtitle": "Alle geselecteerde subborden komen in één pdf, elk op een eigen pagina.",
+    "@exportDialog_pdfSubtitle": {},
+    "exportDialog_imageSubtitle": "{count, plural, =0{Selecteer minstens één subbord om te exporteren} =1{Wordt geëxporteerd als 1 afbeelding} other{Wordt geëxporteerd als {count} afbeeldingen, één per subbord}}",
+    "@exportDialog_imageSubtitle": {
+        "placeholders": {
+            "count": { "type": "int" }
+        }
+    },
+    "exportDialog_format": "Formaat",
+    "@exportDialog_format": {},
+    "exportDialog_formatPdf": "PDF",
+    "@exportDialog_formatPdf": {},
+    "exportDialog_formatPng": "PNG",
+    "@exportDialog_formatPng": {},
+    "exportDialog_formatJpeg": "JPEG",
+    "@exportDialog_formatJpeg": {},
+    "exportDialog_quality": "Kwaliteit",
+    "@exportDialog_quality": {},
+    "exportDialog_qualityLow": "Laag",
+    "@exportDialog_qualityLow": {},
+    "exportDialog_qualityNormal": "Normaal",
+    "@exportDialog_qualityNormal": {},
+    "exportDialog_qualityHigh": "Hoog",
+    "@exportDialog_qualityHigh": {},
+    "exportDialog_qualityResolution": "{width}×{height}",
+    "@exportDialog_qualityResolution": {
+        "placeholders": {
+            "width": { "type": "int" },
+            "height": { "type": "int" }
+        }
+    },
+    "exportDialog_subBoards": "Subborden",
+    "@exportDialog_subBoards": {},
+    "exportDialog_subBoardsSelected": "{selected} van {total} geselecteerd",
+    "@exportDialog_subBoardsSelected": {
+        "placeholders": {
+            "selected": { "type": "int" },
+            "total": { "type": "int" }
+        }
+    },
+    "exportDialog_selectAll": "Alle",
+    "@exportDialog_selectAll": {},
+    "exportDialog_cancel": "Annuleren",
+    "@exportDialog_cancel": {},
+    "exportDialog_export": "Exporteren",
+    "@exportDialog_export": {},
+    "exportDialog_exporting": "Bezig met exporteren…",
+    "@exportDialog_exporting": {},
+    "exportDialog_errorTitle": "Exporteren mislukt",
+    "@exportDialog_errorTitle": {},
+    "exportDialog_errorMessage": "Het bord kon niet worden geëxporteerd. Probeer het opnieuw.",
+    "@exportDialog_errorMessage": {},
+    "exportDialog_errorOk": "OK",
+    "@exportDialog_errorOk": {},
+    "printDialog_title": "Bord afdrukken",
+    "@printDialog_title": {},
+    "printDialog_subtitle": "Elk geselecteerd subbord wordt op een eigen pagina afgedrukt.",
+    "@printDialog_subtitle": {},
+    "printDialog_cancel": "Annuleren",
+    "@printDialog_cancel": {},
+    "printDialog_print": "Afdrukken",
+    "@printDialog_print": {},
+    "printDialog_preparing": "Bezig met voorbereiden…",
+    "@printDialog_preparing": {},
+    "printDialog_errorTitle": "Afdrukken mislukt",
+    "@printDialog_errorTitle": {},
+    "printDialog_errorMessage": "Het bord kon niet worden afgedrukt. Probeer het opnieuw.",
+    "@printDialog_errorMessage": {}
 }

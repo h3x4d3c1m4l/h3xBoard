@@ -32,6 +32,10 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @readonly
   String _activeSubBoardId = 'board_1';
 
+  // The board's own name (not a sub-board's). Only used to name exported files.
+  @readonly
+  String _boardTitle = '';
+
   @readonly
   bool _isLoading = true;
 
@@ -90,6 +94,11 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @action
   void setLoadError(String? value) {
     _loadError = value;
+  }
+
+  @action
+  void setBoardTitle(String value) {
+    _boardTitle = value;
   }
 
   @action
