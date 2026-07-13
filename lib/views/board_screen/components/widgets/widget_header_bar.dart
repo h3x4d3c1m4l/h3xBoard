@@ -11,9 +11,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 // Header dimensions in OS pixels. board.dart multiplies these by boardPixelRatio
 // to obtain the canvas-space placement (see _headerPlacementFor), so rendering and
 // hit-testing stay in sync.
-const double kHeaderWidth = 250.0;
-const double kHeaderHeight = 34.0;
-const double kHeaderGap = 6.0; // gap between widget bounding box and header
+// Sized for touch: the icon buttons below are 40x40, comfortably above the ~44dp
+// minimum once the bar is rendered at its constant OS-pixel size.
+const double kHeaderWidth = 320.0;
+const double kHeaderHeight = 48.0;
+const double kHeaderGap = 8.0; // gap between widget bounding box and header
 
 // Matches the selection overlay accent colour.
 const Color _kAccent = Color(0xFF3B82F6);
@@ -69,13 +71,39 @@ class WidgetHeaderBar extends StatelessWidget {
     return a;
   }
 
+  // Axis-aligned bounds of the rotated bar. The layout box is sized to this rather than
+  // to [size], because a RenderBox rejects a hit outside its own bounds before descending
+  // into its children: with a tight [size] box the corners of the rotated bar paint
+  // outside it and the buttons there are unreachable, at any non-zero rotation. Transform
+  // itself hit-tests fine outside its bounds — it's the ancestors that need the room.
+  Size get _rotatedBounds {
+    final c = math.cos(_readableRotation).abs();
+    final s = math.sin(_readableRotation).abs();
+    return Size(size.width * c + size.height * s, size.width * s + size.height * c);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: center.dx - size.width / 2,
-      top: center.dy - size.height / 2,
-      width: size.width,
-      height: size.height,
+    final bounds = _rotatedBounds;
+    // The bar sits at its Use-mode anchor (instant, so it tracks drags) and eases the
+    // extra Arrange push — animating the mode change only. The push moves the Positioned
+    // rect itself rather than translating inside it: a Transform would paint the bar at
+    // the pushed-out spot while its layout box stayed behind, and the hit would be
+    // rejected there, leaving the buttons dead in Arrange mode.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: isArranging ? 1.0 : 0.0),
+      duration: _kToggleAnim,
+      curve: Curves.easeOut,
+      builder: (context, t, child) {
+        final anchor = center + arrangeDelta * t;
+        return Positioned(
+          left: anchor.dx - bounds.width / 2,
+          top: anchor.dy - bounds.height / 2,
+          width: bounds.width,
+          height: bounds.height,
+          child: child!,
+        );
+      },
       // Hidden bars must not absorb pointers (they'd block strokes underneath
       // while fading out), so gate hit-testing on visibility and fade opacity.
       child: IgnorePointer(
@@ -84,13 +112,16 @@ class WidgetHeaderBar extends StatelessWidget {
           opacity: visible ? 1.0 : 0.0,
           duration: _kFadeAnim,
           curve: Curves.easeInOut,
-          // The bar sits at its Use-mode anchor (instant, so it tracks drags) and eases
-          // the extra Arrange push via the translate — animating the mode change only.
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: isArranging ? 1.0 : 0.0),
-            duration: _kToggleAnim,
-            curve: Curves.easeOut,
-            builder: (context, t, child) => Transform.translate(offset: arrangeDelta * t, child: child),
+          // Centred in the bounding box at the bar's true size. It has to be an OverflowBox
+          // and not a Center+SizedBox: the bounding box is *narrower* than the bar once the
+          // rotation passes 45°, so the box's max constraints would squash the bar instead
+          // of letting it overhang. The slack around the bar stays transparent to pointers —
+          // nothing here absorbs hits, so strokes still land in the empty corners.
+          child: OverflowBox(
+            minWidth: size.width,
+            maxWidth: size.width,
+            minHeight: size.height,
+            maxHeight: size.height,
             child: Transform.rotate(
               angle: _readableRotation,
               // Opaque so the header absorbs pointers and the drawing layer beneath it does
@@ -124,20 +155,20 @@ class WidgetHeaderBar extends StatelessWidget {
           BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
-          const Icon(LucideIcons.gripVertical, size: 16, color: Color(0xFF94A3B8)),
-          const SizedBox(width: 4),
+          const Icon(LucideIcons.gripVertical, size: 20, color: Color(0xFF94A3B8)),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF334155)),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF334155)),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           _HeaderSettingsButton(settingsBuilder: settingsBuilder),
           const SizedBox(width: 2),
           // Animate between the manipulate toggle and the Done pill.
@@ -213,13 +244,13 @@ class _HeaderIconButtonState extends State<_HeaderIconButton> {
           behavior: HitTestBehavior.opaque,
           onTap: widget.onTap,
           child: Container(
-            width: 26,
-            height: 26,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: _hovered ? const Color(0x0F000000) : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(widget.icon, size: 16, color: color),
+            child: Icon(widget.icon, size: 20, color: color),
           ),
         ),
       ),
@@ -278,13 +309,13 @@ class _HeaderSettingsButtonState extends State<_HeaderSettingsButton> {
             behavior: HitTestBehavior.opaque,
             onTap: _openSettings,
             child: Container(
-              width: 26,
-              height: 26,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: _hovered ? const Color(0x0F000000) : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(LucideIcons.settings, size: 16, color: _hovered ? _kAccent : const Color(0xFF475569)),
+              child: Icon(LucideIcons.settings, size: 20, color: _hovered ? _kAccent : const Color(0xFF475569)),
             ),
           ),
         ),
@@ -310,8 +341,8 @@ class _DonePill extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          height: 26,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             // Match the resting background of a primary FilledButton exactly: it
             // uses the accent's brightness-adjusted brush, not the raw accentColor
@@ -322,11 +353,11 @@ class _DonePill extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(LucideIcons.check, size: 14, color: Colors.white),
-              const SizedBox(width: 4),
+              const Icon(LucideIcons.check, size: 16, color: Colors.white),
+              const SizedBox(width: 6),
               Text(
                 label,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
               ),
             ],
           ),

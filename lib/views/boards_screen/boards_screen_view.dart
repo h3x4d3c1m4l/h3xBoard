@@ -26,9 +26,28 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 // The product name shown in the top bar (a proper noun, not localized).
 const _appName = 'h3xBoard';
 
-// Card sizing for the responsive board grid.
-const double _cardWidth = 300;
+// Card sizing for the responsive board grid. Cards stretch to divide the
+// available width evenly; _minCardWidth only decides how many fit per row.
+const double _minCardWidth = 260;
 const double _cardSpacing = 16;
+
+// The thumbnail keeps the board's 16:9 canvas aspect ratio, so a card's height
+// follows from its width: thumbnail + footer.
+const double _cardFooterHeight = 65;
+
+double _thumbHeightFor(double cardWidth) => cardWidth * 9 / 16;
+
+double _cardHeightFor(double cardWidth) => _thumbHeightFor(cardWidth) + _cardFooterHeight;
+
+/// Widest card width that still fits [count] cards (plus gaps) into [available].
+double _cardWidthFor(double available, int count) =>
+    (available - _cardSpacing * (count - 1)) / count;
+
+/// How many cards fit on one row at [_minCardWidth] or wider.
+int _columnsFor(double available) {
+  final columns = (available + _cardSpacing) ~/ (_minCardWidth + _cardSpacing);
+  return columns < 1 ? 1 : columns;
+}
 
 class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScreenController> {
   const BoardsScreenView({required super.viewModel, required super.controller, required super.contextAccessor});
@@ -391,20 +410,29 @@ class _BoardsBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Wrap(
-                  spacing: _cardSpacing,
-                  runSpacing: _cardSpacing,
-                  children: [
-                    _NewBoardCard(onPressed: onCreateBoard),
-                    for (final board in boards)
-                      _BoardCard(
-                        board: board,
-                        reloadToken: reloadToken,
-                        onOpen: () => onOpenBoard(board),
-                        onDelete: () => onDeleteBoard(board),
-                        onRename: (newTitle) => onRenameBoard(board, newTitle),
-                      ),
-                  ],
+                // Cards divide the row evenly rather than sitting at a fixed
+                // width, so the grid always spans the full content width and the
+                // column count follows the viewport.
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cardWidth = _cardWidthFor(constraints.maxWidth, _columnsFor(constraints.maxWidth));
+                    return Wrap(
+                      spacing: _cardSpacing,
+                      runSpacing: _cardSpacing,
+                      children: [
+                        _NewBoardCard(width: cardWidth, onPressed: onCreateBoard),
+                        for (final board in boards)
+                          _BoardCard(
+                            board: board,
+                            width: cardWidth,
+                            reloadToken: reloadToken,
+                            onOpen: () => onOpenBoard(board),
+                            onDelete: () => onDeleteBoard(board),
+                            onRename: (newTitle) => onRenameBoard(board, newTitle),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -417,23 +445,24 @@ class _BoardsBody extends StatelessWidget {
 
 /// The dashed "create a fresh board" tile, always shown first in the grid.
 class _NewBoardCard extends StatelessWidget {
+  final double width;
   final VoidCallback onPressed;
 
-  const _NewBoardCard({required this.onPressed});
+  const _NewBoardCard({required this.width, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final loc = context.localizations;
     return SizedBox(
-      width: _cardWidth,
+      width: width,
       child: HoverButton(
         onPressed: onPressed,
         builder: (context, states) {
           final active = states.isHovered || states.isFocused || states.isPressed;
           return AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            height: _cardHeight,
+            height: _cardHeightFor(width),
             decoration: ShapeDecoration(
               color: states.isPressed
                   ? Color.alphaBlend(theme.accentColor.withValues(alpha: 0.12), Colors.white)
@@ -471,14 +500,11 @@ class _NewBoardCard extends StatelessWidget {
   }
 }
 
-// A card's total height: thumbnail area + footer.
-const double _thumbHeight = 176;
-const double _cardHeight = _thumbHeight + 65;
-
 /// A single board tile: screenshot thumbnail on top, title + "edited" time and a
 /// "…" menu (delete) below. The whole card opens the board.
 class _BoardCard extends StatelessWidget {
   final BoardSummary board;
+  final double width;
   final int reloadToken;
   final VoidCallback onOpen;
   final VoidCallback onDelete;
@@ -486,6 +512,7 @@ class _BoardCard extends StatelessWidget {
 
   const _BoardCard({
     required this.board,
+    required this.width,
     required this.reloadToken,
     required this.onOpen,
     required this.onDelete,
@@ -497,7 +524,7 @@ class _BoardCard extends StatelessWidget {
     final theme = FluentTheme.of(context);
     final loc = context.localizations;
     return SizedBox(
-      width: _cardWidth,
+      width: width,
       child: HoverButton(
         onPressed: onOpen,
         builder: (context, states) {
@@ -532,7 +559,7 @@ class _BoardCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SizedBox(
-                        height: _thumbHeight,
+                        height: _thumbHeightFor(width),
                         child: _BoardThumbnail(board: board, reloadToken: reloadToken),
                       ),
                       // Separator between the thumbnail and the footer, matching
