@@ -147,6 +147,8 @@
             "date": { "type": "String" }
         }
     },
+    "boardScreen_loading": "Loading board…",
+    "@boardScreen_loading": {},
     "boardScreen_loadErrorTitle": "Couldn't open this board",
     "@boardScreen_loadErrorTitle": {},
     "boardScreen_loadErrorMessage": "Something went wrong while loading the board. You can try again or go back to your boards.",

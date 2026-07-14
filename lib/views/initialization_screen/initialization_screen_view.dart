@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
+import 'package:h3xboard/views/components/animated_icon_pattern.dart';
 import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
 import 'package:h3xboard/views/components/server_chip.dart';
 import 'package:h3xboard/views/initialization_screen/initialization_screen_controller.dart';
@@ -16,6 +17,17 @@ class InitializationScreenView extends ScreenViewBase<InitializationScreenViewMo
 
   @override
   Widget get body {
+    return Stack(
+      children: [
+        // The same drifting pencil/eraser watermark the loading dialog carries,
+        // faint enough here to stay a page texture behind it.
+        const Positioned.fill(child: AnimatedIconPattern()),
+        _buildContent(),
+      ],
+    );
+  }
+
+  Widget _buildContent() {
     return SizedBox.expand(
       child: Observer(
         builder: (context) => Column(
@@ -25,9 +37,6 @@ class InitializationScreenView extends ScreenViewBase<InitializationScreenViewMo
               message: viewModel.nowInitializingText ?? 'Initializing ...',
               subtitle: viewModel.retries > 0 ? 'Tried ${viewModel.retries} time(s)' : null,
             ),
-            // The escape hatch when the configured server is unreachable: the
-            // steps above would otherwise retry forever with no way to see, let
-            // alone fix, which host the app is stuck on.
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 368),
               child: ServerChip(

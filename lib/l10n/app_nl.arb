@@ -147,6 +147,8 @@
             "date": { "type": "String" }
         }
     },
+    "boardScreen_loading": "Bord laden…",
+    "@boardScreen_loading": {},
     "boardScreen_loadErrorTitle": "Kan dit bord niet openen",
     "@boardScreen_loadErrorTitle": {},
     "boardScreen_loadErrorMessage": "Er ging iets mis bij het laden van het bord. Je kunt het opnieuw proberen of teruggaan naar je borden.",

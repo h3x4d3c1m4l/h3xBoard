@@ -13,6 +13,8 @@ import 'package:h3xboard/views/board_screen/components/board_scaffold.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/board_top_bar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/drawing_toolbar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dart';
+import 'package:h3xboard/views/components/animated_icon_pattern.dart';
+import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
 
 class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenController> {
   const BoardScreenView({required super.viewModel, required super.controller, required super.contextAccessor});
@@ -28,8 +30,12 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
   // cardBackgroundFillColorDefault is translucent (70% white), and the top bar
   // shows it over the scaffold background — so composite it the same way here to
   // get the exact opaque color the bar renders.
+  //
+  // While loading there is no top bar (see [_buildContent]), so the strip must go
+  // too — otherwise it lingers as a bar-colored band with no bar under it.
   @override
   Color? topSafeAreaColor(BuildContext context) {
+    if (viewModel.isLoading) return null;
     final theme = FluentTheme.of(context);
     return Color.alphaBlend(theme.resources.cardBackgroundFillColorDefault, theme.scaffoldBackgroundColor);
   }
@@ -56,7 +62,12 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
     return Observer(
       builder: (context) {
         if (viewModel.isLoading) {
-          return const Center(child: ProgressRing());
+          return Stack(
+            children: [
+              const Positioned.fill(child: AnimatedIconPattern()),
+              Center(child: ThemableLoadingDialog(message: localizations.boardScreen_loading)),
+            ],
+          );
         }
 
         // On a load failure the controller raises a modal dialog (Retry /
