@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/widgets.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
+import 'package:h3xboard/models/api/board_detail.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/cookies/cookie_store.dart';
@@ -10,6 +13,8 @@ import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
+import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
 
 // Matches 'Board N' titles to pick the next auto-number for a new board.
 final _boardTitleRegex = RegExp(r'^Board (\d+)$');
@@ -87,10 +92,77 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
   void onSearchChanged(String query) => viewModel.setSearchQuery(query);
 
   Future<void> openBoard(BoardSummary board) async {
-    await contextAccessor.buildContext.pushRoute(BoardRoute(boardId: board.id));
+    // Fetch the board here, behind a loading dialog, so the board screen opens
+    // already-loaded (mirroring how leaving a board shows a save dialog first).
+    final detail = await _fetchBoardForOpen(board.id);
+    if (detail == null) return; // load failed and the user backed out
+    final context = contextAccessor.buildContext;
+    if (!context.mounted) return;
+    await context.pushRoute(BoardRoute(boardId: board.id, preloadedDetail: detail));
     // Refresh quietly on return so edited titles/timestamps (and, over time, new
     // thumbnails) show up without a jarring spinner.
     await loadBoards(showSpinner: false);
+  }
+
+  /// Fetches a board while showing the modal loading dialog, retrying via an
+  /// error dialog on failure. Returns the loaded board, or `null` if the user
+  /// gave up. Mirrors [BoardScreenController]'s close/save dialog structure.
+  Future<BoardDetail?> _fetchBoardForOpen(String boardId) async {
+    while (true) {
+      final context = contextAccessor.buildContext;
+      if (!context.mounted) return null;
+
+      BuildContext? dialogContext;
+      unawaited(showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          dialogContext = ctx;
+          return ThemableLoadingDialog(message: localizations.boardsScreen_openingBoard);
+        },
+      ));
+
+      BoardDetail? detail;
+      try {
+        detail = await _wsClient.getBoard(boardId);
+      } catch (_) {
+        detail = null;
+      }
+
+      if (dialogContext != null && dialogContext!.mounted) {
+        Navigator.of(dialogContext!).pop();
+      }
+
+      if (detail != null) return detail;
+      if (!await _confirmRetryOpen()) return null;
+    }
+  }
+
+  /// Shows the board-open failure dialog (Retry / Cancel). Returns `true` to try
+  /// the load again, `false` to stay on the boards overview.
+  Future<bool> _confirmRetryOpen() async {
+    final context = contextAccessor.buildContext;
+    if (!context.mounted) return false;
+    final retry = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => ThemableContentDialog(
+        severity: ThemableDialogSeverity.error,
+        title: Text(localizations.boardsScreen_openErrorTitle),
+        content: Text(localizations.boardsScreen_openErrorMessage),
+        actions: [
+          Button(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(localizations.boardsScreen_openErrorCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(localizations.boardsScreen_retry),
+          ),
+        ],
+      ),
+    );
+    return retry ?? false;
   }
 
   Future<void> onDeleteBoard(BoardSummary board) async {
@@ -142,7 +214,9 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
       viewModel.setIsLoading(false);
       final context = contextAccessor.buildContext;
       if (context.mounted) {
-        await context.pushRoute(BoardRoute(boardId: board.id));
+        // createBoard already returns the full board, so hand it straight to the
+        // board screen — no need for it to re-fetch what we just made.
+        await context.pushRoute(BoardRoute(boardId: board.id, preloadedDetail: board));
       }
       await loadBoards(showSpinner: false);
     } on H3xBoardApiException catch (e) {

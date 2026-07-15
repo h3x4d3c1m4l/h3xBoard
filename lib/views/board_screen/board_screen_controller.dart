@@ -10,6 +10,7 @@ import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
+import 'package:h3xboard/models/api/board_detail.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_content.dart';
 import 'package:h3xboard/models/board_widget.dart';
@@ -92,6 +93,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     required this.boardId,
     required super.viewModel,
     required super.contextAccessor,
+    BoardDetail? preloadedDetail,
   }) {
     drawingController.setStyle(color: viewModel.drawingTools.activeColor);
     _fullscreenSubscription = _fullscreenService.onChange.listen(viewModel.setFullscreen);
@@ -100,7 +102,16 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     // Refresh the thumbnail on a slow cadence while editing (no-op when clean).
     _screenshotTimer = Timer.periodic(_screenshotInterval, (_) => unawaited(_captureScreenshotIfDirty()));
     _setUpExternalMirror();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadBoard());
+    if (preloadedDetail != null) {
+      // The boards overview already fetched this board (and showed the loading
+      // UI), so apply it straight away — the board paints on the first frame with
+      // no second spinner.
+      _applyDetail(preloadedDetail);
+      viewModel.setIsLoading(false);
+    } else {
+      // Entered directly (deep link / web reload): load the board ourselves.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadBoard());
+    }
   }
 
   // External display mirroring
@@ -159,14 +170,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       ..setIsLoading(true)
       ..setLoadError(null);
     try {
-      final detail = await _wsClient.getBoard(boardId);
-      final content = detail.data.isEmpty ? const BoardContent() : BoardContent.fromJson(detail.data);
-      viewModel.setInitialContent(content);
-      drawingController.clear();
-      final saved = viewModel.restoreSubBoardDrawing(viewModel.activeSubBoardId);
-      if (saved.isNotEmpty) {
-        drawingController.addContents(restoreDrawingContents(saved));
-      }
+      _applyDetail(await _wsClient.getBoard(boardId));
     } on H3xBoardApiException catch (e) {
       viewModel.setLoadError(e.message);
     } catch (e) {
@@ -176,6 +180,19 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     }
     if (viewModel.loadError != null) {
       unawaited(_showLoadErrorDialog());
+    }
+  }
+
+  /// Loads a fetched board's content into the view model and seeds the drawing
+  /// canvas with the active sub-board's saved strokes. Shared by the self-load
+  /// path and the pre-fetched (boards-overview) path.
+  void _applyDetail(BoardDetail detail) {
+    final content = detail.data.isEmpty ? const BoardContent() : BoardContent.fromJson(detail.data);
+    viewModel.setInitialContent(content);
+    drawingController.clear();
+    final saved = viewModel.restoreSubBoardDrawing(viewModel.activeSubBoardId);
+    if (saved.isNotEmpty) {
+      drawingController.addContents(restoreDrawingContents(saved));
     }
   }
 

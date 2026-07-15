@@ -17,13 +17,17 @@ class InitializationScreenView extends ScreenViewBase<InitializationScreenViewMo
 
   @override
   Widget get body {
-    return Stack(
-      children: [
-        // The same drifting pencil/eraser watermark the loading dialog carries,
-        // faint enough here to stay a page texture behind it.
-        const Positioned.fill(child: AnimatedIconPattern()),
-        _buildContent(),
-      ],
+    // PatternSyncScope ties the page backdrop and the loading card's own pattern
+    // to one clock and grid, so the card's lattice continues the page's seamlessly.
+    return PatternSyncScope(
+      child: Stack(
+        children: [
+          // The same drifting pencil/eraser watermark the loading dialog carries,
+          // faint enough here to stay a page texture behind it.
+          const Positioned.fill(child: AnimatedIconPattern()),
+          _buildContent(),
+        ],
+      ),
     );
   }
 

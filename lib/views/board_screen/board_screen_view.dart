@@ -62,11 +62,15 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
     return Observer(
       builder: (context) {
         if (viewModel.isLoading) {
-          return Stack(
-            children: [
-              const Positioned.fill(child: AnimatedIconPattern()),
-              Center(child: ThemableLoadingDialog(message: localizations.boardScreen_loading)),
-            ],
+          // Scope ties the backdrop and the loading card's pattern to one clock
+          // and grid so their lattices line up (see PatternSyncScope).
+          return PatternSyncScope(
+            child: Stack(
+              children: [
+                const Positioned.fill(child: AnimatedIconPattern()),
+                Center(child: ThemableLoadingDialog(message: localizations.boardScreen_loading)),
+              ],
+            ),
           );
         }
 
