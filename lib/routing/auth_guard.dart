@@ -36,6 +36,12 @@ class AuthGuard extends AutoRouteGuard {
         } else {
           resolver.next(true);
         }
+      case ViewerEntryRoute.name:
+      case ViewerRoute.name:
+        // The live-share viewer is anonymous by design: reachable without a
+        // session, without waiting for the bootstrap (a share link must open
+        // instantly), and equally available to signed-in users.
+        resolver.next(true);
       default:
         if (session.status == SessionStatus.unknown) {
           // Web reload lands directly on a protected route, bypassing the

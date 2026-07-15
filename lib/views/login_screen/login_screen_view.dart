@@ -116,6 +116,13 @@ class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenCo
                             textAlign: TextAlign.center,
                           ),
                         ),
+                      Button(
+                        onPressed: viewModel.isLoading ? null : controller.onWatchBoard,
+                        child: Text(
+                          localizations.loginScreen_watchBoard,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                       ServerChip(
                         serverUrl: controller.serverUrl,
                         onEdit: viewModel.isLoading ? null : () => showServerUrlDialog(

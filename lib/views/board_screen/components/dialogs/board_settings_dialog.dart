@@ -585,7 +585,6 @@ class _PreviewPanel extends StatelessWidget {
       background = BoardBackgroundImage(
         fileId: fileId,
         fallbackColor: board.backgroundColor,
-        fileService: fileService,
         child: box,
       );
     } else if (board.isChalkboard) {

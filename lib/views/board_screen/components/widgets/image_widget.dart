@@ -11,26 +11,31 @@ import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/components/board_assets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-/// Renders an uploaded image by its file id. Falls back to a placeholder when no
-/// image is chosen yet or the bytes can't be fetched/decoded.
+/// Renders an uploaded image by its file id, resolving the bytes through the
+/// enclosing `BoardAssets` scope so the same widget works in the editor, the
+/// external-display isolate, and the web viewer. Falls back to a placeholder
+/// when no image is chosen yet, no resolver is available, or the bytes can't
+/// be fetched/decoded.
 class ImageWidget extends StatelessWidget {
 
   /// Fallback frame used until an image (with its intrinsic size) is chosen.
   static const Size naturalSize = Size(400, 300);
 
   final String fileId;
-  final H3xBoardFileService fileService;
 
-  const ImageWidget({super.key, required this.fileId, required this.fileService});
+  const ImageWidget({super.key, required this.fileId});
 
   @override
   Widget build(BuildContext context) {
     if (fileId.isEmpty) return const _ImagePlaceholder();
+    final resolver = BoardAssets.maybeResolverOf(context);
+    if (resolver == null) return const _ImagePlaceholder(isError: true);
 
     return FutureBuilder<Uint8List>(
-      future: fileService.downloadCached(fileId),
+      future: resolver.load(fileId),
       builder: (context, snapshot) {
         if (snapshot.hasError) return const _ImagePlaceholder(isError: true);
         final bytes = snapshot.data;
@@ -109,7 +114,7 @@ class ImageWidgetDescriptor extends BoardWidgetDescriptor {
   @override
   Widget buildWidget(BoardWidgetConfig config, void Function(BoardWidgetConfig) onConfigChanged) {
     final c = config as ImageConfig;
-    return ImageWidget(fileId: c.fileId, fileService: GetIt.I<H3xBoardFileService>());
+    return ImageWidget(fileId: c.fileId);
   }
 
   @override

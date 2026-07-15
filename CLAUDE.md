@@ -122,6 +122,22 @@ No other files need changes. Settings menu items (Fluent UI flyout) are provided
 
 `flutter_drawing_board` provides the drawing canvas. A `DrawingController` instance lives on `BoardScreenViewModel` and is passed to components that need to interact with the canvas (tool selection, stroke width/color updates, clear).
 
+### Live Share (external display + web viewer)
+
+One delta protocol mirrors the active board to two kinds of second screen: the physically attached external display (USB-C/AirPlay, `lib/external_display/`) and anonymous web viewers watching by code through the backend. The message vocabulary is `LiveShareMessage` (`lib/models/live_share/live_share_message.dart`, freezed union, wire-discriminated on `type`): a full `snapshot` on connect/board-switch/resync, small deltas (`boardProps`, `widgetUpserted`, `strokeProgress`, …) for everything else, with a per-session `seq` for gap detection on lossy transports. **The server relays envelopes verbatim and reads only `type`, `seq` and snapshot `fileIds`** — renaming a JSON key here is a protocol change that must be mirrored in h3xBoardServer (see its `docs/live-sharing.md`).
+
+```text
+BoardScreenController ─ LiveBoardPublisher (diff engine: MobX autorun + drawing notifiers)
+                              │ LiveShareMessage
+                              ▼
+                        LiveShareHub (GetIt singleton)
+                         ├ ExternalDisplaySink → plugin bus → external isolate ┐
+                         └ ServerShareSink → sharing.v1.publish (batched)      ├→ LiveBoardReceiver → LiveBoardView
+                                                     viewer ← /ws/v1/view/{code} (LiveViewClient) ┘
+```
+
+Key pieces: send side in `lib/services/live_share/` (`LiveBoardPublisher` diffs state — mutation points are *not* instrumented, because undo/redo bypasses the controller); receive side shared by both mirrors (`LiveBoardReceiver` applies messages, `LiveBoardView` renders with the fade-through-black transition); `LiveShareSessionService` owns the presenter session (code, viewer count, heartbeat, reconnect-resume); the viewer is `lib/views/viewer_screen/` (anonymous route `/view` + `/view/:code`, exempted in `auth_guard.dart`). Asset bytes (image widgets, backgrounds) resolve through `BoardAssetResolver` via the `BoardAssets` scope: authed file service in the editor, bytes-over-the-bus in the external isolate, the anonymous `/api/v1/view/{code}/files/{fileId}` endpoint for web viewers. Strokes crossing JSON need the int→double normalization in `lib/services/drawing_serialization.dart` — always rehydrate through `restoreDrawingContents`.
+
 ### Localization
 
 ARB files live in `lib/l10n/` (`app_en.arb`, `app_nl.arb`). Generated code lands in `lib/l10n/generated/`. Access strings via the `AppLocalizations` extension on `BuildContext`. After editing ARB files, run `just gen-l10n`. The convention for keys is `myWidgetName_short_description`. Localizations can always be accessed by screens using `localizations.myWidgetName_short_description` and by regular widgets using `context.localizations.myWidgetName_short_description` if the following import is added: `import 'package:h3xboard/extensions/build_context_extension.dart';`.

@@ -10,6 +10,7 @@ abstract class ServerInfo with _$ServerInfo {
     required bool registrationAllowed,
     required int maxUploadBytes,
     String? warning,
+    String? webAppUrl,
   }) = _ServerInfo;
 
   factory ServerInfo.fromJson(Map<String, dynamic> json) => _$ServerInfoFromJson(json);

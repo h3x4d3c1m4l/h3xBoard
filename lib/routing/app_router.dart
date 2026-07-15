@@ -14,6 +14,8 @@ class AppRouter extends RootStackRouter {
     AutoRoute(page: LoginRoute.page, path: '/login'),
     AutoRoute(page: BoardsRoute.page, path: '/boards'),
     AutoRoute(page: BoardRoute.page, path: '/board/:boardId'),
+    AutoRoute(page: ViewerEntryRoute.page, path: '/view'),
+    AutoRoute(page: ViewerRoute.page, path: '/view/:code'),
   ];
 
 }

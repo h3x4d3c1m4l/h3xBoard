@@ -63,6 +63,11 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
 
   void toggleMode() => viewModel.toggleMode();
 
+  /// Opens the anonymous board viewer (pushed, so back returns here).
+  void onWatchBoard() {
+    unawaited(contextAccessor.buildContext.router.push(const ViewerEntryRoute()));
+  }
+
   Future<void> submit() async {
     viewModel
       ..setIsLoading(true)

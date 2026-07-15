@@ -5,21 +5,22 @@ import 'package:external_display/external_display.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/external_display/external_display_protocol.dart';
-import 'package:h3xboard/models/board.dart';
-import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/models/live_share/live_share_message.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:mobx/mobx.dart';
 
-/// Owns the connection to a physically-attached external display and mirrors
-/// the active board onto it, read-only. Registered as an app-wide singleton and
-/// started once at launch, so the external screen shows the idle placeholder as
-/// soon as it is plugged in — even before any board is opened (e.g. on the login
-/// screen). The board screen pushes board content while it is active and blanks
-/// back to idle when it closes.
+/// Owns the connection to a physically-attached external display: the
+/// transport half of the local live-share mirror. Registered as an app-wide
+/// singleton and started once at launch, so the external screen shows the
+/// idle placeholder as soon as it is plugged in — even before any board is
+/// opened (e.g. on the login screen).
 ///
 /// The external screen runs in a separate isolate ([externalDisplayMain]); the
-/// only way to reach it is the plugin's `sendParameters` bus, so every push
-/// serializes the board render state to JSON.
+/// only way to reach it is the plugin's `sendParameters` bus. This class only
+/// moves already-encoded payloads — what to send (protocol frames, asset
+/// bytes) is decided by the `ExternalDisplaySink` feeding it, which is also
+/// told via [onReady] when a display connects so it can push the full current
+/// state.
 class ExternalDisplayMirror {
 
   bool _started = false;
@@ -30,11 +31,10 @@ class ExternalDisplayMirror {
   // live to plug/unplug and reflect whether an external display is attached.
   final Observable<bool> _connectedObservable = Observable(false);
 
-  // The most recent board payload, retained so we can (a) flush it once the
-  // external view signals readiness and (b) re-send it when a display is
-  // plugged in mid-session. Null means "no board open" → idle placeholder.
-  String? _pendingBoardJson;
-  bool _pendingClear = false;
+  /// Fired every time a display becomes ready to receive (plugged in,
+  /// reconnected after a resolution change). The sink responds by pushing a
+  /// fresh snapshot — nothing is retained or replayed here.
+  VoidCallback? onReady;
 
   // Currently-applied external resolution (pixels); null = auto (largest mode).
   int? _width;
@@ -123,23 +123,22 @@ class ExternalDisplayMirror {
     await _connect();
   }
 
-  /// Push the currently-active board's render state. [widgets] should already
-  /// be filtered to what is visible on the active sub-board.
-  void pushActiveBoard(Board board, List<BoardWidget> widgets, List<Map<String, dynamic>> drawing) {
-    _pendingClear = false;
-    _pendingBoardJson = jsonEncode({
-      ExternalDisplayProtocol.keyBoard: board.toJson(),
-      ExternalDisplayProtocol.keyWidgets: [for (final w in widgets) w.toJson()],
-      ExternalDisplayProtocol.keyDrawing: drawing,
-    });
-    if (_ready) unawaited(_rawSend(ExternalDisplayProtocol.actionBoard, _pendingBoardJson));
+  /// Sends one already-encoded live-share frame ([json] = a jsonEncoded
+  /// `LiveShareMessage`). Dropped while no display is ready — [onReady]
+  /// triggers a fresh snapshot the moment one connects.
+  void sendEnvelope(String json) {
+    if (_ready) unawaited(_rawSend(ExternalDisplayProtocol.actionMessage, json));
   }
 
-  /// Tell the external screen no board is open (show the idle placeholder).
-  void pushClear() {
-    _pendingBoardJson = null;
-    _pendingClear = true;
-    if (_ready) unawaited(_rawSend(ExternalDisplayProtocol.actionClear, null));
+  /// Pushes the bytes of a file the mirrored board references, or a fetch
+  /// failure when [bytes] is null (the display shows its error placeholder).
+  void sendAsset(String fileId, Uint8List? bytes) {
+    if (!_ready) return;
+    final payload = jsonEncode({
+      ExternalDisplayProtocol.keyFileId: fileId,
+      ExternalDisplayProtocol.keyBytes: bytes == null ? null : base64Encode(bytes),
+    });
+    unawaited(_rawSend(ExternalDisplayProtocol.actionAsset, payload));
   }
 
   void _onDisplayStatusChange(dynamic plugged) {
@@ -164,7 +163,7 @@ class ExternalDisplayMirror {
       await externalDisplay.waitingTransferParametersReady(
         onReady: () {
           _setReady(true);
-          _flushPending();
+          onReady?.call();
         },
         onError: () {
           _setReady(false);
@@ -176,14 +175,6 @@ class ExternalDisplayMirror {
     } catch (_) {
       _connected = false;
       _setReady(false);
-    }
-  }
-
-  void _flushPending() {
-    if (_pendingClear) {
-      unawaited(_rawSend(ExternalDisplayProtocol.actionClear, null));
-    } else if (_pendingBoardJson != null) {
-      unawaited(_rawSend(ExternalDisplayProtocol.actionBoard, _pendingBoardJson));
     }
   }
 
@@ -205,8 +196,13 @@ class ExternalDisplayMirror {
     if (kIsWeb) return;
     externalDisplay.removeStatusListener(_onDisplayStatusChange);
     _resolutionReactionDisposer?.call();
-    // Best-effort: blank the external screen when leaving the board.
-    if (_connected) unawaited(_rawSend(ExternalDisplayProtocol.actionClear, null));
+    // Best-effort: blank the external screen when the mirror shuts down.
+    if (_connected) {
+      unawaited(_rawSend(
+        ExternalDisplayProtocol.actionMessage,
+        jsonEncode(const LiveShareMessage.clear().toJson()),
+      ));
+    }
   }
 
 }

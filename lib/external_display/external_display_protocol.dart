@@ -12,17 +12,19 @@ class ExternalDisplayProtocol {
   /// The entry-point function name registered with the plugin's `connect()`.
   static const String routeName = 'externalDisplayMain';
 
-  /// Push the active board's full render state. `value` = jsonEncode of a map
-  /// with [keyBoard], [keyWidgets], [keyDrawing].
-  static const String actionBoard = 'board';
+  /// One live-share protocol frame. `value` = jsonEncode of a
+  /// `LiveShareMessage` envelope — the same vocabulary web viewers receive
+  /// through the backend; the bus is just the local transport for it.
+  static const String actionMessage = 'message';
 
-  /// No board is open; the external screen should show the idle placeholder.
-  /// `value` is unused.
-  static const String actionClear = 'clear';
+  /// Bus-only side channel pushing the bytes of a file the mirrored board
+  /// references (the isolate can't fetch them itself). `value` = jsonEncode of
+  /// `{fileId, bytes}` with [keyBytes] base64-encoded, or null when the main
+  /// isolate failed to fetch the file.
+  static const String actionAsset = 'asset';
 
-  // Payload keys inside the actionBoard JSON.
-  static const String keyBoard = 'board';
-  static const String keyWidgets = 'widgets';
-  static const String keyDrawing = 'drawing';
+  // Payload keys inside the actionAsset JSON.
+  static const String keyFileId = 'fileId';
+  static const String keyBytes = 'bytes';
 
 }

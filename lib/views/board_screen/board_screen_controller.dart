@@ -16,22 +16,22 @@ import 'package:h3xboard/models/board_content.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
-import 'package:h3xboard/services/external_display_mirror.dart';
+import 'package:h3xboard/services/drawing_serialization.dart';
 import 'package:h3xboard/services/fullscreen_service.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
+import 'package:h3xboard/services/live_share/live_board_publisher.dart';
+import 'package:h3xboard/services/live_share/live_share_hub.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/board_settings_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/image_widget.dart';
-import 'package:h3xboard/views/board_screen/drawing_serialization.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
-import 'package:mobx/mobx.dart';
 
 // Matches 'Board N' titles to pick the next auto-number.
 final _boardTitleRegex = RegExp(r'^Board (\d+)$');
@@ -77,15 +77,11 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   StreamSubscription<bool>? _fullscreenSubscription;
 
-  // External-display mirroring: pushes a read-only snapshot of the active board
-  // to a connected second screen on every observable change and drawing frame.
-  // The mirror is an app-wide singleton (already started at launch); the board
-  // screen only feeds it board content and blanks it back to idle on close.
-  final ExternalDisplayMirror _mirror = GetIt.I<ExternalDisplayMirror>();
-  ReactionDisposer? _mirrorReactionDisposer;
-  // Coalesces the flurry of drawingController notifications during a stroke into
-  // at most one push per frame.
-  bool _mirrorFrameScheduled = false;
+  // Live-share publishing: watches this screen's state and streams snapshot +
+  // delta messages to every mirror — the local external display and, while a
+  // share session is active, web viewers via the backend. Created in the
+  // constructor, torn down (blanking receivers back to idle) in [dispose].
+  late final LiveBoardPublisher _livePublisher;
 
   // Initialization/Deinitialization
 
@@ -101,7 +97,16 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     historyManager.onChange = _scheduleSave;
     // Refresh the thumbnail on a slow cadence while editing (no-op when clean).
     _screenshotTimer = Timer.periodic(_screenshotInterval, (_) => unawaited(_captureScreenshotIfDirty()));
-    _setUpExternalMirror();
+    // The publisher observes the view model through these getters (its autorun
+    // tracks whatever observables they read) and the drawing controller's own
+    // notifiers — including undo/redo, which bypass this controller's handlers.
+    _livePublisher = LiveBoardPublisher(
+      hub: GetIt.I<LiveShareHub>(),
+      drawingController: drawingController,
+      board: () => viewModel.board,
+      widgets: () => viewModel.visibleBoardWidgets,
+      isLoading: () => viewModel.isLoading,
+    );
     if (preloadedDetail != null) {
       // The boards overview already fetched this board (and showed the loading
       // UI), so apply it straight away — the board paints on the first frame with
@@ -114,50 +119,15 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     }
   }
 
-  // External display mirroring
-
-  void _setUpExternalMirror() {
-    // Re-push whenever any board observable changes (widget add/move/scale/
-    // rotate/config/visibility, sub-board switch, background/line settings).
-    // _pushToExternal reads viewModel.board and .visibleBoardWidgets, so autorun
-    // tracks them as dependencies and re-runs on any change.
-    _mirrorReactionDisposer = autorun((_) => _pushToExternal());
-    // Live drawing: the surface painter notifies on every finger move; coalesce
-    // to one push per frame so mid-stroke updates appear live on the mirror.
-    drawingController.painter?.addListener(_onDrawingRepaint);
-  }
-
-  void _onDrawingRepaint() {
-    if (_mirrorFrameScheduled) return;
-    _mirrorFrameScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _mirrorFrameScheduled = false;
-      _pushToExternal();
-    });
-  }
-
-  /// Serializes the active board plus its live drawing (including any in-progress
-  /// stroke) and hands it to the mirror. Cheap and idempotent — safe to call on
-  /// every change; the mirror only forwards when a display is connected.
-  void _pushToExternal() {
-    if (viewModel.isLoading) return;
-    final drawing = drawingController.getJsonList();
-    final inProgress = drawingController.drawingContent ?? drawingController.eraserContent;
-    if (inProgress != null) drawing.add(inProgress.toJson());
-    _mirror.pushActiveBoard(viewModel.board, viewModel.visibleBoardWidgets, drawing);
-  }
-
   @override
   void dispose() {
     _saveTimer?.cancel();
     _screenshotTimer?.cancel();
     _fullscreenSubscription?.cancel();
     _fullscreenService.dispose();
-    // Stop feeding the (app-wide) mirror and blank the external screen back to
-    // its idle placeholder — the mirror itself stays alive for the next screen.
-    _mirrorReactionDisposer?.call();
-    drawingController.painter?.removeListener(_onDrawingRepaint);
-    _mirror.pushClear();
+    // Stop publishing and blank every mirror back to idle — the hub and its
+    // sinks stay alive for the next screen.
+    _livePublisher.dispose();
     super.dispose();
     drawingController.dispose();
     drawStartSignal.dispose();

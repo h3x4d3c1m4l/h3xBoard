@@ -14,6 +14,10 @@ import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
+import 'package:h3xboard/services/live_share/external_display_sink.dart';
+import 'package:h3xboard/services/live_share/live_share_hub.dart';
+import 'package:h3xboard/services/live_share/live_share_session_service.dart';
+import 'package:h3xboard/services/live_share/server_share_sink.dart';
 import 'package:h3xboard/services/pending_navigation_service.dart';
 import 'package:h3xboard/services/server_controller.dart';
 import 'package:h3xboard/services/server_settings_store.dart';
@@ -69,6 +73,16 @@ Future<void> setupServices() async {
     store: serverSettings,
   );
 
+  // The live-share hub fans board screen updates out to every mirror
+  // transport: the external display (a launch-time sink, so a plugged-in
+  // screen shows its idle placeholder even on the login/boards screens) and
+  // the backend relay for web viewers (dormant until a session starts).
+  final externalDisplayMirror = ExternalDisplayMirror();
+  final liveShareHub = LiveShareHub();
+  liveShareHub.addSink(ExternalDisplaySink(mirror: externalDisplayMirror, files: files, hub: liveShareHub));
+  final serverShareSink = ServerShareSink(api: api);
+  liveShareHub.addSink(serverShareSink);
+
   GetIt.I
     ..registerSingleton<SessionController>(session)
     ..registerSingleton<CookieStore>(cookieStore)
@@ -79,10 +93,11 @@ Future<void> setupServices() async {
     ..registerSingleton<AppRouter>(appRouter)
     ..registerSingleton<PendingNavigationService>(PendingNavigationService())
     ..registerSingleton<ServerController>(serverController)
-    // Mirrors the active board onto a connected second screen. Started here (not
-    // in the board screen) so the external display shows its idle placeholder as
-    // soon as it is plugged in, even on the login/boards screens.
-    ..registerSingleton<ExternalDisplayMirror>(ExternalDisplayMirror());
+    ..registerSingleton<LiveShareHub>(liveShareHub)
+    ..registerSingleton<LiveShareSessionService>(
+      LiveShareSessionService(api: api, hub: liveShareHub, sink: serverShareSink),
+    )
+    ..registerSingleton<ExternalDisplayMirror>(externalDisplayMirror);
 
   // Prime the server info (warning banner, registration capability) before the
   // first screen renders; it refreshes again on every later disconnect.

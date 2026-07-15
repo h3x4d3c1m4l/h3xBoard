@@ -6,6 +6,7 @@ import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/board_detail.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
 import 'package:h3xboard/models/api/browse_files_result.dart';
+import 'package:h3xboard/models/api/share_session_info.dart';
 import 'package:h3xboard/services/cookies/cookie_store.dart';
 import 'package:h3xboard/services/websocket/websocket_connect_web.dart'
     if (dart.library.io) 'package:h3xboard/services/websocket/websocket_connect_io.dart';
@@ -149,6 +150,50 @@ class H3xBoardApiClient {
     await _call('settings.v1.delete', <String, dynamic>{'key': key});
   }
 
+  /// Starts a live-share session (or returns the connection's existing one).
+  /// Pass [resumeCode] after a reconnect to re-bind the session the code
+  /// belongs to; the server refuses codes owned by another user.
+  Future<ShareSessionInfo> startSharing({String? resumeCode}) async {
+    final params = <String, dynamic>{};
+    if (resumeCode != null) params['resumeCode'] = resumeCode;
+    final result = await _call('sharing.v1.start', params);
+    return ShareSessionInfo.fromJson(result as Map<String, dynamic>);
+  }
+
+  /// Ends the live-share session; viewers get a terminal `sessionEnded`.
+  Future<void> stopSharing() async {
+    // Parameterless server method — sending params would fail arg binding.
+    await _call('sharing.v1.stop');
+  }
+
+  /// Relays a batch of live-share protocol envelopes to the session's viewers
+  /// (order-preserving). Called at high frequency while drawing — [messages]
+  /// maps are the already-built envelopes, forwarded verbatim.
+  Future<void> publishShare(List<Map<String, dynamic>> messages) async {
+    await _call('sharing.v1.publish', <String, dynamic>{'messages': messages});
+  }
+
+  /// Keeps the live-share session alive while nothing is being published
+  /// (e.g. the presenter is on the boards overview between boards).
+  Future<void> shareHeartbeat() async {
+    // Parameterless server method — sending params would fail arg binding.
+    await _call('sharing.v1.heartbeat');
+  }
+
+  /// Registers [handler] for server-initiated JSON-RPC notifications with
+  /// [method] (e.g. `sharing.v1.viewerCount`). One handler per method; pass
+  /// null to unregister. The handler receives the notification's first
+  /// object param (or an empty map).
+  void setNotificationHandler(String method, void Function(Map<String, dynamic> params)? handler) {
+    if (handler == null) {
+      _notificationHandlers.remove(method);
+    } else {
+      _notificationHandlers[method] = handler;
+    }
+  }
+
+  final Map<String, void Function(Map<String, dynamic>)> _notificationHandlers = {};
+
   Future<dynamic> _call(String method, [dynamic params]) {
     if (_channel == null) {
       throw const H3xBoardApiException(code: -1, message: 'Not connected');
@@ -169,7 +214,10 @@ class H3xBoardApiClient {
   void _onMessage(dynamic raw) {
     final response = jsonDecode(raw as String) as Map<String, dynamic>;
     final id = response['id'] as int?;
-    if (id == null) return;
+    if (id == null) {
+      _onNotification(response);
+      return;
+    }
     final completer = _pending.remove(id);
     if (completer == null) return;
     if (response.containsKey('error')) {
@@ -181,6 +229,24 @@ class H3xBoardApiClient {
     } else {
       completer.complete(response['result']);
     }
+  }
+
+  /// Dispatches a server-initiated notification (a frame without an `id`) to
+  /// its registered handler. StreamJsonRpc sends params as a one-element array
+  /// holding the payload object; both that and a bare object are accepted.
+  void _onNotification(Map<String, dynamic> message) {
+    final method = message['method'] as String?;
+    if (method == null) return;
+    final handler = _notificationHandlers[method];
+    if (handler == null) return;
+    final params = message['params'];
+    final payload = switch (params) {
+      Map<String, dynamic> map => map,
+      List<dynamic> list when list.isNotEmpty && list.first is Map<String, dynamic> =>
+        list.first as Map<String, dynamic>,
+      _ => const <String, dynamic>{},
+    };
+    handler(payload);
   }
 
   void _onError(Object error, StackTrace stackTrace) {
