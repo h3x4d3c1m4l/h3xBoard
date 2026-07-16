@@ -112,14 +112,16 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
       final context = contextAccessor.buildContext;
       if (!context.mounted) return null;
 
-      BuildContext? dialogContext;
+      // Capture the navigator before showing the dialog rather than relying on
+      // the builder's context: showDialog pushes the route synchronously, but
+      // the builder only runs on the next frame. A fast failure (e.g. the
+      // socket is already down) can resolve before that frame, leaving the
+      // dialog un-poppable and stacking on every retry.
+      final navigator = Navigator.of(context, rootNavigator: true);
       unawaited(showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) {
-          dialogContext = ctx;
-          return ThemableLoadingDialog(message: localizations.boardsScreen_openingBoard);
-        },
+        builder: (ctx) => ThemableLoadingDialog(message: localizations.boardsScreen_openingBoard),
       ));
 
       BoardDetail? detail;
@@ -129,9 +131,7 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
         detail = null;
       }
 
-      if (dialogContext != null && dialogContext!.mounted) {
-        Navigator.of(dialogContext!).pop();
-      }
+      if (context.mounted) navigator.pop();
 
       if (detail != null) return detail;
       if (!await _confirmRetryOpen()) return null;

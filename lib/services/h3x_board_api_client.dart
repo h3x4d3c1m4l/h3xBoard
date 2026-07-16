@@ -194,6 +194,12 @@ class H3xBoardApiClient {
 
   final Map<String, void Function(Map<String, dynamic>)> _notificationHandlers = {};
 
+  /// Bounds how long a request waits for a response. A dropped-but-not-yet-
+  /// detected socket (flaky network) can otherwise hang until the OS/TCP layer
+  /// notices, well past what a "loading" dialog should ever show for.
+  // ignore: unused_field
+  static const _requestTimeout = Duration(seconds: 10);
+
   Future<dynamic> _call(String method, [dynamic params]) {
     if (_channel == null) {
       throw const H3xBoardApiException(code: -1, message: 'Not connected');
@@ -209,6 +215,15 @@ class H3xBoardApiClient {
     if (params != null) message['params'] = [params];
     _channel!.sink.add(jsonEncode(message));
     return completer.future;
+    // Disabled for now to isolate testing of the dialog-stacking fix; re-enable
+    // once that's confirmed:
+    // return completer.future.timeout(
+    //   _requestTimeout,
+    //   onTimeout: () {
+    //     _pending.remove(id);
+    //     throw const H3xBoardApiException(code: -1, message: 'Request timed out');
+    //   },
+    // );
   }
 
   void _onMessage(dynamic raw) {

@@ -277,19 +277,18 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       final context = contextAccessor.buildContext;
 
       if (_saveDirty || _activeSave != null) {
-        BuildContext? dialogContext;
+        // Capture the navigator before showing the dialog rather than relying
+        // on the builder's context: showDialog pushes the route synchronously,
+        // but the builder only runs on the next frame. A fast failure can
+        // resolve before that frame, leaving the dialog un-poppable.
+        final navigator = Navigator.of(context, rootNavigator: true);
         unawaited(showDialog<void>(
           context: context,
           barrierDismissible: false,
-          builder: (ctx) {
-            dialogContext = ctx;
-            return ThemableLoadingDialog(message: localizations.boardScreen_closing);
-          },
+          builder: (ctx) => ThemableLoadingDialog(message: localizations.boardScreen_closing),
         ));
         final saved = await _flushPendingSave();
-        if (dialogContext != null && dialogContext!.mounted) {
-          Navigator.of(dialogContext!).pop();
-        }
+        if (context.mounted) navigator.pop();
         // Keep the user on the board so they can retry rather than lose work.
         if (!saved) return;
       }
