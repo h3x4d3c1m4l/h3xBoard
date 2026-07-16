@@ -91,7 +91,10 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     required super.contextAccessor,
     BoardDetail? preloadedDetail,
   }) {
-    drawingController.setStyle(color: viewModel.drawingTools.activeColor);
+    drawingController.setStyle(
+      color: viewModel.drawingTools.activeColor,
+      strokeWidth: viewModel.drawingTools.penWidth,
+    );
     _fullscreenSubscription = _fullscreenService.onChange.listen(viewModel.setFullscreen);
     // Every undoable step is also a save point, mirroring the undo history.
     historyManager.onChange = _scheduleSave;
