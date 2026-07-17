@@ -7,4 +7,8 @@ class Config {
   /// compile-time value (--dart-define=API_URL / .env via envied).
   static String get apiUrl => resolvedApiUrl;
 
+  /// Sentry DSN, set at build time via --dart-define=SENTRY_DSN=... . Empty
+  /// by default, which makes the Sentry SDK a no-op (local/dev/PR builds).
+  static const String sentryDsn = String.fromEnvironment('SENTRY_DSN');
+
 }

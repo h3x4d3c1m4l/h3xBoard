@@ -22,11 +22,19 @@ import 'package:h3xboard/services/pending_navigation_service.dart';
 import 'package:h3xboard/services/server_controller.dart';
 import 'package:h3xboard/services/server_settings_store.dart';
 import 'package:h3xboard/services/session_controller.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await setupServices();
-  runApp(const BoardApp());
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = Config.sentryDsn;
+    },
+    appRunner: () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await setupServices();
+      runApp(const BoardApp());
+    },
+  );
 }
 
 /// Entry point for the external-display isolate.
