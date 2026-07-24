@@ -46,7 +46,11 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   final String boardId;
 
-  final DrawingController drawingController = DrawingController();
+  /// The controller's own history is the document here, not an undo stack —
+  /// undo/redo runs through [historyManager]. Its default cap of 100 steps
+  /// would silently delete the oldest strokes from the board, so it is
+  /// effectively disabled.
+  final DrawingController drawingController = DrawingController(maxHistorySteps: 1 << 30);
 
   /// Wraps the board's visual layers so [_captureScreenshot] can rasterise the
   /// canvas into a thumbnail when the user leaves the board.

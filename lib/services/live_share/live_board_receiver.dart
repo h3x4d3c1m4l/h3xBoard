@@ -24,7 +24,9 @@ import 'package:h3xboard/services/drawing_serialization.dart';
 /// fully replaces state and resets the baseline.
 class LiveBoardReceiver extends ChangeNotifier {
 
-  final DrawingController drawingController = DrawingController();
+  /// Mirrors the presenter's strokes verbatim; there is no undo here, so the
+  /// default 100-step cap would just drop the oldest strokes off the mirror.
+  final DrawingController drawingController = DrawingController(maxHistorySteps: 1 << 30);
 
   /// The presenter's not-yet-committed stroke, drawn on an overlay above the
   /// committed drawing. null = no stroke in progress.
