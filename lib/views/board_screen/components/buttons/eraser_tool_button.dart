@@ -17,7 +17,7 @@ class EraserToolButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Observer(builder: (_) => ToolButton(
       icon: LucideIcons.eraser,
-      title: 'Erase',
+      title: context.localizations.eraserToolButton_erase,
       checked: viewModel.drawingTools.activeTool == .eraser,
       onPressed: () => controller.onSelectableToolButtonPressed(.eraser),
       dismissSignal: controller.drawStartSignal,

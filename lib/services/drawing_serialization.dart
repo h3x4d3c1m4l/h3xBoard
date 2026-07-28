@@ -1,4 +1,5 @@
 import 'package:flutter_drawing_board/paint_contents.dart';
+import 'package:h3xboard/services/drawing/arrow_line.dart';
 
 /// Rebuilds [PaintContent] instances from the JSON produced by
 /// [DrawingController.getJsonList]. Shared by the editor
@@ -19,6 +20,7 @@ List<PaintContent> restoreDrawingContents(List<Map<String, dynamic>> jsonList) {
       'SimpleLine' => SimpleLine.fromJson(normalized),
       'SmoothLine' => SmoothLine.fromJson(normalized),
       'StraightLine' => StraightLine.fromJson(normalized),
+      'ArrowLine' => ArrowLine.fromJson(normalized),
       'Rectangle' => Rectangle.fromJson(normalized),
       'Circle' => Circle.fromJson(normalized),
       'Eraser' => Eraser.fromJson(normalized),

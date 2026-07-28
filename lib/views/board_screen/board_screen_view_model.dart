@@ -125,7 +125,12 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
     final current = _drawingTools.activeTool;
     _drawingTools = _drawingTools.copyWith(
       activeTool: tool,
-      lastActiveTool: (current == .pen || current == .eraser) ? current : _drawingTools.lastActiveTool,
+      lastActiveTool: current == .pointer ? _drawingTools.lastActiveTool : current,
+      lastMarkupTool: switch (tool) {
+        SelectableEditTool.highlighter => MarkupTool.highlighter,
+        SelectableEditTool.shape => MarkupTool.shape,
+        _ => _drawingTools.lastMarkupTool,
+      },
     );
   }
 
@@ -137,6 +142,26 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @action
   void setEraserWidth(double width) {
     _drawingTools = _drawingTools.copyWith(eraserWidth: width);
+  }
+
+  @action
+  void setHighlighterWidth(double width) {
+    _drawingTools = _drawingTools.copyWith(highlighterWidth: width);
+  }
+
+  @action
+  void setShapeWidth(double width) {
+    _drawingTools = _drawingTools.copyWith(shapeWidth: width);
+  }
+
+  @action
+  void setActiveShape(ShapeKind shape) {
+    _drawingTools = _drawingTools.copyWith(activeShape: shape);
+  }
+
+  @action
+  void setShapeFilled(bool filled) {
+    _drawingTools = _drawingTools.copyWith(shapeFilled: filled);
   }
 
   @action

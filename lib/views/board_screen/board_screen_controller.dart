@@ -16,6 +16,7 @@ import 'package:h3xboard/models/board_content.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
+import 'package:h3xboard/services/drawing/arrow_line.dart';
 import 'package:h3xboard/services/drawing_serialization.dart';
 import 'package:h3xboard/services/fullscreen_service.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
@@ -399,45 +400,104 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   // Drawing tool handlers
 
+  /// Keeps whatever ink tool is already selected, so choosing red while
+  /// highlighting doesn't silently drop back to the pen.
   void onColorButtonPressed(Color value) {
+    final current = viewModel.drawingTools.activeTool;
+    final tool = toolUsesActiveColor(current) ? current : SelectableEditTool.pen;
     viewModel
       ..setActiveColor(value)
-      ..setActiveTool(.pen)
+      ..setActiveTool(tool)
       ..setArrangingWidget(null);
-    drawingController
-      ..setPaintContent(SimpleLine())
-      ..setStyle(color: value, strokeWidth: viewModel.drawingTools.penWidth);
+    _applyActiveToolStyle();
   }
 
   void onSelectableToolButtonPressed(SelectableEditTool value) {
-    switch (value) {
-      case .pointer:
-        viewModel.setActiveColor(null);
-      case .pen:
-        if (viewModel.drawingTools.activeColor == null) {
-          viewModel.setActiveColor(viewModel.drawingTools.lastActiveColor);
-        }
-        drawingController.setPaintContent(SimpleLine());
-        drawingController.setStyle(strokeWidth: viewModel.drawingTools.penWidth);
-        viewModel.setArrangingWidget(null);
-      case .eraser:
-        viewModel.setActiveColor(null);
-        drawingController.setPaintContent(Eraser());
-        drawingController.setStyle(strokeWidth: viewModel.drawingTools.eraserWidth);
-        viewModel.setArrangingWidget(null);
+    if (value == SelectableEditTool.pointer) {
+      viewModel.setActiveColor(null);
+    } else {
+      // An ink tool restores the last swatch; the eraser has no colour of its own.
+      viewModel
+        ..setActiveColor(toolUsesActiveColor(value)
+            ? viewModel.drawingTools.activeColor ?? viewModel.drawingTools.lastActiveColor
+            : null)
+        ..setArrangingWidget(null);
     }
 
     viewModel.setActiveTool(value);
+    _applyActiveToolStyle();
   }
 
+  /// Pushes the active tool's paint content and style onto the drawing
+  /// controller. Every tool, colour, width, shape and fill change routes through
+  /// here so the two never drift apart.
+  void _applyActiveToolStyle() {
+    final tools = viewModel.drawingTools;
+    // Drawing is suppressed in Select mode; nothing to configure.
+    final style = paintStyleFor(tools);
+    if (style == null) return;
+
+    drawingController
+      ..setPaintContent(_paintContentFor(tools))
+      ..setStyle(color: style.color, strokeWidth: style.strokeWidth, style: style.style);
+  }
+
+  PaintContent _paintContentFor(DrawingTools tools) => switch (tools.activeTool) {
+        SelectableEditTool.eraser => Eraser(),
+        SelectableEditTool.shape => switch (tools.activeShape) {
+            ShapeKind.line => StraightLine(),
+            ShapeKind.arrow => ArrowLine(),
+            ShapeKind.rectangle => Rectangle(),
+            ShapeKind.ellipse => Circle(),
+          },
+        // Pen and highlighter are the same freehand stroke at different widths
+        // and alphas. The pointer never reaches here.
+        _ => SimpleLine(),
+      };
+
   void onPenWidthSliderMoved(double value) {
-    drawingController.setStyle(strokeWidth: value);
     viewModel.setPenWidth(value);
+    _applyActiveToolStyle();
   }
 
   void onEraserWidthSliderMoved(double value) {
-    drawingController.setStyle(strokeWidth: value);
     viewModel.setEraserWidth(value);
+    _applyActiveToolStyle();
+  }
+
+  void onHighlighterWidthSliderMoved(double value) {
+    viewModel.setHighlighterWidth(value);
+    _applyActiveToolStyle();
+  }
+
+  void onShapeWidthSliderMoved(double value) {
+    viewModel.setShapeWidth(value);
+    _applyActiveToolStyle();
+  }
+
+  /// The merged markup button reactivates whichever of its two tools the user
+  /// last had, rather than snapping back to a fixed default.
+  void onMarkupButtonPressed() {
+    onSelectableToolButtonPressed(switch (viewModel.drawingTools.lastMarkupTool) {
+      MarkupTool.highlighter => SelectableEditTool.highlighter,
+      MarkupTool.shape => SelectableEditTool.shape,
+    });
+  }
+
+  /// Also selects the shape tool, so the choice takes effect without a second tap
+  /// on the toolbar button.
+  void onShapeKindSelected(ShapeKind value) {
+    viewModel.setActiveShape(value);
+    if (viewModel.drawingTools.activeTool != SelectableEditTool.shape) {
+      onSelectableToolButtonPressed(SelectableEditTool.shape);
+    } else {
+      _applyActiveToolStyle();
+    }
+  }
+
+  void onShapeFilledChanged(bool value) {
+    viewModel.setShapeFilled(value);
+    _applyActiveToolStyle();
   }
 
   // Drawing stroke history callbacks (called by Board)

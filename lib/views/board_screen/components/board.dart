@@ -726,16 +726,14 @@ class _BoardState extends State<Board> {
                                   ),
                                   onPointerDown: (pde) {
                                     setState(() => _pointerPosition = pde.localPosition);
-                                    final tool = widget.viewModel.drawingTools.activeTool;
-                                    if (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser) {
+                                    if (toolProducesStrokes(widget.viewModel.drawingTools.activeTool)) {
                                       widget.onDrawingStrokeStart();
                                     }
                                   },
                                   onPointerMove: (pme) => setState(() => _pointerPosition = pme.localPosition),
                                   onPointerUp: (pue) {
                                     setState(() => _pointerPosition = null);
-                                    final tool = widget.viewModel.drawingTools.activeTool;
-                                    if (tool == SelectableEditTool.pen || tool == SelectableEditTool.eraser) {
+                                    if (toolProducesStrokes(widget.viewModel.drawingTools.activeTool)) {
                                       widget.onDrawingStrokeEnd();
                                     }
                                   },
