@@ -1,6 +1,20 @@
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/color_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/text_box_widget.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+/// Renders [child] the way the board does: localized, and free to take its own
+/// size the way a canvas widget does.
+Widget _host(Widget child) => FluentApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Center(child: child),
+    );
 
 void main() {
   // Measure against a bundled family. Going through google_fonts here would kick
@@ -51,6 +65,89 @@ void main() {
       final large = TextBoxWidget.sizeFor(const TextBoxConfig(text: 'Hello', fontSize: 128));
 
       expect(large.height, greaterThan(small.height));
+    });
+  });
+
+  group('TextBoxWidget editor', () {
+    // Opens the editor the way the board does — from a widget's own context —
+    // and hands back the config it commits, or null when nothing was committed.
+    Future<TextBoxConfig? Function()> openEditor(
+      WidgetTester tester, {
+      TextBoxConfig config = const TextBoxConfig(text: 'Hello'),
+    }) async {
+      TextBoxConfig? saved;
+      await tester.pumpWidget(_host(
+        Builder(
+          builder: (context) => Button(
+            onPressed: () => showTextBoxEditor(context, config, (updated) => saved = updated as TextBoxConfig),
+            child: const Text('open'),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      return () => saved;
+    }
+
+    testWidgets('it edits the label itself, not a text box in a card', (tester) async {
+      await openEditor(tester);
+
+      // The preview *is* the label widget, with an input layer over it that
+      // contributes only the caret — so it cannot drift from the board.
+      expect(find.byType(TextBoxWidget), findsOneWidget);
+      expect(tester.widget<TextBoxWidget>(find.byType(TextBoxWidget)).config.text, 'Hello');
+      expect(tester.widget<EditableText>(find.byType(EditableText)).controller.text, 'Hello');
+    });
+
+    testWidgets('dismissing the scrim keeps what was typed', (tester) async {
+      final saved = await openEditor(tester);
+
+      await tester.enterText(find.byType(EditableText), 'Hello there');
+      await tester.pump();
+      // The label renders the typed text, not the field: they share one config.
+      expect(tester.widget<TextBoxWidget>(find.byType(TextBoxWidget)).config.text, 'Hello there');
+      // Anywhere outside the editor is the scrim.
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pumpAndSettle();
+
+      expect(saved()?.text, 'Hello there');
+    });
+
+    testWidgets('Escape drops the edit', (tester) async {
+      final saved = await openEditor(tester);
+
+      await tester.enterText(find.byType(EditableText), 'Hello there');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextBoxWidget), findsNothing);
+      expect(saved(), isNull);
+    });
+
+    testWidgets('the style bar restyles the preview and is committed with it', (tester) async {
+      final saved = await openEditor(tester);
+
+      await tester.tap(find.widgetWithIcon(ToggleButton, LucideIcons.alignCenter));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextBoxWidget>(find.byType(TextBoxWidget)).config.textAlign, TextAlign.center);
+
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pumpAndSettle();
+      expect(saved()?.textAlign, TextAlign.center);
+    });
+
+    testWidgets('the colour buttons open the picker', (tester) async {
+      await openEditor(tester);
+
+      await tester.tap(find.widgetWithIcon(Button, LucideIcons.type));
+      // Fixed pumps rather than pumpAndSettle: the picker rides in on a dialog
+      // whose background pattern animates forever, so nothing ever settles.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(ColorPickerDialog), findsOneWidget);
     });
   });
 }

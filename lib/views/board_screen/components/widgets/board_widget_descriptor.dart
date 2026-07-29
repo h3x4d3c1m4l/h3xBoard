@@ -52,6 +52,16 @@ abstract class BoardWidgetDescriptor {
   // by its header or from inside Arrange mode.
   bool get isDraggableInSelectMode => false;
 
+  // Whether a single tap on the body in Select mode puts the widget into Arrange
+  // mode. Widgets without a header bar have no pencil toggle to get there, so a
+  // tap on the body is what brings out their resize and rotate handles.
+  bool get entersArrangeOnTap => false;
+
+  // Whether the body is dimmed and its interactions paused while the widget is
+  // being arranged. Widgets that stay usable with their handles out — a text
+  // label being typed into in place — opt out.
+  bool get isInertWhileArranging => true;
+
   // The widget's primary inline-edit action, invoked when the body is double-clicked.
   // Returns null for widgets with nothing to edit (e.g. clocks). Widgets that override
   // this typically also expose the same action as a settings menu item.

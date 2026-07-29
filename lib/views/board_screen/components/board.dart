@@ -135,6 +135,11 @@ class _BoardState extends State<Board> {
 
   bool _onKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+    // Keyboard handlers run before the focus tree, so without this the board
+    // would eat keys aimed at a text field — Backspace in the in-place editor or
+    // in a dialog over the board would delete the arranging widget instead of a
+    // character.
+    if (_isEditingText) return false;
     final arrangingId = widget.viewModel.arrangingWidgetId;
 
     if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
@@ -163,6 +168,13 @@ class _BoardState extends State<Board> {
       return true;
     }
     return false;
+  }
+
+  // Whether typing is currently going into a text field — the label editor, or
+  // any other field in a dialog over the board — rather than at the board itself.
+  bool get _isEditingText {
+    final focused = FocusManager.instance.primaryFocus?.context;
+    return focused != null && focused.findAncestorWidgetOfExactType<EditableText>() != null;
   }
 
   // Moves the arranging widget by [delta] canvas px, coalescing key-repeat bursts
@@ -202,11 +214,34 @@ class _BoardState extends State<Board> {
     void onChange(BoardWidgetConfig newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig);
     final content = descriptor.buildWidget(bw.config, onChange);
 
-    // Double-clicking an editable widget's body opens its inline editor (the same
-    // action offered in the settings menu). Widgets without an editor are unwrapped.
+    // A single tap on a widget that has no header bar puts it into Arrange mode:
+    // that is where its resize and rotate handles are, and it has no pencil
+    // toggle to get there. Select mode only — a tap while drawing is a dot.
+    // (The board's own recognizer can't do this: on a tap it loses to the
+    // double-tap recognizer below and never reports the gesture.)
+    final tapArranges =
+        descriptor.entersArrangeOnTap && widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer;
+    // Double-clicking an editable widget's body opens its editor (the same action
+    // offered in the settings menu). Widgets without an editor are unwrapped.
     final edit = descriptor.editAction(context, bw.config, onChange);
-    if (edit == null) return content;
-    return GestureDetector(onDoubleTap: edit, child: content);
+
+    if (!tapArranges && edit == null) return content;
+    return GestureDetector(
+      onTap: tapArranges ? () => widget.viewModel.setArrangingWidget(bw.id) : null,
+      onDoubleTap: edit,
+      child: content,
+    );
+  }
+
+  // Bodies keep their own interactivity (stopwatch buttons, piano keys) and
+  // pointers fall through to the drawing layer over non-interactive ones. The
+  // widget being arranged is dimmed and paused, unless it is one that stays
+  // usable with its handles out — a text label being typed into in place.
+  Widget _buildWidgetBody(BoardWidget bw) {
+    final content = _buildWidgetContent(bw);
+    if (bw.id != widget.viewModel.arrangingWidgetId) return content;
+    if (!descriptorFor(bw.config).isInertWhileArranging) return content;
+    return IgnorePointer(child: Opacity(opacity: 0.6, child: content));
   }
 
   Widget _buildHeader(BuildContext context, BoardWidget bw) {
@@ -796,21 +831,12 @@ class _BoardState extends State<Board> {
                                   boardScaleEnabled: false,
                                 ),
                               ),
-                              // Widget bodies. Bodies keep their own interactivity (stopwatch
-                              // buttons, piano keys) and pointers fall through to the drawing layer
-                              // over non-interactive ones. The widget being arranged is dimmed and
-                              // its body interaction paused.
+                              // Widget bodies.
                               for (final bw in widget.viewModel.visibleBoardWidgets)
                                 ManipulableBoardWidget(
                                   key: ValueKey(bw.id),
                                   boardWidget: bw,
-                                  child: IgnorePointer(
-                                    ignoring: bw.id == widget.viewModel.arrangingWidgetId,
-                                    child: Opacity(
-                                      opacity: bw.id == widget.viewModel.arrangingWidgetId ? 0.6 : 1.0,
-                                      child: _buildWidgetContent(bw),
-                                    ),
-                                  ),
+                                  child: _buildWidgetBody(bw),
                                 ),
                             ],
                           ),
