@@ -10,6 +10,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/piano_widget.dart
 import 'package:h3xboard/views/board_screen/components/widgets/qr_code_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/ruler_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/stopwatch_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/text_box_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/timer_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/todo_list_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/traffic_light_widget.dart';
@@ -35,6 +36,22 @@ abstract class BoardWidgetDescriptor {
     void Function(BoardWidgetConfig) onChange,
   );
 
+  // Whether the widget appears in the "add widget" catalog. Widgets reached from
+  // their own toolbar button (the text label lives with the annotation tools) opt
+  // out so they aren't offered in two places.
+  bool get showInCatalog => true;
+
+  // Whether the widget gets the floating header bar (drag handle, title, settings,
+  // Arrange toggle, remove) in Select mode. Widgets that are meant to read as bare
+  // board content rather than as a boxed widget opt out; they must also be
+  // [isDraggableInSelectMode], since the header is otherwise the only way to move
+  // them. Settings and delete stay reachable via long-press / right-click.
+  bool get hasHeaderBar => true;
+
+  // Whether the widget can be dragged by its body in Select mode, instead of only
+  // by its header or from inside Arrange mode.
+  bool get isDraggableInSelectMode => false;
+
   // The widget's primary inline-edit action, invoked when the body is double-clicked.
   // Returns null for widgets with nothing to edit (e.g. clocks). Widgets that override
   // this typically also expose the same action as a settings menu item.
@@ -56,6 +73,7 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   StopwatchConfig: StopwatchWidgetDescriptor.instance,
   TimerConfig: TimerWidgetDescriptor.instance,
   MemoNoteConfig: MemoNoteWidgetDescriptor.instance,
+  TextBoxConfig: TextBoxWidgetDescriptor.instance,
   PianoConfig: PianoWidgetDescriptor.instance,
   TodoListConfig: TodoListWidgetDescriptor.instance,
   RulerConfig: RulerWidgetDescriptor.instance,

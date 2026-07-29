@@ -45,7 +45,7 @@ class _WidgetCatalogDialogState extends State<WidgetCatalogDialog> {
   // those whose label contains the (case-insensitive) search query.
   List<BoardWidgetDescriptor> _visibleDescriptors(AppLocalizations loc) {
     final query = _query.toLowerCase();
-    final descriptors = widgetRegistry.values.toList()
+    final descriptors = widgetRegistry.values.where((d) => d.showInCatalog).toList()
       ..sort((a, b) => a.label(loc).toLowerCase().compareTo(b.label(loc).toLowerCase()));
     if (query.isEmpty) return descriptors;
     return descriptors.where((d) => d.label(loc).toLowerCase().contains(query)).toList();

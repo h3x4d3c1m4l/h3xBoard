@@ -1,4 +1,6 @@
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:h3xboard/models/converters/color_converter.dart';
 
 part 'board_widget.freezed.dart';
 part 'board_widget.g.dart';
@@ -151,6 +153,16 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     double? width,
     double? height,
   }) = ImageConfig;
+
+  // A chrome-less text label. Unlike [MemoNoteConfig] (a fixed-size sticky note
+  // rendering Markdown) this is bare highlighted text, sized to its content and
+  // meant to be dragged around the board as a label.
+  const factory BoardWidgetConfig.textBox({
+    @Default('') String text,
+    @ColorConverter() @Default(Color(0xFF1A1A1A)) Color backgroundColor,
+    @ColorConverter() @Default(Color(0xFFFFFFFF)) Color textColor,
+    @Default(64.0) double fontSize,
+  }) = TextBoxConfig;
 
   const factory BoardWidgetConfig.qrCode({
     @Default('') String data,

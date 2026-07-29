@@ -29,6 +29,7 @@ import 'package:h3xboard/views/board_screen/components/dialogs/board_settings_di
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/image_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/text_box_widget.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
@@ -564,8 +565,8 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   /// Adds [config] to the board, centred at the canvas-space point [at] when
   /// given (a drag & drop lands the widget under the cursor) and dead-centre
-  /// otherwise.
-  void onAddWidget(BoardWidgetConfig config, {Offset? at}) {
+  /// otherwise. Returns the new widget's id.
+  String onAddWidget(BoardWidgetConfig config, {Offset? at}) {
     // Switch to Select mode so the new widget's header is visible and it can be
     // positioned right away (headers are hidden in Draw/Erase mode).
     if (viewModel.drawingTools.activeTool != SelectableEditTool.pointer) {
@@ -591,6 +592,17 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
         viewModel.addBoardWidget(widget);
       },
     ));
+    return id;
+  }
+
+  /// Drops a text label on the board and opens its editor straight away, so the
+  /// teacher types instead of being left with an empty placeholder.
+  void onAddTextBox() {
+    const config = TextBoxConfig();
+    final id = onAddWidget(config);
+    TextBoxWidgetDescriptor.instance
+        .editAction(contextAccessor.buildContext, config, (newConfig) => onWidgetConfigChanged(id, newConfig))
+        ?.call();
   }
 
   // Widget ids are stamped from the clock, so adding several in one go (dropping
