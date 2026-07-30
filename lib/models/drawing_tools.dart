@@ -12,6 +12,17 @@ enum MarkupTool { highlighter, shape }
 
 const double kHighlighterAlpha = 0.35;
 
+/// The five stroke widths each tool offers as one-tap presets, ordered small to
+/// large. Every list stays inside its tool's slider range, so a preset and a
+/// dragged value remain interchangeable — the presets are shortcuts along the
+/// slider, not a separate mode. The steps are per tool because the useful range
+/// differs: a 32px pen line is a thick marker, while a 32px highlighter is a
+/// narrow one.
+const List<double> kPenWidthPresets = [2, 4, 8, 16, 32];
+const List<double> kHighlighterWidthPresets = [8, 16, 24, 40, 64];
+const List<double> kShapeWidthPresets = [2, 4, 8, 16, 32];
+const List<double> kEraserWidthPresets = [8, 16, 32, 48, 64];
+
 bool toolUsesActiveColor(SelectableEditTool tool) =>
     tool == SelectableEditTool.pen ||
     tool == SelectableEditTool.highlighter ||

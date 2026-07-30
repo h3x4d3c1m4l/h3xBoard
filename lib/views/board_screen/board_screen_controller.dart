@@ -508,22 +508,25 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
         _ => SimpleLine(),
       };
 
-  void onPenWidthSliderMoved(double value) {
+  // Each tool's width has two entry points — its preset row and its slider —
+  // that differ only in how the value is chosen, so both land here.
+
+  void onPenWidthChanged(double value) {
     viewModel.setPenWidth(value);
     _applyActiveToolStyle();
   }
 
-  void onEraserWidthSliderMoved(double value) {
+  void onEraserWidthChanged(double value) {
     viewModel.setEraserWidth(value);
     _applyActiveToolStyle();
   }
 
-  void onHighlighterWidthSliderMoved(double value) {
+  void onHighlighterWidthChanged(double value) {
     viewModel.setHighlighterWidth(value);
     _applyActiveToolStyle();
   }
 
-  void onShapeWidthSliderMoved(double value) {
+  void onShapeWidthChanged(double value) {
     viewModel.setShapeWidth(value);
     _applyActiveToolStyle();
   }

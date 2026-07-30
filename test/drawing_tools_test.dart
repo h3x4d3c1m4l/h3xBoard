@@ -78,4 +78,38 @@ void main() {
       expect(widthOf(SelectableEditTool.shape), 4);
     });
   });
+
+  group('stroke width presets', () {
+    // (presets, slider min, slider max, the tool's default width). The ranges
+    // repeat the literals the flyout sliders are built with.
+    final tools = {
+      'pen': (kPenWidthPresets, 2.0, 64.0, 2.0),
+      'highlighter': (kHighlighterWidthPresets, 8.0, 64.0, 24.0),
+      'shape': (kShapeWidthPresets, 2.0, 64.0, 4.0),
+      'eraser': (kEraserWidthPresets, 2.0, 64.0, 8.0),
+    };
+
+    tools.forEach((name, spec) {
+      final (presets, min, max, defaultWidth) = spec;
+
+      test('$name offers five presets, ordered small to large', () {
+        expect(presets, hasLength(5));
+        expect(presets, orderedEquals(presets.toList()..sort()));
+        expect(presets.toSet(), hasLength(5));
+      });
+
+      // A preset outside its slider's range could be picked but never dragged
+      // back to, stranding the tool at a width its own slider cannot express.
+      test('$name presets stay within its slider range', () {
+        for (final preset in presets) {
+          expect(preset, inInclusiveRange(min, max), reason: '$preset is off the $name slider');
+        }
+      });
+
+      // Otherwise the row opens with nothing selected, reading as "no size set".
+      test('$name starts on one of its presets', () {
+        expect(presets, contains(defaultWidth));
+      });
+    });
+  });
 }
