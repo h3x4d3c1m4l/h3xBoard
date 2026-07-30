@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 
 part 'live_share_message.freezed.dart';
 part 'live_share_message.g.dart';
@@ -49,6 +50,7 @@ sealed class LiveShareMessage with _$LiveShareMessage {
     required List<Map<String, dynamic>> strokes,
     Map<String, dynamic>? inProgress,
     @Default(<String>[]) List<String> fileIds,
+    LaserPointer? laser,
   }) = LiveShareSnapshot;
 
   /// The active sub-board's appearance changed (background, line pattern, …)
@@ -100,6 +102,16 @@ sealed class LiveShareMessage with _$LiveShareMessage {
     @Default(0) int seq,
     required List<Map<String, dynamic>> strokes,
   }) = LiveShareDrawingSet;
+
+  /// The presenter's virtual laser pointer moved, or was put away ([pointer]
+  /// null). Sent per frame while pointing, at the same cadence and over the
+  /// same batching as [strokeProgress] — it is a hint, not board content, and
+  /// nothing on a receiver depends on having seen every one of them.
+  const factory LiveShareMessage.laser({
+    @Default(1) int v,
+    @Default(0) int seq,
+    LaserPointer? pointer,
+  }) = LiveShareLaser;
 
   /// No board is open (the presenter left the board screen). External display
   /// shows its idle placeholder, web viewers show "waiting".

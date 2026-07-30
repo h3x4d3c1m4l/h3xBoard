@@ -4,6 +4,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
+import 'package:h3xboard/services/app_settings_controller.dart';
+import 'package:h3xboard/services/live_share/board_mirroring.dart';
 import 'package:h3xboard/services/live_share/live_share_session_service.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
@@ -164,10 +167,225 @@ class _MenuControls extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       spacing: 4,
       children: [
+        // Only while the board is actually being mirrored: a dot nobody else
+        // can see points at nothing.
+        Observer(
+          builder: (_) => isBoardMirrored
+              ? _LaserControl(controller: controller, viewModel: viewModel)
+              : const SizedBox.shrink(),
+        ),
         Observer(builder: (_) => _SaveStatusIndicator(status: viewModel.saveStatus)),
         const _ShareButton(),
         _MenuButton(controller: controller, viewModel: viewModel),
       ],
+    );
+  }
+
+}
+
+/// The laser pointer: one button that arms the laser and offers its colours in
+/// the same tap. It sits with the share button because it is a presenting
+/// control, not a drawing tool — keeping it out of the tool toolbar is the
+/// point, since a laser is momentary and a sixth toggle next to pen and eraser
+/// is one you forget to switch back from.
+///
+/// Arming opens the colour popup, but it is an offer rather than a step: point
+/// at anything and it gets out of the way, exactly like the pen's width popup
+/// stepping aside the moment a stroke starts. So it costs nothing to ignore,
+/// which is what makes it safe to open unasked.
+class _LaserControl extends StatefulWidget {
+
+  final BoardScreenController controller;
+  final BoardScreenViewModel viewModel;
+
+  const _LaserControl({required this.controller, required this.viewModel});
+
+  @override
+  State<_LaserControl> createState() => _LaserControlState();
+
+}
+
+class _LaserControlState extends State<_LaserControl> {
+
+  final OverlayPortalController _popupController = OverlayPortalController();
+  final LayerLink _layerLink = LayerLink();
+
+  // A group id of this control's own, so tapping the button itself doesn't
+  // register as a tap *outside* the popup and immediately close what the tap
+  // just opened.
+  final Object _tapGroupId = Object();
+
+  @override
+  void initState() {
+    super.initState();
+    // Any laser activity — the first point, or the dot being taken away on
+    // disarm — retires the popup.
+    widget.controller.laser.addListener(_hidePopup);
+  }
+
+  void _hidePopup() {
+    if (mounted && _popupController.isShowing) _popupController.hide();
+  }
+
+  void _onPressed() {
+    final arming = !widget.viewModel.laserArmed;
+    widget.controller.setLaserArmed(arming);
+    if (arming) {
+      _popupController.show();
+    } else {
+      _hidePopup();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appSettings = GetIt.I<AppSettingsController>();
+
+    // Lit in the laser's own colour while armed, so the button and the dot on
+    // the wall visibly belong together.
+    final button = Tooltip(
+      message: context.localizations.boardTopBar_laser,
+      child: Observer(
+        builder: (_) {
+          final armed = widget.viewModel.laserArmed;
+          final color = appSettings.laserColor.color;
+          return IconButton(
+            icon: Icon(
+              LucideIcons.mousePointerClick,
+              size: 20,
+              color: armed ? color : null,
+              shadows: armed ? [Shadow(color: color, blurRadius: 12)] : null,
+            ),
+            onPressed: _onPressed,
+          );
+        },
+      ),
+    );
+
+    return OverlayPortal(
+      controller: _popupController,
+      // An OverlayPortal rather than a Flyout: a flyout takes a modal barrier,
+      // which would swallow the very first point instead of letting it through
+      // to the board and closing the popup on the way.
+      overlayChildBuilder: (context) => Align(
+        alignment: Alignment.topLeft,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          targetAnchor: Alignment.bottomCenter,
+          followerAnchor: Alignment.topCenter,
+          offset: const Offset(0, 8),
+          showWhenUnlinked: false,
+          child: TapRegion(
+            groupId: _tapGroupId,
+            onTapOutside: (_) => _hidePopup(),
+            child: _buildColorPopup(context),
+          ),
+        ),
+      ),
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: TapRegion(groupId: _tapGroupId, child: button),
+      ),
+    );
+  }
+
+  Widget _buildColorPopup(BuildContext context) {
+    final appSettings = GetIt.I<AppSettingsController>();
+    return FlyoutContent(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Observer(
+        builder: (_) => Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 8,
+          children: [
+            Text(context.localizations.boardTopBar_laserColor),
+            for (final laserColor in LaserColor.values)
+              _LaserSwatch(
+                laserColor: laserColor,
+                label: _labelFor(context, laserColor),
+                selected: laserColor == appSettings.laserColor,
+                // Picking deliberately leaves the popup up: the next tap is as
+                // likely to be a second opinion as it is to be done, and
+                // pointing dismisses it anyway.
+                onPressed: () => unawaited(widget.controller.onLaserColorPicked(laserColor)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _labelFor(BuildContext context, LaserColor color) => switch (color) {
+        LaserColor.red => context.localizations.laserColor_red,
+        LaserColor.green => context.localizations.laserColor_green,
+        LaserColor.blue => context.localizations.laserColor_blue,
+        LaserColor.magenta => context.localizations.laserColor_magenta,
+      };
+
+  @override
+  void dispose() {
+    widget.controller.laser.removeListener(_hidePopup);
+    super.dispose();
+  }
+
+}
+
+/// One colour choice, drawn as a miniature of the dot it produces — coloured
+/// bloom around a white-hot core — so the swatch previews the thing rather than
+/// just naming it.
+class _LaserSwatch extends StatelessWidget {
+
+  final LaserColor laserColor;
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  const _LaserSwatch({
+    required this.laserColor,
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final color = laserColor.color;
+    return Tooltip(
+      message: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: selected ? theme.accentColor : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.55), blurRadius: 8)],
+            ),
+            child: Center(
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color.lerp(Colors.white, color, 0.12),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

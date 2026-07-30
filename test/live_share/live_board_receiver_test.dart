@@ -6,6 +6,7 @@ import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/models/live_share/live_share_message.dart';
 import 'package:h3xboard/services/live_share/live_board_receiver.dart';
 
@@ -43,12 +44,14 @@ LiveShareMessage _snapshot({
   List<BoardWidget> widgets = const [],
   List<Map<String, dynamic>> strokes = const [],
   Map<String, dynamic>? inProgress,
+  LaserPointer? laser,
 }) => LiveShareMessage.snapshot(
   seq: seq,
   board: _board(id: boardId),
   widgets: widgets,
   strokes: strokes,
   inProgress: inProgress,
+  laser: laser,
 );
 
 void main() {
@@ -106,6 +109,29 @@ void main() {
         ..apply(const LiveShareMessage.drawingSet(seq: 2, strokes: []));
 
       expect(receiver.drawingController.getJsonList(), isEmpty);
+    });
+
+    test('laser frames move the dot and put it away again', () {
+      receiver
+        ..apply(_snapshot(seq: 1))
+        ..apply(const LiveShareMessage.laser(
+          seq: 2,
+          pointer: LaserPointer(x: 300, y: 400, color: LaserColor.blue),
+        ));
+
+      expect(receiver.laser.value, const LaserPointer(x: 300, y: 400, color: LaserColor.blue));
+
+      receiver.apply(const LiveShareMessage.laser(seq: 3));
+      expect(receiver.laser.value, isNull);
+    });
+
+    test('a snapshot restores the dot, so joining mid-point is not blind', () {
+      receiver.apply(_snapshot(seq: 1, laser: const LaserPointer(x: 5, y: 6, color: LaserColor.green)));
+      expect(receiver.laser.value?.color, LaserColor.green);
+
+      // A snapshot taken while the presenter was not pointing clears it again.
+      receiver.apply(_snapshot(seq: 2));
+      expect(receiver.laser.value, isNull);
     });
 
     test('clear returns to idle', () {

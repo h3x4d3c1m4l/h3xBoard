@@ -676,5 +676,17 @@
     "viewerScreen_full_title": "This presentation is full",
     "@viewerScreen_full_title": {},
     "viewerScreen_full_message": "The maximum number of viewers has been reached. Try again later.",
-    "@viewerScreen_full_message": {}
+    "@viewerScreen_full_message": {},
+    "boardTopBar_laser": "Laser pointer (hold L)",
+    "@boardTopBar_laser": {},
+    "boardTopBar_laserColor": "Laser colour",
+    "@boardTopBar_laserColor": {},
+    "laserColor_red": "Red",
+    "@laserColor_red": {},
+    "laserColor_green": "Green",
+    "@laserColor_green": {},
+    "laserColor_blue": "Blue",
+    "@laserColor_blue": {},
+    "laserColor_magenta": "Magenta",
+    "@laserColor_magenta": {}
 }

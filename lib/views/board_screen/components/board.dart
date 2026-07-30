@@ -3,14 +3,16 @@ import 'dart:math' as math;
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/gestures.dart' show PointerScrollEvent, PointerSignalEvent, kSecondaryMouseButton;
+import 'package:flutter/foundation.dart' show ValueListenable, kIsWeb;
+import 'package:flutter/gestures.dart'
+    show PointerDeviceKind, PointerScrollEvent, PointerSignalEvent, kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
@@ -23,6 +25,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/widget_selection_
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
+import 'package:h3xboard/views/components/laser_pointer_overlay.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class Board extends StatefulWidget {
@@ -51,6 +54,18 @@ class Board extends StatefulWidget {
   /// instead of a new widget being created.
   final void Function(List<DropItem> files, Offset canvasPosition, {BoardWidget? onto}) onImagesDropped;
 
+  /// The presenter's laser dot. Read directly by the overlay painter, so
+  /// pointing repaints one layer instead of rebuilding the board.
+  final ValueListenable<LaserPointer?> laser;
+
+  /// The laser moved to [canvasPosition], or left the board (cursor out, finger
+  /// lifted) when null.
+  final void Function(Offset? canvasPosition) onLaserMoved;
+
+  /// Arm or put away the laser from the board itself — Escape, or the
+  /// hold-to-point shortcut.
+  final void Function(bool armed) onLaserArmedChanged;
+
   const Board({
     super.key,
     required this.drawingController,
@@ -68,6 +83,9 @@ class Board extends StatefulWidget {
     required this.onMoveWidgetDown,
     required this.onMoveWidgetToBottom,
     required this.onImagesDropped,
+    required this.laser,
+    required this.onLaserMoved,
+    required this.onLaserArmedChanged,
   });
 
   @override
@@ -125,6 +143,12 @@ class _BoardState extends State<Board> {
   Timer? _arrowEndTimer;
   String? _arrowNudgeWidgetId;
 
+  // True while the laser is up *because* L is being held, so the release puts
+  // it away again. Holding L when the laser is already armed from the top bar
+  // leaves this false, and letting go then doesn't disarm what the key didn't
+  // arm.
+  bool _laserHeldByKey = false;
+
   @override
   void initState() {
     widget.drawingController.drawConfig.addListener(_onDrawConfigChanged);
@@ -134,6 +158,15 @@ class _BoardState extends State<Board> {
   }
 
   bool _onKeyEvent(KeyEvent event) {
+    // Hold-to-point. The key-up is handled even while a text field has focus:
+    // if focus moved mid-hold, swallowing the release would strand the laser
+    // armed with nothing left holding it.
+    if (event.logicalKey == LogicalKeyboardKey.keyL) {
+      if (event is KeyUpEvent) return _releaseHeldLaser();
+      if (!_isEditingText && event is KeyDownEvent) return _pressHeldLaser();
+      if (event is KeyRepeatEvent) return _laserHeldByKey;
+    }
+
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
     // Keyboard handlers run before the focus tree, so without this the board
     // would eat keys aimed at a text field — Backspace in the in-place editor or
@@ -143,6 +176,12 @@ class _BoardState extends State<Board> {
     final arrangingId = widget.viewModel.arrangingWidgetId;
 
     if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+      // Escape is the universal "put it away" — the laser first, since it is
+      // the mode covering everything else.
+      if (widget.viewModel.laserArmed) {
+        widget.onLaserArmedChanged(false);
+        return true;
+      }
       if (arrangingId == null) return false;
       widget.viewModel.setArrangingWidget(null);
       return true;
@@ -168,6 +207,55 @@ class _BoardState extends State<Board> {
       return true;
     }
     return false;
+  }
+
+  // Hold L to point for a moment and hand the board straight back — no mode to
+  // switch to and, more to the point, none to remember to switch back from.
+  bool _pressHeldLaser() {
+    if (widget.viewModel.laserArmed) return false;
+    _laserHeldByKey = true;
+    widget.onLaserArmedChanged(true);
+    return true;
+  }
+
+  bool _releaseHeldLaser() {
+    if (!_laserHeldByKey) return false;
+    _laserHeldByKey = false;
+    widget.onLaserArmedChanged(false);
+    return true;
+  }
+
+  // The board's laser capture layer, mounted only while the laser is armed.
+  // Opaque, and stacked above the widget gesture layer, so while pointing the
+  // canvas is look-don't-touch: no strokes, no widget drags, and no stray taps
+  // landing on a piano key or a stopwatch button under the dot.
+  Widget _buildLaserCaptureLayer() {
+    return Positioned.fill(
+      key: const ValueKey('laser-layer'),
+      child: MouseRegion(
+        // The dot replaces the cursor rather than trailing it.
+        cursor: SystemMouseCursors.none,
+        // Arming with the mouse already over the board lights the dot straight
+        // away instead of waiting for the first move.
+        onEnter: (e) => widget.onLaserMoved(e.localPosition),
+        onExit: (_) => widget.onLaserMoved(null),
+        child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerHover: (e) => widget.onLaserMoved(e.localPosition),
+          onPointerDown: (e) => widget.onLaserMoved(e.localPosition),
+          onPointerMove: (e) => widget.onLaserMoved(e.localPosition),
+          onPointerUp: _onLaserPointerReleased,
+          onPointerCancel: _onLaserPointerReleased,
+        ),
+      ),
+    );
+  }
+
+  void _onLaserPointerReleased(PointerEvent event) {
+    // A mouse keeps pointing after the button comes up — hover carries the dot.
+    // A finger or stylus lifting off means the pointer is gone.
+    if (event.kind == PointerDeviceKind.mouse) return;
+    widget.onLaserMoved(null);
   }
 
   // Whether typing is currently going into a text field — the label editor, or
@@ -254,7 +342,10 @@ class _BoardState extends State<Board> {
       arrangeDelta: placement.arrangeDelta,
       title: descriptorFor(bw.config).label(context.localizations),
       isArranging: bw.id == widget.viewModel.arrangingWidgetId,
-      visible: widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer,
+      // Nothing on the board is grabbable while the laser is out, so its header
+      // chrome would only be dead decoration over the thing being pointed at.
+      visible: widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer &&
+          !widget.viewModel.laserArmed,
       settingsBuilder: (context) => _buildSettingsItems(context, bw),
       onToggleArrange: () => _toggleArrange(bw.id),
       onClose: () => widget.onDeleteWidget(bw.id),
@@ -922,6 +1013,13 @@ class _BoardState extends State<Board> {
                           ),
                         ),
                       ),
+                      // Above the gesture layer so it takes the pointer away
+                      // from everything below while the laser is armed.
+                      if (widget.viewModel.laserArmed) _buildLaserCaptureLayer(),
+                      // The dot itself, above all board chrome and outside the
+                      // capture RepaintBoundary — it must never end up baked
+                      // into a board thumbnail.
+                      Positioned.fill(child: LaserPointerOverlay(pointer: widget.laser)),
                       // Drop feedback, above everything and pointer-inert: an OS file
                       // drag sends no pointer events, so nothing here can be hit.
                       if (_dragging)

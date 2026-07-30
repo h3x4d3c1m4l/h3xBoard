@@ -6,6 +6,7 @@ import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/models/live_share/live_share_message.dart';
 import 'package:h3xboard/services/live_share/live_share_hub.dart';
 import 'package:mobx/mobx.dart';
@@ -21,7 +22,9 @@ import 'package:mobx/mobx.dart';
 /// what it last published to pick the smallest message. The drawing canvas
 /// isn't MobX: committed-stroke changes arrive via the [DrawingController]'s
 /// own notifier (stroke end, undo/redo/clear rebuilds) and mid-stroke motion
-/// via its surface painter, both coalesced to at most one publish per frame.
+/// via its surface painter. The laser pointer is a notifier too, for the same
+/// reason — it moves every frame. All three are coalesced to at most one
+/// publish per frame.
 ///
 /// Every message carries a session-monotonic [seq] so lossy transports can
 /// detect gaps. Safety snapshots (every [_safetySnapshotEvery] deltas, or
@@ -37,6 +40,7 @@ class LiveBoardPublisher {
   final Board Function() _board;
   final List<BoardWidget> Function() _widgets;
   final bool Function() _isLoading;
+  final ValueListenable<LaserPointer?> _laser;
 
   late final ReactionDisposer _stateReactionDisposer;
   Timer? _safetyTimer;
@@ -54,12 +58,14 @@ class LiveBoardPublisher {
   List<PaintContent> _lastStrokes = const [];
   Set<String> _lastFileIds = const {};
   bool _hadInProgress = false;
+  LaserPointer? _lastLaser;
 
-  // Coalesces the flurry of drawing notifications during a stroke into at
-  // most one publish per frame.
+  // Coalesces the flurry of drawing and pointer notifications during a stroke
+  // into at most one publish per frame.
   bool _frameScheduled = false;
   bool _committedDirty = false;
   bool _surfaceDirty = false;
+  bool _laserDirty = false;
 
   LiveBoardPublisher({
     required this._hub,
@@ -67,6 +73,7 @@ class LiveBoardPublisher {
     required this._board,
     required this._widgets,
     required this._isLoading,
+    required this._laser,
   }) {
     _hub.registerPresenter(publishSnapshot);
     // Re-evaluate on any observable change: the getters read the view model's
@@ -77,6 +84,7 @@ class LiveBoardPublisher {
     _drawingController.addListener(_onDrawingCommitted);
     // Live drawing: the surface painter notifies on every pointer move.
     _drawingController.painter?.addListener(_onSurfaceRepaint);
+    _laser.addListener(_onLaserChanged);
     _safetyTimer = Timer.periodic(_safetySnapshotInterval, (_) {
       if (_deltasSinceSnapshot > 0) publishSnapshot();
     });
@@ -141,37 +149,46 @@ class LiveBoardPublisher {
     return LiveShareMessage.widgetsSet(seq: _nextSeq(), widgets: current);
   }
 
-  // Drawing deltas (DrawingController notifiers, coalesced per frame)
+  // Drawing and laser deltas (notifier-driven, coalesced per frame)
 
   void _onDrawingCommitted() {
     _committedDirty = true;
-    _scheduleDrawingFrame();
+    _schedulePublishFrame();
   }
 
   void _onSurfaceRepaint() {
     _surfaceDirty = true;
-    _scheduleDrawingFrame();
+    _schedulePublishFrame();
   }
 
-  void _scheduleDrawingFrame() {
+  void _onLaserChanged() {
+    _laserDirty = true;
+    _schedulePublishFrame();
+  }
+
+  void _schedulePublishFrame() {
     if (_frameScheduled) return;
     _frameScheduled = true;
     SchedulerBinding.instance
       ..addPostFrameCallback((_) {
         _frameScheduled = false;
-        _onDrawingFrame();
+        _onPublishFrame();
       })
       // Guarantee that next frame exists: a notification landing while the
       // scheduler is idle would otherwise wait for an unrelated repaint.
       ..ensureVisualUpdate();
   }
 
-  void _onDrawingFrame() {
+  void _onPublishFrame() {
     final committedDirty = _committedDirty;
     final surfaceDirty = _surfaceDirty;
+    final laserDirty = _laserDirty;
     _committedDirty = false;
     _surfaceDirty = false;
+    _laserDirty = false;
     if (!_publishedAnything) return;
+
+    if (laserDirty) _publishLaser();
 
     var committedThisFrame = false;
     if (committedDirty) {
@@ -198,6 +215,21 @@ class LiveBoardPublisher {
       _hadInProgress = false;
       _publishDelta(LiveShareMessage.strokeProgress(seq: _nextSeq()));
     }
+  }
+
+  /// Sends the pointer's new position (or its removal).
+  ///
+  /// Published straight to the hub rather than through [_publishDelta] on
+  /// purpose: the laser is the highest-volume frame in the protocol, and
+  /// letting it drive the safety-snapshot counter would re-send the whole board
+  /// every few seconds of pointing to heal state that never changed. A lost
+  /// laser frame is still caught by the receiver's sequence check, which asks
+  /// for a resync — the counter is not what protects it.
+  void _publishLaser() {
+    final laser = _laser.value;
+    if (laser == _lastLaser) return;
+    _lastLaser = laser;
+    _hub.publish(LiveShareMessage.laser(seq: _nextSeq(), pointer: laser));
   }
 
   /// The strokes receivers should show: the history up to the undo pointer.
@@ -241,6 +273,7 @@ class LiveBoardPublisher {
     _lastStrokes = strokes;
     _lastFileIds = fileIds;
     _hadInProgress = inProgress != null;
+    _lastLaser = _laser.value;
     _deltasSinceSnapshot = 0;
 
     _hub.publish(LiveShareMessage.snapshot(
@@ -250,6 +283,9 @@ class LiveBoardPublisher {
       strokes: [for (final s in strokes) s.toJson()],
       inProgress: inProgress?.toJson(),
       fileIds: fileIds.toList(),
+      // Carried so a viewer joining mid-sentence sees the dot straight away
+      // rather than staying blind until the presenter next moves it.
+      laser: _laser.value,
     ));
   }
 
@@ -273,6 +309,7 @@ class LiveBoardPublisher {
     _drawingController
       ..removeListener(_onDrawingCommitted)
       ..painter?.removeListener(_onSurfaceRepaint);
+    _laser.removeListener(_onLaserChanged);
     _hub
       ..unregisterPresenter(publishSnapshot)
       ..publish(LiveShareMessage.clear(seq: _nextSeq()));

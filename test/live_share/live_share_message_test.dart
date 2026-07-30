@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/models/live_share/live_share_message.dart';
 
 Board _board({String id = 'board_1'}) => Board(
@@ -66,8 +67,35 @@ void main() {
       expect(typeOf(const LiveShareMessage.strokeCommitted(stroke: {})), 'strokeCommitted');
       expect(typeOf(const LiveShareMessage.drawingSet(strokes: [])), 'drawingSet');
       expect(typeOf(const LiveShareMessage.clear()), 'clear');
+      expect(typeOf(const LiveShareMessage.laser()), 'laser');
       expect(typeOf(const LiveShareMessage.ping()), 'ping');
       expect(typeOf(const LiveShareMessage.resyncRequest()), 'resyncRequest');
+    });
+
+    test('laser survives a wire round-trip', () {
+      const message = LiveShareMessage.laser(
+        seq: 12,
+        pointer: LaserPointer(x: 960.5, y: 540.25, color: LaserColor.magenta),
+      );
+
+      final decoded = LiveShareMessage.fromJson(jsonDecode(jsonEncode(message.toJson())) as Map<String, dynamic>);
+
+      expect(decoded, message);
+    });
+
+    test('a laser colour a newer client added decodes as red rather than failing', () {
+      final decoded = LiveShareMessage.fromJson({
+        'type': 'laser',
+        'seq': 3,
+        'pointer': {'x': 1.0, 'y': 2.0, 'color': 'chartreuse'},
+      });
+
+      expect((decoded as LiveShareLaser).pointer?.color, LaserColor.red);
+    });
+
+    test('a laser frame with no pointer means the laser was put away', () {
+      final decoded = LiveShareMessage.fromJson({'type': 'laser', 'seq': 5});
+      expect((decoded as LiveShareLaser).pointer, isNull);
     });
 
     test('decodes server-origin frames', () {

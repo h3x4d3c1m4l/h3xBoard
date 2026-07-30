@@ -4,11 +4,13 @@ import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
+import 'package:h3xboard/views/components/laser_pointer_overlay.dart';
 
 /// A non-interactive render of a single board: background, drawing strokes, and
 /// widgets, at the canonical 1920×1080 canvas scaled with [FittedBox]. Used by
@@ -25,17 +27,23 @@ class ReadOnlyBoard extends StatelessWidget {
   /// shows without rebuilding the board. null = no overlay.
   final ValueListenable<PaintContent?>? inProgress;
 
+  /// The presenter's laser dot, on its own overlay above everything else.
+  /// null = no overlay.
+  final ValueListenable<LaserPointer?>? laser;
+
   const ReadOnlyBoard({
     super.key,
     required this.board,
     required this.widgets,
     required this.drawingController,
     this.inProgress,
+    this.laser,
   });
 
   @override
   Widget build(BuildContext context) {
     final inProgress = this.inProgress;
+    final laser = this.laser;
     // Scale the fixed 1920×1080 canvas up to the largest 16:9 rectangle that
     // fits the external screen, centered. On a non-16:9 display the leftover
     // space shows as white bars (painted behind by the parent); the board itself
@@ -83,6 +91,9 @@ class ReadOnlyBoard extends StatelessWidget {
                       // Read-only mirror: widgets never edit their own config here.
                       child: descriptorFor(bw.config).buildWidget(bw.config, (_) {}),
                     ),
+                  // Topmost: the presenter points *at* the board, including at
+                  // the widgets on it.
+                  if (laser != null) Positioned.fill(child: LaserPointerOverlay(pointer: laser)),
                 ],
               ),
             ),

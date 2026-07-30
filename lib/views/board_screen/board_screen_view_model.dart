@@ -67,6 +67,14 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @readonly
   bool _isFullscreen = false;
 
+  // Whether the virtual laser pointer is armed. Transient presenting state: it
+  // is never saved with the board and never enters the undo history. The dot's
+  // position is deliberately *not* an observable — it changes every frame, so
+  // it lives on a ValueNotifier (see BoardScreenController.laser) that only the
+  // overlay painter listens to.
+  @readonly
+  bool _laserArmed = false;
+
   @computed
   Board get board => _subBoards.firstWhere(
     (b) => b.id == _activeSubBoardId,
@@ -239,6 +247,15 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @action
   void setFullscreen(bool value) {
     _isFullscreen = value;
+  }
+
+  /// Arms or puts away the laser pointer. Arming drops out of Arrange mode:
+  /// while pointing the canvas is look-don't-touch, so leaving a widget's
+  /// handles on screen would just be dead chrome.
+  @action
+  void setLaserArmed(bool value) {
+    _laserArmed = value;
+    if (value) _arrangingWidgetId = null;
   }
 
   @action

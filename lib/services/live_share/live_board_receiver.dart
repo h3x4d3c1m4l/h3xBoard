@@ -3,6 +3,7 @@ import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/models/live_share/live_share_message.dart';
 import 'package:h3xboard/services/drawing_serialization.dart';
 
@@ -10,11 +11,12 @@ import 'package:h3xboard/services/drawing_serialization.dart';
 /// receive half of the live-share protocol, shared by the external-display
 /// isolate and the web viewer.
 ///
-/// State is split across three notifiers so each change repaints only what it
+/// State is split across four notifiers so each change repaints only what it
 /// must: board/widget changes notify this [ChangeNotifier] (the hosting view
 /// rebuilds), committed strokes land in [drawingController] (the DrawingBoard
-/// repaints itself), and the in-progress stroke lives in [inProgress] (a
-/// dedicated overlay repaints per frame). During a stroke nothing but the
+/// repaints itself), and the in-progress stroke and the laser dot live in
+/// [inProgress] and [laser], each with its own overlay repainting per frame.
+/// During a stroke — or while the presenter is pointing — nothing but that one
 /// overlay repaints.
 ///
 /// Presenter messages carry a per-session sequence number. On a lossy
@@ -31,6 +33,10 @@ class LiveBoardReceiver extends ChangeNotifier {
   /// The presenter's not-yet-committed stroke, drawn on an overlay above the
   /// committed drawing. null = no stroke in progress.
   final ValueNotifier<PaintContent?> inProgress = ValueNotifier<PaintContent?>(null);
+
+  /// Where the presenter is pointing their laser, on its own overlay above
+  /// everything else. null = the laser is put away.
+  final ValueNotifier<LaserPointer?> laser = ValueNotifier<LaserPointer?>(null);
 
   Board? _board;
   List<BoardWidget> _widgets = const [];
@@ -86,6 +92,8 @@ class LiveBoardReceiver extends ChangeNotifier {
           final strokes = restoreDrawingContents(m.strokes);
           if (strokes.isNotEmpty) drawingController.addContents(strokes);
         }
+      case LiveShareLaser m:
+        if (_acceptDelta(m.seq)) laser.value = m.pointer;
       case LiveShareClear m:
         if (_acceptDelta(m.seq)) _applyIdle();
       // Transport-level frames (hello, session lifecycle, viewer count) are
@@ -106,6 +114,7 @@ class LiveBoardReceiver extends ChangeNotifier {
     if (strokes.isNotEmpty) drawingController.addContents(strokes);
     final inProgressJson = m.inProgress;
     inProgress.value = inProgressJson == null ? null : _restoreStroke(inProgressJson);
+    laser.value = m.laser;
     notifyListeners();
   }
 
@@ -114,6 +123,7 @@ class LiveBoardReceiver extends ChangeNotifier {
     _widgets = const [];
     drawingController.clear();
     inProgress.value = null;
+    laser.value = null;
     notifyListeners();
   }
 
@@ -155,6 +165,7 @@ class LiveBoardReceiver extends ChangeNotifier {
   @override
   void dispose() {
     inProgress.dispose();
+    laser.dispose();
     drawingController.dispose();
     super.dispose();
   }

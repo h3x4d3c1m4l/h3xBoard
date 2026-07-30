@@ -676,5 +676,17 @@
     "viewerScreen_full_title": "Deze presentatie zit vol",
     "@viewerScreen_full_title": {},
     "viewerScreen_full_message": "Het maximale aantal kijkers is bereikt. Probeer het later opnieuw.",
-    "@viewerScreen_full_message": {}
+    "@viewerScreen_full_message": {},
+    "boardTopBar_laser": "Laserpointer (houd L ingedrukt)",
+    "@boardTopBar_laser": {},
+    "boardTopBar_laserColor": "Laserkleur",
+    "@boardTopBar_laserColor": {},
+    "laserColor_red": "Rood",
+    "@laserColor_red": {},
+    "laserColor_green": "Groen",
+    "@laserColor_green": {},
+    "laserColor_blue": "Blauw",
+    "@laserColor_blue": {},
+    "laserColor_magenta": "Magenta",
+    "@laserColor_magenta": {}
 }
