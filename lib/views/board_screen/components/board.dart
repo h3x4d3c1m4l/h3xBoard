@@ -135,6 +135,11 @@ class _BoardState extends State<Board> {
 
   bool _onKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+    // Keyboard handlers run before the focus tree, so without this the board
+    // would eat keys aimed at a text field — Backspace in the in-place editor or
+    // in a dialog over the board would delete the arranging widget instead of a
+    // character.
+    if (_isEditingText) return false;
     final arrangingId = widget.viewModel.arrangingWidgetId;
 
     if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
@@ -163,6 +168,13 @@ class _BoardState extends State<Board> {
       return true;
     }
     return false;
+  }
+
+  // Whether typing is currently going into a text field — the label editor, or
+  // any other field in a dialog over the board — rather than at the board itself.
+  bool get _isEditingText {
+    final focused = FocusManager.instance.primaryFocus?.context;
+    return focused != null && focused.findAncestorWidgetOfExactType<EditableText>() != null;
   }
 
   // Moves the arranging widget by [delta] canvas px, coalescing key-repeat bursts
@@ -202,11 +214,34 @@ class _BoardState extends State<Board> {
     void onChange(BoardWidgetConfig newConfig) => widget.onWidgetConfigChanged(bw.id, newConfig);
     final content = descriptor.buildWidget(bw.config, onChange);
 
-    // Double-clicking an editable widget's body opens its inline editor (the same
-    // action offered in the settings menu). Widgets without an editor are unwrapped.
+    // A single tap on a widget that has no header bar puts it into Arrange mode:
+    // that is where its resize and rotate handles are, and it has no pencil
+    // toggle to get there. Select mode only — a tap while drawing is a dot.
+    // (The board's own recognizer can't do this: on a tap it loses to the
+    // double-tap recognizer below and never reports the gesture.)
+    final tapArranges =
+        descriptor.entersArrangeOnTap && widget.viewModel.drawingTools.activeTool == SelectableEditTool.pointer;
+    // Double-clicking an editable widget's body opens its editor (the same action
+    // offered in the settings menu). Widgets without an editor are unwrapped.
     final edit = descriptor.editAction(context, bw.config, onChange);
-    if (edit == null) return content;
-    return GestureDetector(onDoubleTap: edit, child: content);
+
+    if (!tapArranges && edit == null) return content;
+    return GestureDetector(
+      onTap: tapArranges ? () => widget.viewModel.setArrangingWidget(bw.id) : null,
+      onDoubleTap: edit,
+      child: content,
+    );
+  }
+
+  // Bodies keep their own interactivity (stopwatch buttons, piano keys) and
+  // pointers fall through to the drawing layer over non-interactive ones. The
+  // widget being arranged is dimmed and paused, unless it is one that stays
+  // usable with its handles out — a text label being typed into in place.
+  Widget _buildWidgetBody(BoardWidget bw) {
+    final content = _buildWidgetContent(bw);
+    if (bw.id != widget.viewModel.arrangingWidgetId) return content;
+    if (!descriptorFor(bw.config).isInertWhileArranging) return content;
+    return IgnorePointer(child: Opacity(opacity: 0.6, child: content));
   }
 
   Widget _buildHeader(BuildContext context, BoardWidget bw) {
@@ -266,6 +301,15 @@ class _BoardState extends State<Board> {
       ],
       ...typeItems,
       if (typeItems.isNotEmpty) const MenuFlyoutSeparator(),
+      // Widgets with a header reach Arrange from its pencil/Done toggle. Ones
+      // without a header have no other way in, so resize and rotate would be
+      // unreachable for them.
+      if (!descriptor.hasHeaderBar)
+        MenuFlyoutItem(
+          leading: const Icon(LucideIcons.move),
+          text: Text(context.localizations.boardWidget_arrange),
+          onPressed: () => _toggleArrange(bw.id),
+        ),
       AppMenuFlyoutSubItem(
         leading: const Icon(LucideIcons.layers),
         text: Text(context.localizations.layerMenu_title),
@@ -381,7 +425,23 @@ class _BoardState extends State<Board> {
   BoardWidget? _headerAt(Offset canvasPoint) {
     if (widget.viewModel.drawingTools.activeTool != SelectableEditTool.pointer) return null;
     for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
+      // Skip widgets that render no header — their placement rectangle still
+      // exists, and matching it would leave an invisible drag strip above them.
+      if (!descriptorFor(bw.config).hasHeaderBar) continue;
       if (_isPointOnHeader(canvasPoint, bw)) return bw;
+    }
+    return null;
+  }
+
+  // Topmost widget that opts into being dragged by its body in Select mode, or
+  // null. Same reversed order and rotated-rect test as _headerAt.
+  BoardWidget? _draggableBodyAt(Offset canvasPoint) {
+    if (widget.viewModel.drawingTools.activeTool != SelectableEditTool.pointer) return null;
+    // While a widget is arranging, its own body drag (step 3) owns the gesture.
+    if (widget.viewModel.arrangingWidgetId != null) return null;
+    for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
+      if (!descriptorFor(bw.config).isDraggableInSelectMode) continue;
+      if (_isPointOnWidget(canvasPoint, bw)) return bw;
     }
     return null;
   }
@@ -456,26 +516,41 @@ class _BoardState extends State<Board> {
     widget.onImagesDropped(details.files, position, onto: onto);
   }
 
+  // Opens the widget context menu (settings, layers, visibility, delete) for the
+  // topmost widget under [canvasPoint]. Shared by right-click and long-press.
+  void _showWidgetContextMenuAt(Offset canvasPoint) {
+    for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
+      final hasHeader = descriptorFor(bw.config).hasHeaderBar;
+      if (!_isPointOnWidget(canvasPoint, bw) && !(hasHeader && _isPointOnHeader(canvasPoint, bw))) continue;
+      _contextMenuCanvasPos = canvasPoint;
+      _contextMenuBuilder = (context) => _buildSettingsItems(context, bw, includeTitle: true);
+      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final builder = _contextMenuBuilder;
+        if (builder == null) return;
+        _contextMenuController.showFlyout(
+          builder: (context) =>
+              AppMenuFlyout(shape: continuousMenuShape(context), itemMargin: kMenuItemMargin, items: builder(context)),
+          placementMode: FlyoutPlacementMode.auto,
+        );
+      });
+      return;
+    }
+  }
+
+  // Touch equivalent of right-click — without it, a widget that renders no header
+  // bar would have no way to reach its settings or delete on a touch panel.
+  // Select mode only: while drawing, a slow stroke start would otherwise pop the
+  // menu mid-stroke.
+  void _onLongPressStart(LongPressStartDetails details) {
+    if (widget.viewModel.drawingTools.activeTool != SelectableEditTool.pointer) return;
+    _showWidgetContextMenuAt(details.localPosition);
+  }
+
   void _onPointerDown(PointerDownEvent event) {
     if (event.buttons & kSecondaryMouseButton != 0) {
-      for (final bw in widget.viewModel.visibleBoardWidgets.reversed) {
-        if (_isPointOnWidget(event.localPosition, bw) || _isPointOnHeader(event.localPosition, bw)) {
-          _contextMenuCanvasPos = event.localPosition;
-          _contextMenuBuilder = (context) => _buildSettingsItems(context, bw, includeTitle: true);
-          setState(() {});
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            final builder = _contextMenuBuilder;
-            if (builder == null) return;
-            _contextMenuController.showFlyout(
-              builder: (context) =>
-                  AppMenuFlyout(shape: continuousMenuShape(context), itemMargin: kMenuItemMargin, items: builder(context)),
-              placementMode: FlyoutPlacementMode.auto,
-            );
-          });
-          return;
-        }
-      }
+      _showWidgetContextMenuAt(event.localPosition);
       return;
     }
 
@@ -548,7 +623,22 @@ class _BoardState extends State<Board> {
       return;
     }
 
-    // 2) Arrange-mode body drag: only the arranging widget's body is grabbable.
+    // 2) Body drag (Use mode) for widgets that opt in — those without a header
+    // bar, which would otherwise have no way to be moved. Move-only, like a
+    // header drag; resize and rotate still go through Arrange.
+    final bodyWidget = _draggableBodyAt(checkPoint);
+    if (bodyWidget != null) {
+      _headerDragActive = true;
+      setState(() => _activeWidgetId = bodyWidget.id);
+      _currentX = bodyWidget.x;
+      _currentY = bodyWidget.y;
+      _gestureStartRotation = bodyWidget.rotation;
+      _gestureStartScale = bodyWidget.scale;
+      widget.onWidgetTransformStart(bodyWidget.id);
+      return;
+    }
+
+    // 3) Arrange-mode body drag: only the arranging widget's body is grabbable.
     final arrangingId = widget.viewModel.arrangingWidgetId;
     if (arrangingId != null) {
       final matching = widget.viewModel.visibleBoardWidgets.where((b) => b.id == arrangingId);
@@ -564,7 +654,7 @@ class _BoardState extends State<Board> {
       }
     }
 
-    // 3) Anything else (a live Use-mode body) is left for the widget body itself.
+    // 4) Anything else (a live Use-mode body) is left for the widget body itself.
     _activeWidgetId = null;
   }
 
@@ -741,21 +831,12 @@ class _BoardState extends State<Board> {
                                   boardScaleEnabled: false,
                                 ),
                               ),
-                              // Widget bodies. Bodies keep their own interactivity (stopwatch
-                              // buttons, piano keys) and pointers fall through to the drawing layer
-                              // over non-interactive ones. The widget being arranged is dimmed and
-                              // its body interaction paused.
+                              // Widget bodies.
                               for (final bw in widget.viewModel.visibleBoardWidgets)
                                 ManipulableBoardWidget(
                                   key: ValueKey(bw.id),
                                   boardWidget: bw,
-                                  child: IgnorePointer(
-                                    ignoring: bw.id == widget.viewModel.arrangingWidgetId,
-                                    child: Opacity(
-                                      opacity: bw.id == widget.viewModel.arrangingWidgetId ? 0.6 : 1.0,
-                                      child: _buildWidgetContent(bw),
-                                    ),
-                                  ),
+                                  child: _buildWidgetBody(bw),
                                 ),
                             ],
                           ),
@@ -764,7 +845,8 @@ class _BoardState extends State<Board> {
                       // Header chrome — always mounted but faded out (and pointer-inert)
                       // outside Select mode, so toggling the mode animates in/out and the
                       // board stays uncluttered while drawing or presenting.
-                      for (final bw in widget.viewModel.visibleBoardWidgets) _buildHeader(context, bw),
+                      for (final bw in widget.viewModel.visibleBoardWidgets)
+                        if (descriptorFor(bw.config).hasHeaderBar) _buildHeader(context, bw),
                       // Arrange overlay (solid border + resize/rotate handles) for the
                       // single widget being arranged. Sized at boardPixelRatio-scaled
                       // canvas units to appear at host scale.
@@ -836,6 +918,7 @@ class _BoardState extends State<Board> {
                             onScaleStart: _onScaleStart,
                             onScaleUpdate: _onScaleUpdate,
                             onScaleEnd: _onScaleEnd,
+                            onLongPressStart: _onLongPressStart,
                           ),
                         ),
                       ),

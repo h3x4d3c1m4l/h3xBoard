@@ -8,6 +8,7 @@ import 'package:h3xboard/views/board_screen/components/buttons/eraser_tool_butto
 import 'package:h3xboard/views/board_screen/components/buttons/markup_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/pen_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/pointer_tool_button.dart';
+import 'package:h3xboard/views/board_screen/components/buttons/text_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/toggle_button_toolbar.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -62,6 +63,7 @@ class ToolToolbar extends StatelessWidget {
                     PointerToolButton(viewModel: viewModel, controller: controller),
                     PenToolButton(viewModel: viewModel, controller: controller),
                     MarkupToolButton(viewModel: viewModel, controller: controller),
+                    TextToolButton(controller: controller),
                     EraserToolButton(viewModel: viewModel, controller: controller),
                   ],
                 ),
