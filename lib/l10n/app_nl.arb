@@ -102,6 +102,8 @@
     "@boardsScreen_allBoards": {},
     "boardsScreen_newBlankBoard": "Nieuw leeg bord",
     "@boardsScreen_newBlankBoard": {},
+    "boardsScreen_watchSharedBoard": "Kijk mee met een gedeeld bord",
+    "@boardsScreen_watchSharedBoard": {},
     "boardsScreen_boardCount": "{count, plural, =0{Je hebt nog geen borden} =1{Je hebt 1 bord} other{Je hebt {count} borden}}",
     "@boardsScreen_boardCount": {
         "placeholders": {

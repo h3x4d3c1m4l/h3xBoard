@@ -91,6 +91,13 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
 
   void onSearchChanged(String query) => viewModel.setSearchQuery(query);
 
+  /// Opens the live-share viewer's code-entry screen. The viewer talks to the
+  /// anonymous share endpoints regardless of who is signed in, so this works
+  /// for a board shared by any other user; leaving it returns here.
+  void onWatchSharedBoardPressed() {
+    unawaited(contextAccessor.buildContext.router.push(const ViewerEntryRoute()));
+  }
+
   Future<void> openBoard(BoardSummary board) async {
     // Fetch the board here, behind a loading dialog, so the board screen opens
     // already-loaded (mirroring how leaving a board shows a save dialog first).

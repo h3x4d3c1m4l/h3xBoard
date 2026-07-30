@@ -115,6 +115,7 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
                   reloadToken: viewModel.reloadTick,
                   firstName: controller.firstName,
                   onCreateBoard: controller.onCreateBoardPressed,
+                  onWatchSharedBoard: controller.onWatchSharedBoardPressed,
                   onOpenBoard: controller.openBoard,
                   onDeleteBoard: controller.onDeleteBoard,
                   onRenameBoard: controller.onRenameBoard,
@@ -356,6 +357,7 @@ class _BoardsBody extends StatelessWidget {
   final int reloadToken;
   final String? firstName;
   final VoidCallback onCreateBoard;
+  final VoidCallback onWatchSharedBoard;
   final ValueChanged<BoardSummary> onOpenBoard;
   final ValueChanged<BoardSummary> onDeleteBoard;
   final void Function(BoardSummary board, String newTitle) onRenameBoard;
@@ -366,6 +368,7 @@ class _BoardsBody extends StatelessWidget {
     required this.reloadToken,
     required this.firstName,
     required this.onCreateBoard,
+    required this.onWatchSharedBoard,
     required this.onOpenBoard,
     required this.onDeleteBoard,
     required this.onRenameBoard,
@@ -389,14 +392,33 @@ class _BoardsBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(_greeting(loc, firstName), style: theme.typography.title),
-                    const SizedBox(height: 4),
-                    Text(
-                      loc.boardsScreen_boardCount(totalCount),
-                      style: theme.typography.body?.copyWith(color: theme.resources.textFillColorSecondary),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_greeting(loc, firstName), style: theme.typography.title),
+                          const SizedBox(height: 4),
+                          Text(
+                            loc.boardsScreen_boardCount(totalCount),
+                            style: theme.typography.body?.copyWith(color: theme.resources.textFillColorSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Button(
+                      onPressed: onWatchSharedBoard,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(LucideIcons.monitorPlay, size: 16),
+                          const SizedBox(width: 8),
+                          Text(loc.boardsScreen_watchSharedBoard),
+                        ],
+                      ),
                     ),
                   ],
                 ),
