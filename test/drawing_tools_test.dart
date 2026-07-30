@@ -89,7 +89,7 @@ void main() {
       'eraser': (kEraserWidthPresets, 2.0, 64.0, 8.0),
     };
 
-    tools.forEach((name, spec) {
+    for (final MapEntry(key: name, value: spec) in tools.entries) {
       final (presets, min, max, defaultWidth) = spec;
 
       test('$name offers five presets, ordered small to large', () {
@@ -110,6 +110,6 @@ void main() {
       test('$name starts on one of its presets', () {
         expect(presets, contains(defaultWidth));
       });
-    });
+    }
   });
 }
