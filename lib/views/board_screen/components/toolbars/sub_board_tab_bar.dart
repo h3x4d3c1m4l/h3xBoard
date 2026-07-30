@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/board.dart';
+import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
@@ -15,10 +16,34 @@ const double _subBoardTabRadius = 8;
 const double _subBoardButtonRadius = 7;
 
 // Horizontal gap between tabs (and the trailing buttons) — matches the Row's
-// `spacing`. The add and overflow buttons are square icon buttons: a 16px icon
-// with 6px padding on every side.
+// `spacing`.
 const double _tabSpacing = 4;
-const double _buttonWidth = 28;
+
+// Glyph size for the trailing add/overflow/rename/delete buttons. They are plain
+// [IconButton]s, so the app theme's `kIconControlPadding` supplies the padding
+// around this and every icon-only control in the app comes out the same size.
+const double _tabBarIconSize = 20;
+
+// Inner padding of a tab's label button, and the size of the inline rename box
+// that replaces the label. Named here because `_measureTabWidth` has to predict
+// a tab's laid-out width before it exists.
+const double _tabHorizontalPadding = 12;
+const double _tabVerticalPadding = 6;
+const double _tabEditFieldWidth = 120;
+const double _tabEditFieldPadding = 8;
+
+// Rendered width of a trailing button, derived from the very values that style
+// it. `_split` budgets with this to decide how many tabs fit, so a hand-written
+// copy would silently desync from what's on screen the moment either changes —
+// `sub_board_tab_bar_test.dart` measures a real button to hold the two together.
+final double _buttonWidth = _tabBarIconSize + kIconControlPadding.horizontal;
+
+// Width `_split` budgets for a tab showing the inline rename box instead of its
+// label. The box's padding sits *inside* its fixed width, so this is a
+// deliberate overestimate of the ~120px actually rendered: erring wide only ever
+// collapses one tab too many into the overflow menu, whereas erring narrow
+// overflows the row while someone is mid-rename.
+const double _editingTabWidth = _tabEditFieldWidth + 2 * _tabEditFieldPadding;
 
 class SubBoardTabBar extends StatefulWidget {
 
@@ -28,6 +53,11 @@ class SubBoardTabBar extends StatefulWidget {
   final VoidCallback onAddSubBoard;
   final void Function(String id) onRemoveSubBoard;
   final void Function(String id, String newTitle) onRenameSubBoard;
+
+  /// The per-button width the overflow math budgets with. Exposed so a test can
+  /// assert it still matches the button that actually renders.
+  @visibleForTesting
+  static double get trailingButtonWidth => _buttonWidth;
 
   const SubBoardTabBar({
     super.key,
@@ -198,9 +228,8 @@ class _SubBoardTabBarState extends State<SubBoardTabBar> {
   /// The active tab renders bold (and so slightly wider), so measure at the
   /// weight it will actually use.
   double _measureTabWidth(BuildContext context, Board board, bool isActive) {
-    // A tab being renamed shows a fixed-width edit box (120px field + 8px
-    // padding each side) instead of its label.
-    if (board.id == _editingId) return 136;
+    // A tab being renamed shows a fixed-width edit box instead of its label.
+    if (board.id == _editingId) return _editingTabWidth;
 
     // Match the tab label's rendered style — the theme font (Lexend) drives the
     // width, so measure with it rather than the platform default.
@@ -213,29 +242,23 @@ class _SubBoardTabBarState extends State<SubBoardTabBar> {
       textDirection: TextDirection.ltr,
       textScaler: MediaQuery.textScalerOf(context),
     )..layout();
-    // 12px padding on each side, plus a small buffer for the border.
-    return painter.width + 26;
+    // The tab's own padding on each side, plus a small buffer for the border.
+    return painter.width + 2 * _tabHorizontalPadding + 2;
   }
 
   Widget _buildAddButton(BuildContext context) {
-    return Tooltip(
-      message: context.localizations.subBoardTabBar_addBoard,
-      child: Button(
-        style: ButtonStyle(
-          padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.all(6)),
-          backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
-          shape: WidgetStatePropertyAll(
-            ContinuousRectangleBorder(borderRadius: BorderRadius.circular(_subBoardTabRadius)),
-          ),
-        ),
-        onPressed: widget.onAddSubBoard,
-        child: const Icon(LucideIcons.plus, size: 16),
-      ),
+    return _buildActionButton(
+      context,
+      icon: LucideIcons.plus,
+      tooltip: context.localizations.subBoardTabBar_addBoard,
+      onPressed: widget.onAddSubBoard,
     );
   }
 
-  /// A square trailing icon button matching the add button. [onPressed] may be
-  /// null to disable it (e.g. delete when only one board is left).
+  /// One of the tab bar's trailing icon buttons. Deliberately unstyled: it takes
+  /// the app theme's icon-button padding and shape so it matches every other
+  /// icon-only control. [onPressed] may be null to disable it (e.g. delete when
+  /// only one board is left).
   Widget _buildActionButton(
     BuildContext context, {
     required IconData icon,
@@ -244,16 +267,9 @@ class _SubBoardTabBarState extends State<SubBoardTabBar> {
   }) {
     return Tooltip(
       message: tooltip,
-      child: Button(
-        style: ButtonStyle(
-          padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.all(6)),
-          backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
-          shape: WidgetStatePropertyAll(
-            ContinuousRectangleBorder(borderRadius: BorderRadius.circular(_subBoardTabRadius)),
-          ),
-        ),
+      child: IconButton(
+        icon: Icon(icon, size: _tabBarIconSize),
         onPressed: onPressed,
-        child: Icon(icon, size: 16),
       ),
     );
   }
@@ -385,16 +401,9 @@ class _OverflowButtonState extends State<_OverflowButton> {
       message: context.localizations.subBoardTabBar_moreBoards,
       child: FlyoutTarget(
         controller: _flyoutController,
-        child: Button(
-          style: ButtonStyle(
-            padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.all(6)),
-            backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
-            shape: WidgetStatePropertyAll(
-              ContinuousRectangleBorder(borderRadius: BorderRadius.circular(_subBoardTabRadius)),
-            ),
-          ),
+        child: IconButton(
+          icon: const Icon(LucideIcons.ellipsis, size: _tabBarIconSize),
           onPressed: _openMenu,
-          child: const Icon(LucideIcons.ellipsis, size: 16),
         ),
       ),
     );
@@ -498,10 +507,10 @@ class _SubBoardTabState extends State<_SubBoardTab> {
         ),
         child: widget.isEditing
             ? SizedBox(
-                width: 120,
+                width: _tabEditFieldWidth,
                 height: 32,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: _tabEditFieldPadding),
                   child: ContinuousTextBox(
                     controller: widget.editController,
                     focusNode: widget.editFocus,
@@ -515,7 +524,10 @@ class _SubBoardTabState extends State<_SubBoardTab> {
                 child: Button(
                   style: ButtonStyle(
                     padding: const WidgetStatePropertyAll(
-                      EdgeInsetsDirectional.symmetric(horizontal: 12, vertical: 6),
+                      EdgeInsetsDirectional.symmetric(
+                        horizontal: _tabHorizontalPadding,
+                        vertical: _tabVerticalPadding,
+                      ),
                     ),
                     backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
                     shape: WidgetStatePropertyAll(

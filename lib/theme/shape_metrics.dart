@@ -20,6 +20,11 @@ const double kControlCornerRadius = kDialogCornerRadius - kDialogPadding;
 /// Shared inner padding for buttons and text fields, so they line up in height.
 const EdgeInsetsGeometry kControlPadding = EdgeInsets.symmetric(vertical: 12, horizontal: 24);
 
+/// Inner padding for icon-only buttons. They carry no label to give room to, so
+/// the wide [kControlPadding] would only make them look oversized; square
+/// padding keeps them square (fluent's own default for a large icon button).
+const EdgeInsetsGeometry kIconControlPadding = EdgeInsets.all(8);
+
 /// Corner radius of the whiteboard canvas's continuous-rectangle border.
 const double kBoardCornerRadius = 24;
 

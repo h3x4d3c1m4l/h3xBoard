@@ -12,6 +12,13 @@ FluentThemeData buildAppTheme() {
     scaffoldBackgroundColor: const Color(0xFFEAE9E6),
   );
 
+  final ButtonStyle controlButtonStyle = ButtonStyle(
+    padding: WidgetStatePropertyAll(kControlPadding),
+    shape: WidgetStatePropertyAll(
+      ContinuousRectangleBorder(borderRadius: BorderRadius.circular(kControlCornerRadius)),
+    ),
+  );
+
   return theme.copyWith(
     infoBarTheme: InfoBarThemeData(
       decoration: (severity) {
@@ -40,12 +47,16 @@ FluentThemeData buildAppTheme() {
         ),
       ),
     ),
-    buttonTheme: ButtonThemeData.all(
-      ButtonStyle(
-        padding: WidgetStatePropertyAll(kControlPadding),
-        shape: WidgetStatePropertyAll(
-          ContinuousRectangleBorder(borderRadius: BorderRadius.circular(kControlCornerRadius)),
-        ),
+    // Spelled out per style rather than via `ButtonThemeData.all`, which would
+    // hand `kControlPadding` to icon buttons too — 24px of horizontal padding
+    // around a bare 20px glyph, which reads as oversized next to everything else.
+    buttonTheme: ButtonThemeData(
+      defaultButtonStyle: controlButtonStyle,
+      filledButtonStyle: controlButtonStyle,
+      hyperlinkButtonStyle: controlButtonStyle,
+      outlinedButtonStyle: controlButtonStyle,
+      iconButtonStyle: controlButtonStyle.copyWith(
+        padding: const WidgetStatePropertyAll(kIconControlPadding),
       ),
     ),
     dialogTheme: ContentDialogThemeData(

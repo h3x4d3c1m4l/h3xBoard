@@ -8,7 +8,7 @@ import 'package:mobx/mobx.dart';
 
 part 'board_screen_view_model.g.dart';
 
-enum BoardSaveStatus { idle, saving, saved, error }
+enum BoardSaveStatus { saving, saved, error }
 
 /// A blank starter board, used both as the initial state and when a board is
 /// opened that has no persisted sub-boards yet.
@@ -39,7 +39,10 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   String? _loadError;
 
   @readonly
-  BoardSaveStatus _saveStatus = BoardSaveStatus.idle;
+  // A board is only shown once it has loaded, so what's on screen matches what's
+  // persisted: the indicator starts out reporting "saved" rather than hiding
+  // until the first edit.
+  BoardSaveStatus _saveStatus = BoardSaveStatus.saved;
 
   @readonly
   ObservableMap<String, List<Map<String, dynamic>>> _subBoardDrawings = ObservableMap();
