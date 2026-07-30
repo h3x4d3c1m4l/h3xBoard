@@ -135,9 +135,15 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
               builder: (_) {
                 final colorBarPos = appSettings.colorBarPosition;
                 final toolBarPos = appSettings.toolBarPosition;
+                // While the laser is armed the board is look-don't-touch, so both
+                // bars step aside — the drawing tools they offer can't be used
+                // anyway, and the presenter wants the board, not the chrome. The
+                // laser button in the top bar stays, to put the pointer away again.
+                final barsVisible = !viewModel.laserArmed;
                 final toolBar = DockedBar(
                   position: toolBarPos,
                   inside: appSettings.toolBarInside,
+                  visible: barsVisible,
                   bar: ToolToolbar(
                     controller: controller,
                     viewModel: viewModel,
@@ -147,6 +153,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
                 final colorBar = DockedBar(
                   position: colorBarPos,
                   inside: appSettings.colorBarInside,
+                  visible: barsVisible,
                   bar: Observer(
                     builder: (_) => DrawingToolbar(
                       activeColor: viewModel.drawingTools.activeColor,
