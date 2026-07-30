@@ -4,6 +4,7 @@ import 'package:flutter_drawing_board/paint_contents.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/models/live_share/live_share_message.dart';
 import 'package:h3xboard/services/live_share/live_board_publisher.dart';
 import 'package:h3xboard/services/live_share/live_share_hub.dart';
@@ -50,6 +51,7 @@ void main() {
   late Observable<Board> board;
   late Observable<List<BoardWidget>> widgets;
   late Observable<bool> isLoading;
+  late ValueNotifier<LaserPointer?> laser;
   LiveBoardPublisher? publisher;
 
   setUp(() {
@@ -60,12 +62,14 @@ void main() {
     board = Observable(_board());
     widgets = Observable(const []);
     isLoading = Observable(false);
+    laser = ValueNotifier(null);
   });
 
   tearDown(() {
     publisher?.dispose();
     publisher = null;
     drawingController.dispose();
+    laser.dispose();
   });
 
   LiveBoardPublisher createPublisher() => publisher = LiveBoardPublisher(
@@ -74,6 +78,7 @@ void main() {
     board: () => board.value,
     widgets: () => widgets.value,
     isLoading: () => isLoading.value,
+    laser: laser,
   );
 
   void drawStroke({double to = 10}) {
@@ -211,6 +216,57 @@ void main() {
       expect(afterEnd.whereType<LiveShareStrokeProgress>().where((m) => m.stroke == null), isEmpty);
       publisher!.dispose();
       publisher = null;
+    });
+
+    testWidgets('moving the laser publishes a laser frame', (tester) async {
+      createPublisher();
+      sink.drain();
+
+      laser.value = const LaserPointer(x: 100, y: 200, color: LaserColor.green);
+      await tester.pump();
+
+      final frame = sink.drain().whereType<LiveShareLaser>().single;
+      expect(frame.pointer, const LaserPointer(x: 100, y: 200, color: LaserColor.green));
+      publisher!.dispose();
+      publisher = null;
+    });
+
+    testWidgets('putting the laser away publishes a null pointer', (tester) async {
+      createPublisher();
+      laser.value = const LaserPointer(x: 10, y: 10, color: LaserColor.red);
+      await tester.pump();
+      sink.drain();
+
+      laser.value = null;
+      await tester.pump();
+
+      expect(sink.drain().whereType<LiveShareLaser>().single.pointer, isNull);
+      publisher!.dispose();
+      publisher = null;
+    });
+
+    testWidgets('several moves in one frame publish only the last position', (tester) async {
+      createPublisher();
+      sink.drain();
+
+      laser
+        ..value = const LaserPointer(x: 1, y: 1, color: LaserColor.red)
+        ..value = const LaserPointer(x: 2, y: 2, color: LaserColor.red)
+        ..value = const LaserPointer(x: 3, y: 3, color: LaserColor.red);
+      await tester.pump();
+
+      final frames = sink.drain().whereType<LiveShareLaser>();
+      expect(frames, hasLength(1));
+      expect(frames.single.pointer?.x, 3);
+      publisher!.dispose();
+      publisher = null;
+    });
+
+    test('a snapshot carries the current laser so a joining viewer sees the dot', () {
+      laser.value = const LaserPointer(x: 42, y: 24, color: LaserColor.magenta);
+      createPublisher();
+
+      expect((sink.drain().single as LiveShareSnapshot).laser?.x, 42);
     });
 
     test('seq increases monotonically across message types', () {

@@ -114,6 +114,9 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
             onMoveWidgetDown: controller.onMoveWidgetDown,
             onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
             onImagesDropped: controller.onImagesDropped,
+            laser: controller.laser,
+            onLaserMoved: controller.onLaserMoved,
+            onLaserArmedChanged: controller.setLaserArmed,
           );
         },
       ),

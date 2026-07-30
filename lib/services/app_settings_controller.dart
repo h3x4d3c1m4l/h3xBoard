@@ -1,4 +1,5 @@
 import 'package:h3xboard/models/app_settings_enums.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:mobx/mobx.dart';
 
@@ -23,6 +24,7 @@ abstract class AppSettingsControllerBase with Store {
   static const String keyToolBarInside = 'ui.toolBar.inside';
   static const String keyBarOrder = 'ui.bars.order';
   static const String keyExternalResolution = 'ui.externalDisplay.resolution';
+  static const String keyLaserColor = 'ui.laser.color';
 
   final H3xBoardApiClient _api;
 
@@ -56,6 +58,11 @@ abstract class AppSettingsControllerBase with Store {
   @readonly
   String? _externalResolution;
 
+  /// Colour of the virtual laser pointer. A personal preference rather than
+  /// board content, so it lives here and follows the user across boards.
+  @readonly
+  LaserColor _laserColor = LaserColor.red;
+
   /// Loads all settings from the server into the observables. Missing or invalid
   /// values fall back to their defaults; unknown keys are ignored. Never throws —
   /// a failed load simply leaves the defaults in place.
@@ -74,6 +81,26 @@ abstract class AppSettingsControllerBase with Store {
     _toolBarInside = values[keyToolBarInside] as bool? ?? false;
     _barOrder = BarOrder.fromWire(values[keyBarOrder]);
     _externalResolution = values[keyExternalResolution] as String?;
+    _laserColor = LaserColor.values.firstWhere(
+      (c) => c.name == values[keyLaserColor],
+      orElse: () => LaserColor.red,
+    );
+  }
+
+  /// Persists and applies the laser colour on its own. Unlike the settings in
+  /// [applyChanges] this one is picked straight from the board's top bar rather
+  /// than the Settings dialog, so it commits immediately — and optimistically,
+  /// since a failed write must not leave the dot a different colour than the
+  /// swatch the presenter just tapped.
+  @action
+  Future<void> setLaserColor(LaserColor color) async {
+    if (color == _laserColor) return;
+    _laserColor = color;
+    try {
+      await _api.setSetting(keyLaserColor, color.name);
+    } catch (_) {
+      // Keep the picked colour for this session; the next successful write wins.
+    }
   }
 
   /// Persists and applies a batch of edits, issuing a `settings.v1.set` only for

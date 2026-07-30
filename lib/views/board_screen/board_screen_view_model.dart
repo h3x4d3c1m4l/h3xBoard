@@ -59,13 +59,14 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @readonly
   ObservableList<BoardWidget> _boardWidgets = ObservableList();
 
-  // The single widget currently in Arrange mode (resize/rotate handles shown,
-  // body dimmed & paused). null = no widget is being arranged.
   @readonly
   String? _arrangingWidgetId;
 
   @readonly
   bool _isFullscreen = false;
+
+  @readonly
+  bool _laserArmed = false;
 
   @computed
   Board get board => _subBoards.firstWhere(
@@ -239,6 +240,15 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   @action
   void setFullscreen(bool value) {
     _isFullscreen = value;
+  }
+
+  /// Arms or puts away the laser pointer. Arming drops out of Arrange mode:
+  /// while pointing the canvas is look-don't-touch, so leaving a widget's
+  /// handles on screen would just be dead chrome.
+  @action
+  void setLaserArmed(bool value) {
+    _laserArmed = value;
+    if (value) _arrangingWidgetId = null;
   }
 
   @action

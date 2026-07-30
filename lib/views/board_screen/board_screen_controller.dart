@@ -15,12 +15,15 @@ import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_content.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/drawing_tools.dart';
+import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
+import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/drawing/arrow_line.dart';
 import 'package:h3xboard/services/drawing_serialization.dart';
 import 'package:h3xboard/services/fullscreen_service.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
+import 'package:h3xboard/services/live_share/board_mirroring.dart';
 import 'package:h3xboard/services/live_share/live_board_publisher.dart';
 import 'package:h3xboard/services/live_share/live_share_hub.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
@@ -34,6 +37,7 @@ import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
+import 'package:mobx/mobx.dart';
 
 // Matches 'Board N' titles to pick the next auto-number.
 final _boardTitleRegex = RegExp(r'^Board (\d+)$');
@@ -60,9 +64,17 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   final HistoryManager historyManager = HistoryManager();
   final ValueNotifier<int> drawStartSignal = ValueNotifier(0);
+
+  /// Where the presenter is pointing, in canvas space, or null when the laser
+  /// is put away. Deliberately not MobX: this changes every frame while
+  /// pointing, so it is a plain notifier that only the overlay painter and the
+  /// publisher listen to — nothing else in the screen rebuilds for it.
+  final ValueNotifier<LaserPointer?> laser = ValueNotifier(null);
+
   final FullscreenService _fullscreenService = FullscreenService();
   final _wsClient = GetIt.I<H3xBoardApiClient>();
   final _fileService = GetIt.I<H3xBoardFileService>();
+  final _appSettings = GetIt.I<AppSettingsController>();
 
   // Pending state captured at gesture/stroke boundaries for history recording.
   List<Map<String, dynamic>>? _drawingBefore;
@@ -88,6 +100,10 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   // share session is active, web viewers via the backend. Created in the
   // constructor, torn down (blanking receivers back to idle) in [dispose].
   late final LiveBoardPublisher _livePublisher;
+
+  // Puts the laser away when the last mirror goes (display unplugged, session
+  // stopped) — see [isBoardMirrored].
+  ReactionDisposer? _mirroringReactionDisposer;
 
   // Initialization/Deinitialization
 
@@ -115,6 +131,13 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       board: () => viewModel.board,
       widgets: () => viewModel.visibleBoardWidgets,
       isLoading: () => viewModel.isLoading,
+      laser: laser,
+    );
+    _mirroringReactionDisposer = reaction(
+      (_) => isBoardMirrored,
+      (mirrored) {
+        if (!mirrored) setLaserArmed(false);
+      },
     );
     if (preloadedDetail != null) {
       // The boards overview already fetched this board (and showed the loading
@@ -134,12 +157,14 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     _screenshotTimer?.cancel();
     _fullscreenSubscription?.cancel();
     _fullscreenService.dispose();
+    _mirroringReactionDisposer?.call();
     // Stop publishing and blank every mirror back to idle — the hub and its
     // sinks stay alive for the next screen.
     _livePublisher.dispose();
     super.dispose();
     drawingController.dispose();
     drawStartSignal.dispose();
+    laser.dispose();
   }
 
   // Persistence
@@ -397,6 +422,33 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     } else {
       _fullscreenService.requestFullscreen();
     }
+  }
+
+  // Laser pointer handlers
+
+  /// Arms or puts away the laser. Putting it away has to blank the dot too —
+  /// otherwise the last position would stay frozen on every mirror.
+  void setLaserArmed(bool value) {
+    if (value == viewModel.laserArmed) return;
+    viewModel.setLaserArmed(value);
+    if (!value) laser.value = null;
+  }
+
+  /// The presenter moved the pointer, in canvas coordinates. Null takes the dot
+  /// off screen — the finger lifted, or the mouse left the canvas.
+  void onLaserMoved(Offset? position) {
+    if (!viewModel.laserArmed) return;
+    laser.value = position == null
+        ? null
+        : LaserPointer(x: position.dx, y: position.dy, color: _appSettings.laserColor);
+  }
+
+  /// Recolours the dot in place as well as persisting the choice, so picking a
+  /// colour shows on the mirrors immediately instead of at the next move.
+  Future<void> onLaserColorPicked(LaserColor color) async {
+    final current = laser.value;
+    if (current != null) laser.value = current.copyWith(color: color);
+    await _appSettings.setLaserColor(color);
   }
 
   // Drawing tool handlers
