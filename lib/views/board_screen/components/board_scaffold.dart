@@ -4,6 +4,11 @@ import 'package:h3xboard/models/app_settings_enums.dart';
 /// Gap between an outside (docked) bar and the board edge it sits against.
 const double _kBarGap = 8;
 
+/// Inset between an inside (floating) bar and the board edge it hugs. Larger than
+/// [_kBarGap] because the bar sits *on* the board here, so it needs breathing room
+/// against the drawable area instead of merely a seam against the board's border.
+const double _kInsideBarInset = 16;
+
 /// One bar docked around (or floating over) the board.
 class DockedBar {
 
@@ -57,7 +62,9 @@ class BoardScaffold extends StatelessWidget {
     // `center` (the aspect-locked board) is the Stack's only non-positioned
     // child, so the Stack shrink-wraps to the board's real 16:9 size; the inside
     // bars are overlaid within those bounds (Positioned.fill + Align) so they hug
-    // the board's real edges rather than the far screen edges.
+    // the board's real edges rather than the far screen edges. The bars carry no
+    // outer padding of their own — this scaffold owns all bar spacing, so every
+    // bar sits the same distance from the board no matter which one it is.
     final insideBars = bars.where((b) => b.inside).toList();
     Widget content = center;
     if (insideBars.isNotEmpty) {
@@ -68,7 +75,10 @@ class BoardScaffold extends StatelessWidget {
             Positioned.fill(
               child: Align(
                 alignment: _alignmentFor(b.position),
-                child: b.bar,
+                child: Padding(
+                  padding: const EdgeInsets.all(_kInsideBarInset),
+                  child: b.bar,
+                ),
               ),
             ),
         ],
