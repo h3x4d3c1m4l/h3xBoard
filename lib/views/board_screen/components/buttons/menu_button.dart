@@ -42,16 +42,17 @@ class _MenuButtonState extends State<MenuButton> {
         shape: continuousMenuShape(context),
         itemMargin: kMenuItemMargin,
         items: [
-          MenuFlyoutItem(
-            leading: Icon(widget.viewModel.isFullscreen ? LucideIcons.minimize : LucideIcons.maximize),
-            text: Text(widget.viewModel.isFullscreen
-                ? context.localizations.boardSettingsButton_exitFullscreen
-                : context.localizations.boardSettingsButton_fullscreen),
-            onPressed: () {
-              Navigator.of(context).pop();
-              widget.controller.onFullscreenToggle();
-            },
-          ),
+          if (widget.controller.isFullscreenSupported)
+            MenuFlyoutItem(
+              leading: Icon(widget.viewModel.isFullscreen ? LucideIcons.minimize : LucideIcons.maximize),
+              text: Text(widget.viewModel.isFullscreen
+                  ? context.localizations.boardSettingsButton_exitFullscreen
+                  : context.localizations.boardSettingsButton_fullscreen),
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.controller.onFullscreenToggle();
+              },
+            ),
           MenuFlyoutItem(
             leading: const Icon(LucideIcons.settings),
             text: Text(context.localizations.boardSettingsButton_settings),

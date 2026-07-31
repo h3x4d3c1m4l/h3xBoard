@@ -32,6 +32,12 @@ const _kMenuTileMargin = EdgeInsetsDirectional.symmetric(horizontal: kMenuItemHo
 /// tappable row into a comfortable touch target (≈40px tall).
 const _kMenuTileTextPadding = EdgeInsetsDirectional.symmetric(vertical: 7);
 
+/// Vertical breathing room around a separator's rule. fluent's
+/// [MenuFlyoutSeparator] pads 5px *below* the line and nothing above it, so the
+/// rule ends up flush against the item above; this replaces it with an even
+/// gap on both sides (plus the neighbouring rows' [_kMenuTileMargin]).
+const _kMenuSeparatorPadding = EdgeInsetsDirectional.symmetric(vertical: 3);
+
 /// Renders a single [MenuFlyoutItem]-style row with a generous, fully-clickable
 /// padding. Shared by leaf items and sub-item rows so every menu row reads and
 /// behaves the same.
@@ -263,8 +269,15 @@ class _AppMenuFlyoutState extends State<AppMenuFlyout> {
                     closeAfterClick: item.closeAfterClick,
                     useIconPlaceholder: hasLeading,
                   );
+                } else if (item is MenuFlyoutSeparator) {
+                  child = Padding(
+                    padding: widget.itemMargin.add(_kMenuSeparatorPadding),
+                    child: const Divider(
+                      style: DividerThemeData(horizontalMargin: EdgeInsetsDirectional.zero),
+                    ),
+                  );
                 } else {
-                  // Separators and other bespoke item types keep the margin.
+                  // Other bespoke item types keep the margin.
                   child = Padding(padding: widget.itemMargin, child: item.build(context));
                 }
                 return KeyedSubtree(key: item.key, child: child);

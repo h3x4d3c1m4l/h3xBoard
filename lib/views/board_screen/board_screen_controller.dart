@@ -416,6 +416,8 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
 
   // Fullscreen handler
 
+  bool get isFullscreenSupported => _fullscreenService.isSupported;
+
   void onFullscreenToggle() {
     if (_fullscreenService.isFullscreen) {
       _fullscreenService.exitFullscreen();
