@@ -11,6 +11,7 @@ import 'package:h3xboard/models/app_settings_enums.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
+import 'package:h3xboard/views/components/continuous_combo_box.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scroll_edge_hint/scroll_edge_hint.dart';
@@ -318,7 +319,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       AppLanguage.english => 'English',
       AppLanguage.dutch => 'Nederlands',
     };
-    return ComboBox<AppLanguage>(
+    return ContinuousComboBox<AppLanguage>(
       value: _language,
       items: [
         for (final l in AppLanguage.values) ComboBoxItem(value: l, child: Text(label(l))),
@@ -340,7 +341,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       BarPosition.top => loc.settingsDialog_position_top,
       BarPosition.bottom => loc.settingsDialog_position_bottom,
     };
-    return ComboBox<BarPosition>(
+    return ContinuousComboBox<BarPosition>(
       value: value,
       items: [
         for (final p in BarPosition.values) ComboBoxItem(value: p, child: Text(label(p))),
@@ -356,7 +357,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       BarOrder.toolBarFirst => loc.settingsDialog_order_toolBarFirst,
       BarOrder.colorBarFirst => loc.settingsDialog_order_colorBarFirst,
     };
-    return ComboBox<BarOrder>(
+    return ContinuousComboBox<BarOrder>(
       value: _barOrder,
       items: [
         for (final o in BarOrder.values) ComboBoxItem(value: o, child: Text(label(o))),
@@ -374,7 +375,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       ..._externalModes,
       if (_externalResolution != null && !_externalModes.contains(_externalResolution)) _externalResolution!,
     ];
-    return ComboBox<String?>(
+    return ContinuousComboBox<String?>(
       value: _externalResolution,
       placeholder: Text(loc.settingsDialog_resolution_auto),
       items: [

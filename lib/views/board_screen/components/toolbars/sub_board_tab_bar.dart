@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/board.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
@@ -8,12 +9,6 @@ import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-
-// Continuous (squircle) corner radii for the sub-board tab bar. The tab's inner
-// button hugs the outer indicator concentrically (outer − 1), matching the app's
-// squircle surfaces instead of fluent's default rounded corners.
-const double _subBoardTabRadius = 8;
-const double _subBoardButtonRadius = 7;
 
 // Horizontal gap between tabs (and the trailing buttons) — matches the Row's
 // `spacing`.
@@ -24,11 +19,9 @@ const double _tabSpacing = 4;
 // around this and every icon-only control in the app comes out the same size.
 const double _tabBarIconSize = 20;
 
-// Inner padding of a tab's label button, and the size of the inline rename box
-// that replaces the label. Named here because `_measureTabWidth` has to predict
-// a tab's laid-out width before it exists.
-const double _tabHorizontalPadding = 12;
-const double _tabVerticalPadding = 6;
+// Size of the inline rename box that replaces a tab's label. Named here because
+// `_measureTabWidth` has to predict a tab's laid-out width before it exists; the
+// label button's own padding comes from `kTabHorizontalPadding`.
 const double _tabEditFieldWidth = 120;
 const double _tabEditFieldPadding = 8;
 
@@ -243,7 +236,7 @@ class _SubBoardTabBarState extends State<SubBoardTabBar> {
       textScaler: MediaQuery.textScalerOf(context),
     )..layout();
     // The tab's own padding on each side, plus a small buffer for the border.
-    return painter.width + 2 * _tabHorizontalPadding + 2;
+    return painter.width + 2 * kTabHorizontalPadding + 2;
   }
 
   Widget _buildAddButton(BuildContext context) {
@@ -470,7 +463,7 @@ class _SubBoardTabState extends State<_SubBoardTab> {
           MenuFlyoutItem(
             leading: Icon(
               LucideIcons.trash2,
-              color: widget.canDelete ? const Color(0xFFEF4444) : null,
+              color: widget.canDelete ? context.appTheme.colors.destructive : null,
             ),
             text: Text(context.localizations.subBoardTabBar_delete),
             onPressed: widget.canDelete
@@ -499,7 +492,7 @@ class _SubBoardTabState extends State<_SubBoardTab> {
         decoration: ShapeDecoration(
           color: widget.isActive ? accentColor.withValues(alpha: 0.15) : Colors.transparent,
           shape: ContinuousRectangleBorder(
-            borderRadius: BorderRadius.circular(_subBoardTabRadius),
+            borderRadius: BorderRadius.circular(kSubBoardTabRadius),
             side: BorderSide(
               color: widget.isActive ? accentColor : theme.resources.controlStrokeColorDefault,
             ),
@@ -522,18 +515,7 @@ class _SubBoardTabState extends State<_SubBoardTab> {
             : FlyoutTarget(
                 controller: _flyoutController,
                 child: Button(
-                  style: ButtonStyle(
-                    padding: const WidgetStatePropertyAll(
-                      EdgeInsetsDirectional.symmetric(
-                        horizontal: _tabHorizontalPadding,
-                        vertical: _tabVerticalPadding,
-                      ),
-                    ),
-                    backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
-                    shape: WidgetStatePropertyAll(
-                      ContinuousRectangleBorder(borderRadius: BorderRadius.circular(_subBoardButtonRadius)),
-                    ),
-                  ),
+                  style: context.appTheme.buttons.tab,
                   onPressed: widget.onTap,
                   child: Text(
                     widget.board.title,

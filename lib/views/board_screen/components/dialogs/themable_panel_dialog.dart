@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart' show DecorationClipper;
 
 /// A plain, content-focused dialog for larger panels (Add Widget, Board
@@ -10,9 +11,6 @@ import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart' 
 /// "Copy from…") are aligned to the start and [rightActions] (e.g. Cancel, OK)
 /// to the end. The footer is omitted entirely when both are empty.
 class ThemablePanelDialog extends StatelessWidget {
-
-  /// The slate-gray border around the white surface.
-  static const Color _borderColor = Color(0xFF6B7280);
 
   const ThemablePanelDialog({
     super.key,
@@ -46,7 +44,7 @@ class ThemablePanelDialog extends StatelessWidget {
     assert(debugCheckHasFluentTheme(context), 'A FluentTheme ancestor is required.');
     final theme = FluentTheme.of(context);
     final style = ContentDialogTheme.of(context);
-    final decoration = _plainDecoration(style.decoration);
+    final decoration = _plainDecoration(style.decoration, context.appTheme.dialogs);
     final hasActions = leftActions.isNotEmpty || rightActions.isNotEmpty;
 
     final body = Column(
@@ -104,15 +102,17 @@ class ThemablePanelDialog extends StatelessWidget {
     );
   }
 
-  /// Recolors the ambient dialog [base] decoration to a plain white surface with
-  /// a defined gray border, preserving its shape, radius and shadows.
-  Decoration? _plainDecoration(Decoration? base) {
+  /// Recolors the ambient dialog [base] decoration to the plain panel surface
+  /// with its defined gray border, preserving its shape, radius and shadows.
+  Decoration? _plainDecoration(Decoration? base, AppDialogStyles dialogs) {
     if (base is ShapeDecoration) {
       final shape = base.shape;
       return ShapeDecoration(
-        color: Colors.white,
+        color: dialogs.panelSurfaceColor,
         shape: shape is OutlinedBorder
-            ? shape.copyWith(side: shape.side.copyWith(color: _borderColor, width: 1.5))
+            ? shape.copyWith(
+                side: shape.side.copyWith(color: dialogs.panelBorderColor, width: dialogs.panelBorderWidth),
+              )
             : shape,
         shadows: base.shadows,
         image: base.image,
@@ -121,8 +121,8 @@ class ThemablePanelDialog extends StatelessWidget {
     }
     if (base is BoxDecoration) {
       return base.copyWith(
-        color: Colors.white,
-        border: Border.all(color: _borderColor, width: 1.5),
+        color: dialogs.panelSurfaceColor,
+        border: Border.all(color: dialogs.panelBorderColor, width: dialogs.panelBorderWidth),
       );
     }
     return base;

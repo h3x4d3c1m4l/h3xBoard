@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 
 class CustomColorButton extends StatefulWidget {
@@ -77,16 +78,21 @@ class _CustomColorButtonState extends State<CustomColorButton> with SingleTicker
 
   void _onPressed() {
     _colorSelectionController.showFlyout(
-      builder: (context) => FlyoutContent(child: ColorPicker(
-        orientation: Axis.horizontal,
-        isAlphaEnabled: false,
-        isColorChannelTextInputVisible: false,
-        isHexInputVisible: false,
-        color: _lastPicked,
-        onChanged: (color) {
-          setState(() => _lastPicked = color);
-          widget.onColorPicked!(color);
-        },
+      // The picker builds its internals out of plain Buttons, which would
+      // otherwise pick up the app's neutral-button outline.
+      builder: (context) => FlyoutContent(child: ButtonTheme.merge(
+        data: plainControlButtonTheme(context),
+        child: ColorPicker(
+          orientation: Axis.horizontal,
+          isAlphaEnabled: false,
+          isColorChannelTextInputVisible: false,
+          isHexInputVisible: false,
+          color: _lastPicked,
+          onChanged: (color) {
+            setState(() => _lastPicked = color);
+            widget.onColorPicked!(color);
+          },
+        ),
       )),
       placementMode: FlyoutPlacementMode.rightCenter,
       additionalOffset: 16,

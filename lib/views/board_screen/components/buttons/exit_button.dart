@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -16,11 +17,7 @@ class ExitButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Button(
-      style: ButtonStyle(
-        padding: const WidgetStatePropertyAll(EdgeInsetsDirectional.symmetric(horizontal: 12, vertical: 6)),
-        backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
-        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-      ),
+      style: context.appTheme.buttons.exit,
       onPressed: () => unawaited(controller.requestClose()),
       child: Row(
         mainAxisSize: MainAxisSize.min,

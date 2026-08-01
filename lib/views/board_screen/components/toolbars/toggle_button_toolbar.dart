@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 
 class ToggleButtonToolbar extends StatelessWidget {
 
@@ -15,9 +16,9 @@ class ToggleButtonToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    FluentThemeData theme = FluentTheme.of(context);
-    ToggleButtonThemeData toggleButtonTheme = _getToggleButtonTheme(theme);
-    ButtonThemeData buttonTheme = _getButtonTheme();
+    AppButtonStyles buttonStyles = context.appTheme.buttons;
+    ToggleButtonThemeData toggleButtonTheme = _getToggleButtonTheme(buttonStyles);
+    ButtonThemeData buttonTheme = _getButtonTheme(buttonStyles);
 
     return Flex(
       direction: direction,
@@ -32,31 +33,23 @@ class ToggleButtonToolbar extends StatelessWidget {
     );
   }
 
-  ShapeBorder _getShapeBorder() {
-    return ContinuousRectangleBorder(borderRadius: BorderRadius.circular(borderRadius));
-  }
+  /// The toolbar item styles carry everything but the shape — the radius is the
+  /// one thing only this widget knows, since it is concentric with the bar that
+  /// holds it.
+  WidgetStateProperty<ShapeBorder?> get _shape => WidgetStatePropertyAll(
+    ContinuousRectangleBorder(borderRadius: BorderRadius.circular(borderRadius)),
+  );
 
-  ToggleButtonThemeData _getToggleButtonTheme(FluentThemeData theme) {
+  ToggleButtonThemeData _getToggleButtonTheme(AppButtonStyles buttonStyles) {
     return ToggleButtonThemeData(
-      checkedButtonStyle: ButtonStyle(
-        foregroundColor: WidgetStateProperty.resolveWith((states) => FilledButton.foregroundColor(theme, states)),
-        backgroundColor: WidgetStateProperty.resolveWith((states) => FilledButton.backgroundColor(theme, states)),
-        shape: WidgetStateProperty.resolveWith(
-          (states) => _getShapeBorder(),
-        ),
-      ),
-      uncheckedButtonStyle: _getButtonTheme().defaultButtonStyle,
+      checkedButtonStyle: buttonStyles.toolbarItemChecked.copyWith(shape: _shape),
+      uncheckedButtonStyle: _getButtonTheme(buttonStyles).defaultButtonStyle,
     );
   }
 
-  ButtonThemeData _getButtonTheme() {
+  ButtonThemeData _getButtonTheme(AppButtonStyles buttonStyles) {
     return ButtonThemeData(
-      defaultButtonStyle: ButtonStyle(
-        backgroundColor: WidgetStateProperty.all(Colors.transparent),
-        shape: WidgetStateProperty.resolveWith(
-          (states) => _getShapeBorder(),
-        ),
-      ),
+      defaultButtonStyle: buttonStyles.toolbarItem.copyWith(shape: _shape),
     );
   }
 

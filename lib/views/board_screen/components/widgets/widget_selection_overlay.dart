@@ -1,9 +1,10 @@
 import 'dart:math' as math;
-
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
+
 
 // Visual constants (in OS pixels; multiplied by boardPixelRatio to get canvas units).
 // Kept package-visible (no leading underscore) so board.dart can mirror the hit-test math.
@@ -234,6 +235,7 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
     final handleRadius = kOverlayHandleRadius * ratio;
     final cornerSize = kOverlayCornerSize * ratio;
     final touch = kOverlayHandleTouch * ratio;
+    final selectionColor = context.appTheme.colors.selection;
 
     // Rotation handle: pick the direction (up/down/left/right) that keeps the handle on-canvas.
     final placement = computeRotationHandle(bw, ratio);
@@ -259,14 +261,14 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
             child: Transform.rotate(
               angle: r,
               alignment: Alignment.center,
-              child: CustomPaint(painter: _SolidBorderPainter(ratio)),
+              child: CustomPaint(painter: _SolidBorderPainter(ratio, selectionColor)),
             ),
           ),
         ),
         // Stem line from border top to rotation handle center.
         Positioned.fill(
           child: IgnorePointer(
-            child: CustomPaint(painter: _StemPainter(from: stemStart, to: handleCenter, ratio: ratio)),
+            child: CustomPaint(painter: _StemPainter(from: stemStart, to: handleCenter, ratio: ratio, color: selectionColor)),
           ),
         ),
         // Rotation handle: small circle glyph inside a finger-friendly touch target.
@@ -287,7 +289,7 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
                 child: SizedBox(
                   width: handleRadius * 2,
                   height: handleRadius * 2,
-                  child: CustomPaint(painter: _HandleCirclePainter(ratio)),
+                  child: CustomPaint(painter: _HandleCirclePainter(ratio, selectionColor)),
                 ),
               ),
             ),
@@ -316,7 +318,7 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
                   child: SizedBox(
                     width: cornerSize * 2,
                     height: cornerSize * 2,
-                    child: CustomPaint(painter: _HandleSquarePainter(ratio)),
+                    child: CustomPaint(painter: _HandleSquarePainter(ratio, selectionColor)),
                   ),
                 ),
               ),
@@ -331,13 +333,14 @@ class _WidgetSelectionOverlayState extends State<WidgetSelectionOverlay> {
 class _SolidBorderPainter extends CustomPainter {
 
   final double boardPixelRatio;
+  final Color color;
 
-  const _SolidBorderPainter(this.boardPixelRatio);
+  const _SolidBorderPainter(this.boardPixelRatio, this.color);
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF3B82F6)
+      ..color = color
       ..strokeWidth = 1.5 * boardPixelRatio
       ..style = PaintingStyle.stroke;
 
@@ -347,7 +350,7 @@ class _SolidBorderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_SolidBorderPainter old) => old.boardPixelRatio != boardPixelRatio;
+  bool shouldRepaint(_SolidBorderPainter old) => old.boardPixelRatio != boardPixelRatio || old.color != color;
 
 }
 
@@ -356,8 +359,9 @@ class _StemPainter extends CustomPainter {
   final Offset from;
   final Offset to;
   final double ratio;
+  final Color color;
 
-  const _StemPainter({required this.from, required this.to, required this.ratio});
+  const _StemPainter({required this.from, required this.to, required this.ratio, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -365,7 +369,7 @@ class _StemPainter extends CustomPainter {
       from,
       to,
       Paint()
-        ..color = const Color(0xFF3B82F6)
+        ..color = color
         ..strokeWidth = 1.5 * ratio
         ..style = PaintingStyle.stroke,
     );
@@ -373,15 +377,16 @@ class _StemPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_StemPainter old) =>
-      old.from != from || old.to != to || old.ratio != ratio;
+      old.from != from || old.to != to || old.ratio != ratio || old.color != color;
 
 }
 
 class _HandleCirclePainter extends CustomPainter {
 
   final double ratio;
+  final Color color;
 
-  const _HandleCirclePainter(this.ratio);
+  const _HandleCirclePainter(this.ratio, this.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -393,22 +398,23 @@ class _HandleCirclePainter extends CustomPainter {
         center,
         r,
         Paint()
-          ..color = const Color(0xFF3B82F6)
+          ..color = color
           ..strokeWidth = 1.5 * ratio
           ..style = PaintingStyle.stroke,
       );
   }
 
   @override
-  bool shouldRepaint(_HandleCirclePainter old) => old.ratio != ratio;
+  bool shouldRepaint(_HandleCirclePainter old) => old.ratio != ratio || old.color != color;
 
 }
 
 class _HandleSquarePainter extends CustomPainter {
 
   final double ratio;
+  final Color color;
 
-  const _HandleSquarePainter(this.ratio);
+  const _HandleSquarePainter(this.ratio, this.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -418,13 +424,13 @@ class _HandleSquarePainter extends CustomPainter {
       ..drawRect(
         rect,
         Paint()
-          ..color = const Color(0xFF3B82F6)
+          ..color = color
           ..strokeWidth = 1.5 * ratio
           ..style = PaintingStyle.stroke,
       );
   }
 
   @override
-  bool shouldRepaint(_HandleSquarePainter old) => old.ratio != ratio;
+  bool shouldRepaint(_HandleSquarePainter old) => old.ratio != ratio || old.color != color;
 
 }

@@ -52,3 +52,9 @@ targets:
         generate_for:
           include:
             - lib/config/env.dart
+
+      # theme_tailor — the app's ThemeExtension design tokens.
+      theme_tailor:theme_tailor:
+        generate_for:
+          include:
+            - lib/theme/app_theme.dart

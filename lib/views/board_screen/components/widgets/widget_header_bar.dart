@@ -1,12 +1,13 @@
 import 'dart:math' as math;
-
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 
 // Header dimensions in OS pixels. board.dart multiplies these by boardPixelRatio
 // to obtain the canvas-space placement (see _headerPlacementFor), so rendering and
@@ -17,8 +18,6 @@ const double kHeaderWidth = 320.0;
 const double kHeaderHeight = 48.0;
 const double kHeaderGap = 8.0; // gap between widget bounding box and header
 
-// Matches the selection overlay accent colour.
-const Color _kAccent = Color(0xFF3B82F6);
 const Duration _kToggleAnim = Duration(milliseconds: 220);
 // Fade the whole bar in/out as Select mode is toggled.
 const Duration _kFadeAnim = Duration(milliseconds: 180);
@@ -197,7 +196,7 @@ class WidgetHeaderBar extends StatelessWidget {
           _HeaderIconButton(
             icon: LucideIcons.x,
             tooltip: context.localizations.boardWidget_remove,
-            hoverColor: const Color(0xFFEF4444),
+            hoverColor: context.appTheme.colors.destructive,
             onTap: onClose,
           ),
         ],
@@ -233,7 +232,7 @@ class _HeaderIconButtonState extends State<_HeaderIconButton> {
 
   @override
   Widget build(BuildContext context) {
-    final color = _hovered ? (widget.hoverColor ?? _kAccent) : const Color(0xFF475569);
+    final color = _hovered ? (widget.hoverColor ?? context.appTheme.colors.selection) : const Color(0xFF475569);
     return Tooltip(
       message: widget.tooltip,
       child: MouseRegion(
@@ -315,7 +314,7 @@ class _HeaderSettingsButtonState extends State<_HeaderSettingsButton> {
                 color: _hovered ? const Color(0x0F000000) : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(LucideIcons.settings, size: 20, color: _hovered ? _kAccent : const Color(0xFF475569)),
+              child: Icon(LucideIcons.settings, size: 20, color: _hovered ? context.appTheme.colors.selection : const Color(0xFF475569)),
             ),
           ),
         ),

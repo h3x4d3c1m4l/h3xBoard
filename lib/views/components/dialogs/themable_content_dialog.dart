@@ -1,10 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/components/animated_icon_pattern.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-
-/// The pattern glyph color over the accent-tinted dialog surface: white, softened
-/// just enough to stay a watermark behind the dialog's content.
-const Color _kDialogPatternColor = Color(0xCCFFFFFF);
 
 /// The semantic tone of a [ThemableContentDialog], driving its tint and border
 /// color. [normal] keeps the ambient [ContentDialogTheme] (accent) styling;
@@ -200,7 +197,7 @@ class ThemableContentDialog extends StatelessWidget {
     final layered = showBackgroundPattern
         ? Stack(
             children: [
-              const Positioned.fill(child: AnimatedIconPattern(color: _kDialogPatternColor)),
+              Positioned.fill(child: AnimatedIconPattern(color: context.appTheme.dialogs.patternColor)),
               themedBody,
             ],
           )

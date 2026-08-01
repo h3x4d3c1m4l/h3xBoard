@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/color_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/toggle_button_toolbar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
@@ -419,26 +420,12 @@ class _StyleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
     final loc = context.localizations;
 
     return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: theme.micaBackgroundColor,
-        shape: ContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(32),
-          side: BorderSide(color: theme.resources.cardStrokeColorDefault),
-        ),
-        shadows: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: context.appTheme.surfaces.toolbar,
       child: Padding(
-        padding: const EdgeInsets.all(4),
+        padding: context.appTheme.surfaces.toolbarPadding,
         // Wrapped rather than a Row: on a phone-sized viewport the two groups
         // stack instead of overflowing.
         child: Wrap(

@@ -74,17 +74,31 @@ MobX is used for all reactive state. Observables are declared with `@readonly` (
 
 ### Code Generation
 
-Three generators are active:
+Four generators are active:
 
 - **MobX** – `*.g.dart` for ViewModels
 - **Freezed** – `*.freezed.dart` / `*.g.dart` for data classes
 - **auto_route** – `app_router.gr.dart` for the route table
+- **theme_tailor** – `app_theme.tailor.dart` for the theme extension (`copyWith`/`lerp`/equality)
 
 Generated files are excluded from linting (`analysis_options.yaml`) and must not be edited manually.
 
 ### UI Library
 
 The app uses **fluent_ui** (Windows Fluent Design) for core widgets (`FilledButton`, `ScaffoldPage`, `Flyout`, etc.) and **lucide_icons_flutter** for icons. Do not mix in Material widgets.
+
+### Theming
+
+`lib/theme/theme.dart` builds the `FluentThemeData`; `lib/theme/shape_metrics.dart` holds the radii/padding constants; `lib/theme/app_theme.dart` is the app's own `ThemeExtension` (theme_tailor), read anywhere via `context.appTheme`.
+
+Fluent can only style a control by its **widget type** — one `defaultButtonStyle` for every `Button` in the app. Our buttons play far more roles than that, so `AppTheme` names them (`buttons.neutral`, `buttons.tab`, `buttons.exit`, `surfaces.toolbar`, `colors.selection`, …) and widgets ask for the style they *mean*. **Write a style there, not inline in a widget.** The fluent slots in `theme.dart` are wired to the same roles, so a role is defined once.
+
+Two consequences worth knowing:
+
+- Fluent builds several *controls* out of a plain `Button` — `ComboBox`'s closed state, `DropDownButton`, `SplitButton`, `ColorPicker`'s internals — so anything set on `defaultButtonStyle` reaches them too. Wrap those in `ButtonTheme.merge(data: plainControlButtonTheme(context), …)` to opt out (see `custom_color_button.dart`). Dropdowns instead go through `ContinuousComboBox`, which hands them `buttons.comboBox` — the same outline at `kShortControlCornerRadius`, because fluent pins a combo box to a fixed 32px height that the full control radius would swallow.
+- `ToggleButton` gets only its *checked* style from fluent (and hardcodes rounded corners there), while the unchecked state falls through to `defaultButtonStyle`. Both `toggleButtonTheme` slots are therefore set explicitly.
+
+`context.appTheme` falls back to `AppTheme.standard` when the ambient theme carries no extension (widget tests that build their own `FluentThemeData`), so it never null-checks. Alt+D → "fluent_ui widget gallery" renders every button type over a switchable backdrop for eyeballing theme changes.
 
 ### Widget System
 

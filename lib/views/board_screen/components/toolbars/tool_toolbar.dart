@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/add_widget_button.dart';
@@ -31,29 +32,14 @@ class ToolToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-
     // No outer padding here: BoardScaffold owns the spacing between a bar and the
     // board, so the same gap applies to every bar whether it is docked inside or
-    // outside. The all(4) below is the bar's *inner* padding around its buttons.
+    // outside. `toolbarPadding` is the bar's *inner* padding around its buttons.
     return Observer(
       builder: (context) => DecoratedBox(
-        decoration: ShapeDecoration(
-          color: theme.micaBackgroundColor,
-          shape: ContinuousRectangleBorder(
-            borderRadius: BorderRadius.circular(32),
-            side: BorderSide(color: theme.resources.cardStrokeColorDefault),
-          ),
-          shadows: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        decoration: context.appTheme.surfaces.toolbar,
         child: Padding(
-          padding: const EdgeInsets.all(4),
+          padding: context.appTheme.surfaces.toolbarPadding,
           child: Flex(
             direction: direction,
             mainAxisSize: MainAxisSize.min,

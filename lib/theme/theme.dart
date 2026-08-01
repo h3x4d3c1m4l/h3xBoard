@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
 
 FluentThemeData buildAppTheme() {
@@ -12,14 +13,13 @@ FluentThemeData buildAppTheme() {
     scaffoldBackgroundColor: const Color(0xFFEAE9E6),
   );
 
-  final ButtonStyle controlButtonStyle = ButtonStyle(
-    padding: WidgetStatePropertyAll(kControlPadding),
-    shape: WidgetStatePropertyAll(
-      ContinuousRectangleBorder(borderRadius: BorderRadius.circular(kControlCornerRadius)),
-    ),
-  );
+  // The app's own tokens. Fluent's per-widget-type slots below are wired to the
+  // matching roles, so there is exactly one place a button style is written down.
+  final appTheme = AppTheme.standard(theme);
+  final buttons = appTheme.buttons;
 
   return theme.copyWith(
+    extensions: [appTheme],
     infoBarTheme: InfoBarThemeData(
       decoration: (severity) {
         final res = theme.resources;
@@ -51,13 +51,25 @@ FluentThemeData buildAppTheme() {
     // hand `kControlPadding` to icon buttons too — 24px of horizontal padding
     // around a bare 20px glyph, which reads as oversized next to everything else.
     buttonTheme: ButtonThemeData(
-      defaultButtonStyle: controlButtonStyle,
-      filledButtonStyle: controlButtonStyle,
-      hyperlinkButtonStyle: controlButtonStyle,
-      outlinedButtonStyle: controlButtonStyle,
-      iconButtonStyle: controlButtonStyle.copyWith(
-        padding: const WidgetStatePropertyAll(kIconControlPadding),
-      ),
+      // The plain Button and the OutlinedButton are the app's secondary actions
+      // (Cancel, "Watch a board", "Upload photo", "Reset to default"), so they
+      // carry the neutral outline. The accent-filled, hyperlink and icon buttons
+      // define themselves and stay borderless.
+      defaultButtonStyle: buttons.neutral,
+      filledButtonStyle: buttons.control,
+      hyperlinkButtonStyle: buttons.control,
+      outlinedButtonStyle: buttons.neutral,
+      iconButtonStyle: buttons.icon,
+    ),
+    // A ToggleButton is a Button underneath, and fluent styles only its *checked*
+    // state — with rounded corners, the one place a selected toggle would break
+    // the squircle language — leaving the unchecked one to fall through to
+    // `defaultButtonStyle` above. The toolbar's tool buttons and stroke presets
+    // are toggles carrying their own selected/unselected language, so spell both
+    // states out here.
+    toggleButtonTheme: ToggleButtonThemeData(
+      checkedButtonStyle: buttons.toggleChecked,
+      uncheckedButtonStyle: buttons.control,
     ),
     dialogTheme: ContentDialogThemeData(
       decoration: ShapeDecoration(
