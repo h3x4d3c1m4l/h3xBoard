@@ -5,17 +5,30 @@ import 'package:h3xboard/views/login_screen/login_screen_controller.dart';
 import 'package:h3xboard/views/login_screen/login_screen_view.dart';
 import 'package:h3xboard/views/login_screen/login_screen_view_model.dart';
 
+/// A one-off message the login screen shows on arrival, set by whichever flow
+/// sent the user here.
+enum LoginNotice {
+
+  /// A password reset just completed. The reset deliberately creates no
+  /// session, so the user lands here — and needs telling that it worked, or a
+  /// form that simply vanished looks like a failure.
+  passwordChanged,
+
+}
+
 @RoutePage()
 class LoginScreen extends ScreenBase<LoginScreenViewModel, LoginScreenController, LoginScreenView> {
 
-  const LoginScreen({super.key});
+  final LoginNotice? notice;
+
+  const LoginScreen({super.key, this.notice});
 
   @override
   LoginScreenController createController({
     required LoginScreenViewModel viewModel,
     required BuildContextAccessor contextAccessor,
   }) {
-    return LoginScreenController(viewModel: viewModel, contextAccessor: contextAccessor);
+    return LoginScreenController(notice: notice, viewModel: viewModel, contextAccessor: contextAccessor);
   }
 
   @override

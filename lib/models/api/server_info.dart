@@ -11,6 +11,9 @@ abstract class ServerInfo with _$ServerInfo {
     required int maxUploadBytes,
     String? warning,
     String? webAppUrl,
+    /// Whether an unverified address blocks login on this server. Absent on
+    /// servers predating e-mail verification, which never blocked anyone.
+    @Default(false) bool emailVerificationRequired,
   }) = _ServerInfo;
 
   factory ServerInfo.fromJson(Map<String, dynamic> json) => _$ServerInfoFromJson(json);

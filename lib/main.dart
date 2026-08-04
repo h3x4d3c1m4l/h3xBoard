@@ -9,6 +9,7 @@ import 'package:h3xboard/external_display/external_display_app.dart';
 import 'package:h3xboard/routing/app_router.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
+import 'package:h3xboard/services/auth_link_service.dart';
 import 'package:h3xboard/services/cookies/cookie_store.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
@@ -97,8 +98,12 @@ Future<void> setupServices() async {
     ..registerSingleton<H3xBoardAuthService>(auth)
     ..registerSingleton<H3xBoardFileService>(files)
     ..registerSingleton<H3xBoardApiClient>(api)
-    ..registerSingleton<AppSettingsController>(AppSettingsController(api))
+    ..registerSingleton<AppSettingsController>(AppSettingsController(api, auth))
     ..registerSingleton<AppRouter>(appRouter)
+    // Constructed here (rather than lazily) because building it is what reads
+    // the mailed token out of the URL and strips it again — that has to happen
+    // before the router turns the launch URL into a route.
+    ..registerSingleton<AuthLinkService>(AuthLinkService())
     ..registerSingleton<PendingNavigationService>(PendingNavigationService())
     ..registerSingleton<ServerController>(serverController)
     ..registerSingleton<LiveShareHub>(liveShareHub)

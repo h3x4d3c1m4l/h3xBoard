@@ -11,6 +11,11 @@ abstract class AuthResponse with _$AuthResponse {
     required String email,
     String? firstName,
     String? lastName,
+    /// Whether the address has been confirmed. Absent on servers predating
+    /// e-mail verification, where every account is effectively verified.
+    @Default(true) bool emailVerified,
+    /// The BCP-47 tag the server mails this user in, or null when unset.
+    String? locale,
   }) = _AuthResponse;
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) => _$AuthResponseFromJson(json);

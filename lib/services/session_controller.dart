@@ -18,6 +18,7 @@ class SessionController extends ChangeNotifier {
   String? _email;
   String? _firstName;
   String? _lastName;
+  bool _emailVerified = true;
 
   SessionStatus get status => _status;
   UnauthReason get reason => _reason;
@@ -26,13 +27,25 @@ class SessionController extends ChangeNotifier {
   String? get firstName => _firstName;
   String? get lastName => _lastName;
 
+  /// Whether the signed-in user has confirmed their e-mail address. Only gates
+  /// login on servers configured to require it, but it is surfaced in account
+  /// settings either way.
+  bool get emailVerified => _emailVerified;
+
   bool get isAuthenticated => _status == SessionStatus.authenticated;
 
-  void markAuthenticated(String userId, String email, {String? firstName, String? lastName}) {
+  void markAuthenticated(
+    String userId,
+    String email, {
+    String? firstName,
+    String? lastName,
+    bool emailVerified = true,
+  }) {
     _userId = userId;
     _email = email;
     _firstName = firstName;
     _lastName = lastName;
+    _emailVerified = emailVerified;
     _status = SessionStatus.authenticated;
     _reason = UnauthReason.none;
     notifyListeners();
@@ -43,6 +56,7 @@ class SessionController extends ChangeNotifier {
     _email = null;
     _firstName = null;
     _lastName = null;
+    _emailVerified = true;
     _status = SessionStatus.unauthenticated;
     _reason = reason;
     notifyListeners();
@@ -57,6 +71,7 @@ class SessionController extends ChangeNotifier {
     _email = null;
     _firstName = null;
     _lastName = null;
+    _emailVerified = true;
     _status = SessionStatus.unknown;
     _reason = UnauthReason.none;
     notifyListeners();

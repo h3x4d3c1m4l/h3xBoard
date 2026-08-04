@@ -42,6 +42,15 @@ class AuthGuard extends AutoRouteGuard {
         // session, without waiting for the bootstrap (a share link must open
         // instantly), and equally available to signed-in users.
         resolver.next(true);
+      case VerifyEmailRoute.name:
+      case ResetPasswordRoute.name:
+      case ConfirmEmailChangeRoute.name:
+      case UnverifiedRoute.name:
+        // The account-lifecycle screens are anonymous too, and deliberately do
+        // not wait for the bootstrap: the whole point of a mailed link is that
+        // it works in a browser that has never seen this server. The token
+        // itself is the credential — a session neither helps nor is required.
+        resolver.next(true);
       default:
         if (session.status == SessionStatus.unknown) {
           // Web reload lands directly on a protected route, bypassing the

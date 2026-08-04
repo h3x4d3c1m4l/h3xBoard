@@ -1,6 +1,8 @@
+import 'package:h3xboard/extensions/app_language_extension.dart';
 import 'package:h3xboard/models/app_settings_enums.dart';
 import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
+import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:mobx/mobx.dart';
 
 part 'app_settings_controller.g.dart';
@@ -15,7 +17,7 @@ class AppSettingsController = AppSettingsControllerBase with _$AppSettingsContro
 
 abstract class AppSettingsControllerBase with Store {
 
-  AppSettingsControllerBase(this._api);
+  AppSettingsControllerBase(this._api, this._auth);
 
   static const String keyLanguage = 'ui.language';
   static const String keyColorBarPosition = 'ui.colorBar.position';
@@ -27,6 +29,10 @@ abstract class AppSettingsControllerBase with Store {
   static const String keyLaserColor = 'ui.laser.color';
 
   final H3xBoardApiClient _api;
+
+  // Only used to keep the server's e-mail language in step with [language];
+  // every other setting lives behind the JSON-RPC client.
+  final H3xBoardAuthService _auth;
 
   /// Display language. [AppLanguage.system] follows the device.
   @readonly
@@ -119,6 +125,7 @@ abstract class AppSettingsControllerBase with Store {
     if (language != _language) {
       await _api.setSetting(keyLanguage, language.wireValue);
       _language = language;
+      await _syncEmailLocale(language);
     }
     if (colorBarPosition != _colorBarPosition) {
       await _api.setSetting(keyColorBarPosition, colorBarPosition.wireValue);
@@ -143,6 +150,20 @@ abstract class AppSettingsControllerBase with Store {
     if (externalResolution != _externalResolution) {
       await _api.setSetting(keyExternalResolution, externalResolution);
       _externalResolution = externalResolution;
+    }
+  }
+
+  /// Tells the server which language to mail this user in, so notifications and
+  /// verification links follow the UI language.
+  ///
+  /// Best-effort on purpose: this is a side effect of saving preferences, and a
+  /// rate limit or a hiccup here must not fail the dialog over a setting the
+  /// user did not ask about. The next language change tries again.
+  Future<void> _syncEmailLocale(AppLanguage language) async {
+    try {
+      await _auth.setLocale(language.displayLocaleTag);
+    } catch (_) {
+      // Keep the saved UI language; the server falls back to its own default.
     }
   }
 

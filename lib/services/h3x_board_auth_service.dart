@@ -33,6 +33,30 @@ abstract class _H3xBoardAuthChopperService extends ChopperService {
   @GET(path: '/api/v1/server/info')
   Future<Response> serverInfo();
 
+  @POST(path: '/api/v1/auth/verify-email')
+  Future<Response> verifyEmail(@Body() Map<String, dynamic> body);
+
+  @POST(path: '/api/v1/auth/resend-verification')
+  Future<Response> resendVerification(@Body() Map<String, dynamic> body);
+
+  @POST(path: '/api/v1/auth/forgot-password')
+  Future<Response> forgotPassword(@Body() Map<String, dynamic> body);
+
+  @POST(path: '/api/v1/auth/reset-password')
+  Future<Response> resetPassword(@Body() Map<String, dynamic> body);
+
+  @POST(path: '/api/v1/auth/change-password')
+  Future<Response> changePassword(@Body() Map<String, dynamic> body);
+
+  @POST(path: '/api/v1/auth/change-email')
+  Future<Response> changeEmail(@Body() Map<String, dynamic> body);
+
+  @POST(path: '/api/v1/auth/confirm-email-change')
+  Future<Response> confirmEmailChange(@Body() Map<String, dynamic> body);
+
+  @POST(path: '/api/v1/auth/locale')
+  Future<Response> setLocale(@Body() Map<String, dynamic> body);
+
 }
 
 class H3xBoardAuthService {
@@ -70,17 +94,26 @@ class H3xBoardAuthService {
     return AuthResponse.fromJson(response.body as Map<String, dynamic>);
   }
 
+  /// Registers a new account. [locale] is the BCP-47 tag the app is currently
+  /// displayed in; the server mails the verification link in that language
+  /// instead of guessing from `Accept-Language`.
+  ///
+  /// When the server requires verification it deliberately does **not** set a
+  /// session cookie here — check [AuthResponse.emailVerified] before assuming
+  /// the user is signed in.
   Future<AuthResponse> register({
     required String email,
     required String password,
     String? firstName,
     String? lastName,
+    String? locale,
   }) async {
     final response = await _service.register({
       'email': email,
       'password': password,
       if (firstName != null && firstName.isNotEmpty) 'firstName': firstName,
       if (lastName != null && lastName.isNotEmpty) 'lastName': lastName,
+      if (locale != null && locale.isNotEmpty) 'locale': locale,
     });
     _requireSuccess(response);
     return AuthResponse.fromJson(response.body as Map<String, dynamic>);
@@ -104,6 +137,83 @@ class H3xBoardAuthService {
     final response = await _service.serverInfo();
     _requireSuccess(response);
     return ServerInfo.fromJson(response.body as Map<String, dynamic>);
+  }
+
+  /// Confirms a registration with the token from the verification e-mail. On
+  /// success the server signs the user in (a session cookie comes back with the
+  /// response), so the caller can go straight into the app.
+  ///
+  /// Throws with code 400 when the link is invalid or expired. Submitting the
+  /// same token twice is *not* an error — mail scanners and double-clicks both
+  /// come back 200.
+  Future<AuthResponse> verifyEmail(String token) async {
+    final response = await _service.verifyEmail({'token': token});
+    _requireSuccess(response);
+    return AuthResponse.fromJson(response.body as Map<String, dynamic>);
+  }
+
+  /// Asks for a fresh verification link. Answered identically for a known
+  /// address, an unknown one and an already-verified one — there is nothing
+  /// here to report back to the user beyond "we've sent it if it exists".
+  Future<void> resendVerification(String email) async {
+    _requireSuccess(await _service.resendVerification({'email': email}));
+  }
+
+  /// Starts a password reset. Like [resendVerification], the answer never
+  /// reveals whether the account exists.
+  Future<void> forgotPassword(String email) async {
+    _requireSuccess(await _service.forgotPassword({'email': email}));
+  }
+
+  /// Completes a password reset with the token from the e-mail. Creates no
+  /// session — the user signs in with the new password.
+  ///
+  /// Throws with code 400 when the token is invalid/expired *or* the password
+  /// is under 8 characters; a too-short password does not burn the token, so
+  /// the same link can be retried.
+  Future<void> resetPassword({required String token, required String newPassword}) async {
+    _requireSuccess(await _service.resetPassword({'token': token, 'newPassword': newPassword}));
+  }
+
+  /// Changes the signed-in user's password. The session stays valid.
+  ///
+  /// Throws with code 401 for a wrong current password, 400 when the new one is
+  /// too short or identical to the current one.
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+    _requireSuccess(await _service.changePassword({
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+    }));
+  }
+
+  /// Starts an address change: a confirmation link goes to [newEmail] and the
+  /// stored address only moves once that link is opened.
+  ///
+  /// Throws with code 401 for a wrong password, 409 when the address is already
+  /// in use, 400 when it is already this account's address.
+  Future<void> changeEmail({required String newEmail, required String currentPassword}) async {
+    _requireSuccess(await _service.changeEmail({
+      'newEmail': newEmail,
+      'currentPassword': currentPassword,
+    }));
+  }
+
+  /// Completes an address change with the token mailed to the new address.
+  /// Anonymous by design — that mailbox may well be open in a browser that has
+  /// never seen this server.
+  ///
+  /// Throws with code 400 when the token is invalid/expired, 409 when the
+  /// address was taken in the meantime.
+  Future<AuthResponse> confirmEmailChange(String token) async {
+    final response = await _service.confirmEmailChange({'token': token});
+    _requireSuccess(response);
+    return AuthResponse.fromJson(response.body as Map<String, dynamic>);
+  }
+
+  /// Tells the server which language to mail this user in. Pass null (or an
+  /// empty string) to clear the preference and let the server decide.
+  Future<void> setLocale(String? locale) async {
+    _requireSuccess(await _service.setLocale({'locale': locale}));
   }
 
   void _requireSuccess(Response<dynamic> response) {

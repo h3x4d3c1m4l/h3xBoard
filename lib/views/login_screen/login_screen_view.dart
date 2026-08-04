@@ -82,6 +82,22 @@ class LoginScreenView extends ScreenViewBase<LoginScreenViewModel, LoginScreenCo
                           if (viewModel.isRegisterMode) AutofillHints.newPassword else AutofillHints.password,
                         ],
                       ),
+                      // Sign-in only: during registration there is no password
+                      // to have forgotten yet.
+                      if (!viewModel.isRegisterMode)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: HyperlinkButton(
+                            onPressed: viewModel.isLoading ? null : controller.onForgotPassword,
+                            child: Text(localizations.loginScreen_forgotPassword),
+                          ),
+                        ),
+                      if (viewModel.successMessage != null)
+                        InfoBar(
+                          title: Text(viewModel.successMessage!),
+                          severity: InfoBarSeverity.success,
+                          isLong: true,
+                        ),
                       if (viewModel.infoMessage != null)
                         InfoBar(
                           title: Text(viewModel.infoMessage!),

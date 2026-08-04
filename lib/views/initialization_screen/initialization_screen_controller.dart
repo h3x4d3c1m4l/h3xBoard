@@ -122,6 +122,7 @@ class InitializationScreenController extends ScreenControllerBase<Initialization
       user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      emailVerified: user.emailVerified,
     );
     final pending = GetIt.I<PendingNavigationService>().consumePendingRoute();
     await _replaceAll([pending ?? const BoardsRoute()]);

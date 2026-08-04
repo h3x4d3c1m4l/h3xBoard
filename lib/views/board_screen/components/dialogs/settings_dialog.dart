@@ -10,6 +10,9 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/app_settings_enums.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
+import 'package:h3xboard/services/session_controller.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/change_email_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/change_password_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/components/continuous_combo_box.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -173,6 +176,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                               label: loc.settingsDialog_language,
                               control: _buildLanguageCombo(loc),
                             ),
+                            _buildAccountSection(loc, theme),
                             _SectionLabel(
                               icon: LucideIcons.palette,
                               text: loc.settingsDialog_section_colorBar,
@@ -232,10 +236,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                     _SectionLabel(
                                       icon: LucideIcons.monitor,
                                       text: loc.settingsDialog_section_externalDisplay,
-                                      trailing: _ConnectionBadge(
-                                        connected: connected,
-                                        connectedLabel: loc.settingsDialog_externalDisplay_connected,
-                                        notConnectedLabel: loc.settingsDialog_externalDisplay_notConnected,
+                                      trailing: _StatusBadge(
+                                        positive: connected,
+                                        icon: connected ? LucideIcons.circleCheck : LucideIcons.unplug,
+                                        label: connected
+                                            ? loc.settingsDialog_externalDisplay_connected
+                                            : loc.settingsDialog_externalDisplay_notConnected,
                                       ),
                                     ),
                                     if (!connected)
@@ -308,6 +314,71 @@ class _SettingsDialogState extends State<SettingsDialog> {
         IconButton(
           icon: const Icon(LucideIcons.x, size: 18),
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
+  }
+
+  /// The signed-in identity: which address the account uses, whether it has
+  /// been confirmed, and the two things that can be done about it. Both actions
+  /// re-ask for the current password, so neither is reachable from a session
+  /// somebody merely walked up to.
+  Widget _buildAccountSection(AppLocalizations loc, FluentThemeData theme) {
+    final session = GetIt.I<SessionController>();
+    final verified = session.emailVerified;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel(icon: LucideIcons.userRound, text: loc.settingsDialog_section_account),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.email ?? '',
+                      style: theme.typography.body,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      loc.settingsDialog_account_emailLabel,
+                      style: theme.typography.caption?.copyWith(color: theme.resources.textFillColorSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _StatusBadge(
+                positive: verified,
+                icon: verified ? LucideIcons.shieldCheck : LucideIcons.mailWarning,
+                label: verified
+                    ? loc.settingsDialog_account_verified
+                    : loc.settingsDialog_account_notVerified,
+              ),
+            ],
+          ),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: Button(
+                onPressed: _saving ? null : () => unawaited(showChangePasswordDialog(context)),
+                child: Text(loc.settingsDialog_account_changePassword, textAlign: TextAlign.center),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Button(
+                onPressed: _saving ? null : () => unawaited(showChangeEmailDialog(context)),
+                child: Text(loc.settingsDialog_account_changeEmail, textAlign: TextAlign.center),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -429,27 +500,21 @@ class _SectionLabel extends StatelessWidget {
 
 }
 
-/// A pill showing whether an external display is currently connected: a green
-/// checkmark + "Connected", or a muted "Not connected" so the state is always
-/// visible at a glance.
-class _ConnectionBadge extends StatelessWidget {
+/// A pill stating a yes/no fact at a glance — an external display being
+/// connected, an e-mail address being verified. Green when the answer is the
+/// good one, muted gray otherwise.
+class _StatusBadge extends StatelessWidget {
 
-  final bool connected;
-  final String connectedLabel;
-  final String notConnectedLabel;
+  final bool positive;
+  final IconData icon;
+  final String label;
 
-  const _ConnectionBadge({
-    required this.connected,
-    required this.connectedLabel,
-    required this.notConnectedLabel,
-  });
+  const _StatusBadge({required this.positive, required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final Color color = connected ? Colors.green : theme.resources.textFillColorSecondary;
-    final IconData icon = connected ? LucideIcons.circleCheck : LucideIcons.unplug;
-    final String label = connected ? connectedLabel : notConnectedLabel;
+    final Color color = positive ? Colors.green : theme.resources.textFillColorSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
