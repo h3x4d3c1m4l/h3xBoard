@@ -22,9 +22,22 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v7
+      with:
+        # The Python Lab ships CPython as LFS-tracked assets; without this the
+        # build would bundle pointer files instead of the real wasm.
+        lfs: true
 
     - name: Detect Flutter version
       uses: kuhnroyal/flutter-fvm-config-action@v3
+
+    # The Code Playground runs Python through a Rust crate (rust/), built for
+    # each Android ABI by cargokit during `flutter build`. Without these targets
+    # the build fails at link time, not at pub get, so it is worth having them
+    # in place before Flutter is even set up.
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
     - name: Setup Flutter
       uses: hrishikesh-kadam/setup-flutter@v1

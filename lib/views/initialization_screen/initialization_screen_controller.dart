@@ -81,7 +81,9 @@ class InitializationScreenController extends ScreenControllerBase<Initialization
         // Warming the emoji pack is what keeps the add-widget menu to one
         // request instead of one per row.
         await Future.wait([
-          GoogleFonts.pendingFonts([GoogleFonts.ubuntu(), GoogleFonts.patrickHand()]),
+          // IBM Plex Mono is the Code Playground's code, input and output; its
+          // columns only line up in a true monospace.
+          GoogleFonts.pendingFonts([GoogleFonts.ubuntu(), GoogleFonts.patrickHand(), GoogleFonts.ibmPlexMono()]),
           GetIt.I<UiEmojiPack>().load(),
           GetIt.I<AudioOutputController>().load(),
         ]);

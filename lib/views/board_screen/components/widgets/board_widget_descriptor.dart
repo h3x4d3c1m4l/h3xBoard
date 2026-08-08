@@ -4,6 +4,7 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/analog_clock_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/audio_player_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/code_playground/code_playground_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/dice_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/emoji_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/geodreieck_widget.dart';
@@ -106,6 +107,7 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   AudioPlayerConfig: AudioPlayerWidgetDescriptor.instance,
   DiceConfig: DiceWidgetDescriptor.instance,
   NumberDiceConfig: NumberDiceWidgetDescriptor.instance,
+  CodePlaygroundConfig: CodePlaygroundWidgetDescriptor.instance,
   // Mirror-only: descriptorFor() is a hard lookup, so the stand-in the live-share
   // decode mints needs an entry here like any other type.
   UnsupportedConfig: UnsupportedWidgetDescriptor.instance,

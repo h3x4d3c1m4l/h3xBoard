@@ -1031,5 +1031,33 @@
     }
   },
   "fileManager_usageFull": "You're out of storage space.",
-  "@fileManager_usageFull": {}
+  "@fileManager_usageFull": {},
+  "addWidgetMenu_codePlayground": "Code playground",
+  "@addWidgetMenu_codePlayground": {},
+  "codePlayground_run": "Run",
+  "@codePlayground_run": {},
+  "codePlayground_stop": "Stop",
+  "@codePlayground_stop": {},
+  "codePlayground_input": "Input",
+  "@codePlayground_input": {},
+  "codePlayground_output": "Output",
+  "@codePlayground_output": {},
+  "codePlayground_running": "Running…",
+  "@codePlayground_running": {},
+  "codePlayground_outputEmpty": "Press Run to see the output here.",
+  "@codePlayground_outputEmpty": {},
+  "codePlayground_outputTruncated": "— output was cut short —",
+  "@codePlayground_outputTruncated": {},
+  "codePlayground_statusFinished": "finished in {ms} ms",
+  "@codePlayground_statusFinished": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "codePlayground_statusFailed": "stopped with an error",
+  "@codePlayground_statusFailed": {},
+  "codePlayground_runUnavailable": "Running is only available on the web app for now",
+  "@codePlayground_runUnavailable": {}
 }

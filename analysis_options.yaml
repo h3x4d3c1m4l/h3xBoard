@@ -19,6 +19,8 @@ analyzer:
     - 'windows/**'
     - 'macos/**'
     - 'linux/**'
+    - 'lib/services/rust/'
+    - 'rust_builder/'
 
 linter:
   # More info: https://dart.dev/tools/linter-rules

@@ -1031,5 +1031,33 @@
     }
   },
   "fileManager_usageFull": "Je opslagruimte is vol.",
-  "@fileManager_usageFull": {}
+  "@fileManager_usageFull": {},
+  "addWidgetMenu_codePlayground": "Codespeeltuin",
+  "@addWidgetMenu_codePlayground": {},
+  "codePlayground_run": "Uitvoeren",
+  "@codePlayground_run": {},
+  "codePlayground_stop": "Stoppen",
+  "@codePlayground_stop": {},
+  "codePlayground_input": "Invoer",
+  "@codePlayground_input": {},
+  "codePlayground_output": "Uitvoer",
+  "@codePlayground_output": {},
+  "codePlayground_running": "Bezig…",
+  "@codePlayground_running": {},
+  "codePlayground_outputEmpty": "Druk op Uitvoeren om de uitvoer hier te zien.",
+  "@codePlayground_outputEmpty": {},
+  "codePlayground_outputTruncated": "— uitvoer is afgekapt —",
+  "@codePlayground_outputTruncated": {},
+  "codePlayground_statusFinished": "klaar in {ms} ms",
+  "@codePlayground_statusFinished": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "codePlayground_statusFailed": "gestopt met een fout",
+  "@codePlayground_statusFailed": {},
+  "codePlayground_runUnavailable": "Uitvoeren kan voorlopig alleen in de webapp",
+  "@codePlayground_runUnavailable": {}
 }
