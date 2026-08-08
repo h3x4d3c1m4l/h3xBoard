@@ -20,7 +20,7 @@ use std::time::Instant;
 
 use wasmi::{Config, Engine, Linker, Module, ResumableCall, Store};
 
-use wasi::{ProcExit, WasiCtx};
+use wasi::{Cancelled, ProcExit, WasiCtx};
 
 /// Per-stream output cap, matching `MAX_OUTPUT_BYTES` in python_worker.js.
 const MAX_OUTPUT_BYTES: usize = 256 * 1024;
@@ -114,7 +114,7 @@ pub fn run(
     stdlib: Arc<Vec<u8>>,
     code: &str,
     stdin: &str,
-    cancel: &AtomicBool,
+    cancel: Arc<AtomicBool>,
 ) -> Outcome {
     let started = Instant::now();
 
@@ -136,6 +136,7 @@ pub fn run(
         stdin.as_bytes().to_vec(),
         MAX_OUTPUT_BYTES,
         MAX_GUEST_MEMORY,
+        Arc::clone(&cancel),
     );
 
     let mut store = Store::new(engine, ctx);
@@ -194,11 +195,16 @@ pub fn run(
 }
 
 /// A `proc_exit` trap is CPython finishing normally: `_start` never returns, so
-/// this is how a clean exit arrives. Anything else is a real trap.
+/// this is how a clean exit arrives. A [`Cancelled`] trap is Stop, pressed while
+/// the guest was inside a blocking host call. Anything else is a real trap.
 fn exit_code_of(error: &wasmi::Error, fallback: i32) -> i32 {
-    error
-        .downcast_ref::<ProcExit>()
-        .map_or(fallback, |exit| exit.0)
+    if let Some(exit) = error.downcast_ref::<ProcExit>() {
+        return exit.0;
+    }
+    if error.downcast_ref::<Cancelled>().is_some() {
+        return 130;
+    }
+    fallback
 }
 
 /// The message to append to stderr, or `None` when the error was just
@@ -206,10 +212,14 @@ fn exit_code_of(error: &wasmi::Error, fallback: i32) -> i32 {
 /// adding "exit 1" underneath it would only be noise.
 fn describe(error: &wasmi::Error) -> Option<String> {
     if error.downcast_ref::<ProcExit>().is_some() {
-        None
-    } else {
-        Some(error.to_string())
+        return None;
     }
+    // Same wording as a Stop caught between fuel slices, so it does not matter
+    // to the reader whether their program was sleeping at the time.
+    if error.downcast_ref::<Cancelled>().is_some() {
+        return Some("Stopped.".to_owned());
+    }
+    Some(error.to_string())
 }
 
 fn finish(

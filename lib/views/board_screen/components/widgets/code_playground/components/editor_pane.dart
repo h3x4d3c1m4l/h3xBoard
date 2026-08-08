@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/views/board_screen/components/canvas_text_editing_scope.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/code_playground/code_playground_metrics.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/code_playground/code_playground_style.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/code_playground/components/editor_hardware_keys.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:re_highlight/languages/python.dart';
 
@@ -205,25 +206,28 @@ class _EditorPaneState extends State<EditorPane> {
     // hence the marker. Without it, typing `l` into a program arms the laser
     // pointer and Backspace deletes the widget being arranged.
     return CanvasTextEditingScope(
-      child: DecoratedBox(
-        decoration: CodePlaygroundStyle.wellDecoration(),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(kPanelRadius),
-          child: CodeEditor(
-            controller: _controller,
-            focusNode: _focus,
-            readOnly: widget.readOnly,
-            // The board decides what gets focus — a widget dropped on the canvas
-            // must not steal the caret from whatever the user was doing.
-            autofocus: false,
-            // Long lines wrap rather than scrolling sideways: the pane is a fixed
-            // width on the canvas, and a horizontal scrollbar there is a trap.
-            wordWrap: true,
-            padding: const EdgeInsets.all(kPanelPad),
-            // Fires on selection changes as well as edits, which is how the
-            // caret reaches a mirror.
-            onChanged: (_) => _emit(),
-            indicatorBuilder: widget.showLineNumbers
+      child: EditorHardwareKeys(
+        controller: _controller,
+        readOnly: widget.readOnly,
+        child: DecoratedBox(
+          decoration: CodePlaygroundStyle.wellDecoration(),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(kPanelRadius),
+            child: CodeEditor(
+              controller: _controller,
+              focusNode: _focus,
+              readOnly: widget.readOnly,
+              // The board decides what gets focus — a widget dropped on the canvas
+              // must not steal the caret from whatever the user was doing.
+              autofocus: false,
+              // Long lines wrap rather than scrolling sideways: the pane is a fixed
+              // width on the canvas, and a horizontal scrollbar there is a trap.
+              wordWrap: true,
+              padding: const EdgeInsets.all(kPanelPad),
+              // Fires on selection changes as well as edits, which is how the
+              // caret reaches a mirror.
+              onChanged: (_) => _emit(),
+              indicatorBuilder: widget.showLineNumbers
                 ? (context, controller, chunkController, notifier) => DefaultCodeLineNumber(
                       controller: controller,
                       notifier: notifier,
@@ -237,18 +241,27 @@ class _EditorPaneState extends State<EditorPane> {
                       ),
                     )
                 : null,
-            style: CodeEditorStyle(
+              style: CodeEditorStyle(
               fontSize: widget.fontSize,
               fontFamily: CodePlaygroundStyle.monoFontFamily(),
               textColor: CodePlaygroundStyle.onCard,
               backgroundColor: CodePlaygroundStyle.well,
               cursorColor: CodePlaygroundStyle.accent(context),
               selectionColor: CodePlaygroundStyle.accent(context).withValues(alpha: 0.30),
-              // Only the program is code. Leaving the input pane's languages empty
-              // means it renders as plain text.
-              codeTheme: CodeHighlightTheme(
-                languages: widget.highlightPython ? {'python': CodeHighlightThemeMode(mode: langPython)} : const {},
-                theme: CodePlaygroundStyle.syntaxTheme,
+              // Only the program is code; the input pane is plain text.
+              //
+              // null rather than a theme with no languages in it. re_editor
+              // checks the theme for null and otherwise goes straight to
+              // `maxSizes.reduce(min)` over the languages — which on an empty
+              // map throws "Bad state: No element" from inside its highlighting
+              // isolate. On the web that surfaced as a silently dead worker; on
+              // a device it is an unhandled exception.
+              codeTheme: widget.highlightPython
+                  ? CodeHighlightTheme(
+                      languages: {'python': CodeHighlightThemeMode(mode: langPython)},
+                      theme: CodePlaygroundStyle.syntaxTheme,
+                    )
+                  : null,
               ),
             ),
           ),

@@ -53,19 +53,52 @@ fn stdlib() -> Arc<Vec<u8>> {
 }
 
 fn run(code: &str) -> Outcome {
-    run_with(code, "", &AtomicBool::new(false))
+    run_with(code, "", &Arc::new(AtomicBool::new(false)))
 }
 
-fn run_with(code: &str, stdin: &str, cancel: &AtomicBool) -> Outcome {
+fn run_with(code: &str, stdin: &str, cancel: &Arc<AtomicBool>) -> Outcome {
     let _serial = one_at_a_time();
     run_locked(code, stdin, cancel)
 }
 
 /// For a test that has already taken the lock and needs to do something between
 /// taking it and starting the run.
-fn run_locked(code: &str, stdin: &str, cancel: &AtomicBool) -> Outcome {
+fn run_locked(code: &str, stdin: &str, cancel: &Arc<AtomicBool>) -> Outcome {
     let (engine, module) = interpreter();
-    python::run(engine, module, stdlib(), code, stdin, cancel)
+    python::run(engine, module, stdlib(), code, stdin, Arc::clone(cancel))
+}
+
+#[test]
+fn the_shipped_stdlib_is_bytecode_rather_than_source() {
+    // Compiling a .py inside a wasm interpreter is expensive, and it is paid on
+    // every run because every run is a fresh process. Shipping source cost 5.7s
+    // for a program that raises, against 0.6s for bytecode — CPython imports
+    // traceback, linecache, tokenize and re only when it has a traceback to
+    // print, so the pupil waiting to be told what they got wrong waits longest.
+    //
+    // Checked here because the failure is silent: source still *works*, it is
+    // just slow, and nothing else would notice a rebuild that skipped
+    // `compileall` (see tool/build_python_wasm.sh).
+    let zip = std::fs::read(assets().join("python314.zip")).expect("the stdlib is an asset");
+
+    // Filenames sit in plain view in a stored zip's local headers, so a scan for
+    // the two suffixes is enough and needs no zip parser.
+    let names: Vec<&[u8]> = zip
+        .windows(4)
+        .filter(|window| *window == b".py\x00" || *window == b".pyc")
+        .collect();
+    let compiled = names.iter().filter(|n| **n == b".pyc").count();
+
+    assert!(
+        compiled > 400,
+        "expected a stdlib of bytecode, found {compiled} .pyc entries"
+    );
+
+    let source = zip.windows(4).filter(|w| *w == b".py\x00").count();
+    assert_eq!(
+        source, 0,
+        "the stdlib still ships {source} .py files; run compileall"
+    );
 }
 
 #[test]
@@ -114,7 +147,7 @@ fn input_reads_the_stdin_box_line_by_line() {
     let outcome = run_with(
         "name = input()\nage = int(input())\nprint(f'{name} is {age}')\n",
         "Sander\n41\n",
-        &AtomicBool::new(false),
+        &Arc::new(AtomicBool::new(false)),
     );
     assert_eq!(outcome.stdout, "Sander is 41\n");
     assert_eq!(outcome.exit_code, 0);

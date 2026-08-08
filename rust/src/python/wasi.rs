@@ -22,8 +22,9 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use wasmi::{Caller, Error, Extern, Linker, Memory};
 
@@ -63,6 +64,22 @@ impl fmt::Display for ProcExit {
 }
 
 impl wasmi::errors::HostError for ProcExit {}
+
+/// Raised by `poll_oneoff` when Stop is pressed while a program is sleeping.
+///
+/// A trap rather than an errno, because there is nothing sensible to tell the
+/// guest: the run is over, and CPython would otherwise treat a short sleep as
+/// having simply elapsed and carry on.
+#[derive(Debug)]
+pub struct Cancelled;
+
+impl fmt::Display for Cancelled {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "stopped")
+    }
+}
+
+impl wasmi::errors::HostError for Cancelled {}
 
 #[derive(Clone, Copy)]
 enum FdKind {
@@ -164,6 +181,13 @@ pub struct WasiCtx {
     /// Caps how far the guest may grow its linear memory. Held here because
     /// `Store::limiter` hands the limiter out of the store's data.
     pub limits: wasmi::StoreLimits,
+    /// Whether Stop has been pressed.
+    ///
+    /// The run loop checks this between fuel slices, which covers everything the
+    /// guest does — but not time spent *inside* a host function. `poll_oneoff`
+    /// is the one that blocks, so it has to check for itself; otherwise
+    /// `time.sleep(60)` is a minute nothing can interrupt.
+    cancel: Arc<AtomicBool>,
 }
 
 impl WasiCtx {
@@ -174,6 +198,7 @@ impl WasiCtx {
         stdin: Vec<u8>,
         max_output: usize,
         max_memory: usize,
+        cancel: Arc<AtomicBool>,
     ) -> Self {
         // 0/1/2 are the standard streams; 3 is the single preopened directory
         // that everything else is resolved against.
@@ -204,6 +229,7 @@ impl WasiCtx {
             limits: wasmi::StoreLimitsBuilder::new()
                 .memory_size(max_memory)
                 .build(),
+            cancel,
         }
     }
 
@@ -869,23 +895,28 @@ fn poll(linker: &mut Linker<WasiCtx>) -> Result<(), Error> {
     linker.func_wrap(
         NS,
         "poll_oneoff",
-        |mut caller: Caller<'_, WasiCtx>, subs: i32, out: i32, count: i32, nevents: i32| {
+        |mut caller: Caller<'_, WasiCtx>,
+         subs: i32,
+         out: i32,
+         count: i32,
+         nevents: i32|
+         -> Result<i32, Error> {
             // Two passes, because the wait happens between them: the first reads
             // the subscriptions out of guest memory, the second writes the events
             // back. Nothing may hold a borrow of memory across the sleep.
             let plan = match from_memory(&mut caller, |mem| plan_poll(mem, subs, count)) {
                 Ok(plan) => plan,
-                Err(errno) => return errno,
+                Err(errno) => return Ok(errno),
             };
 
             if let Some(deadline) = plan.sleep_until {
-                let now = now_nanos();
-                if deadline > now {
-                    std::thread::sleep(std::time::Duration::from_nanos(deadline - now));
-                }
+                // Traps out of the guest if Stop was pressed, which is the only
+                // way to end a sleep early — the run loop's own cancel check
+                // never gets a turn while a host function is blocking.
+                wait_until(deadline, Arc::clone(&caller.data().cancel))?;
             }
 
-            with_memory(&mut caller, |mem, _| {
+            Ok(with_memory(&mut caller, |mem, _| {
                 for (i, event) in plan.events.iter().enumerate() {
                     let at = out + (i as i32) * EVENT_SIZE;
                     write_u64(mem, at, event.userdata)?;
@@ -896,11 +927,35 @@ fn poll(linker: &mut Linker<WasiCtx>) -> Result<(), Error> {
                 }
                 write_u32(mem, nevents, plan.events.len() as u32)?;
                 Ok(ERRNO_SUCCESS)
-            })
+            }))
         },
     )?;
 
     Ok(())
+}
+
+/// Waits until `deadline`, in slices, so Stop is answered while a program sleeps.
+///
+/// One long `thread::sleep` would be simpler and is what this used to do, but it
+/// makes `time.sleep(60)` a minute that nothing can interrupt: the run loop only
+/// checks for cancellation between fuel slices, and a blocked host function never
+/// produces one. It also means a deadline that somehow comes out nonsensical
+/// hangs the run with no way back, rather than being escapable with Stop.
+fn wait_until(deadline: u64, cancel: Arc<AtomicBool>) -> Result<(), Error> {
+    // Short enough that Stop feels immediate, long enough that a sleeping
+    // program costs essentially nothing.
+    const TICK: Duration = Duration::from_millis(20);
+
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Err(Error::host(Cancelled));
+        }
+        let now = now_nanos();
+        if now >= deadline {
+            return Ok(());
+        }
+        std::thread::sleep(Duration::from_nanos(deadline - now).min(TICK));
+    }
 }
 
 struct PollEvent {
