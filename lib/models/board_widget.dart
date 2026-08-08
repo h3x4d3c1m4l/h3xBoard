@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:h3xboard/models/converters/color_converter.dart';
+import 'package:h3xboard/models/programming_language.dart';
 
 part 'board_widget.freezed.dart';
 part 'board_widget.g.dart';
@@ -77,6 +78,14 @@ bool boardWidgetIsGridMatched(BoardWidgetConfig config) => switch (config) {
 BoardWidgetConfig clearWidgetRuntimeState(BoardWidgetConfig config) => switch (config) {
       StopwatchConfig c => c.copyWith(elapsedMs: 0, startedAtEpochMs: null),
       TimerConfig c => c.copyWith(elapsedMs: 0, startedAtEpochMs: null),
+      // The playground is a scratchpad: typing code, filling in input and running
+      // it are all working, not board edits. Collapsing every config to the
+      // default makes any two compare equal here, so changes mirror to the second
+      // screen and autosave without consuming undo — a class would otherwise bury
+      // the teacher's drawing history under a lesson's worth of keystrokes.
+      // Nothing is lost: the editor brings its own undo, which is the Ctrl+Z a
+      // person typing code actually expects.
+      CodePlaygroundConfig() => const CodePlaygroundConfig(),
       _ => config,
     };
 
@@ -172,6 +181,41 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     @Default('') String data,
     @Default(QrCodeStyle.smooth) QrCodeStyle style,
   }) = QrCodeConfig;
+
+  /// A place to write a short program, run it, and show a class what came out.
+  ///
+  /// Everything the widget displays lives here — the code, the pre-filled input,
+  /// and the output of the last run — so all of it mirrors to the external
+  /// display and to web viewers, and survives a reload. The program itself runs
+  /// only on the device being edited; a mirror shows the last result and never
+  /// executes anything.
+  ///
+  /// [stdinText] is fed to `input()` line by line. Supplying it up front rather
+  /// than prompting mid-run is partly a technical necessity — a blocking prompt
+  /// would need SharedArrayBuffer, and so COOP/COEP headers on the whole app —
+  /// and partly better teaching, since the class can see what is going in.
+  ///
+  /// [exitCode] is null until the program has been run at least once, which is
+  /// what tells an empty output panel apart from a program that printed nothing.
+  ///
+  /// [caretLine] and [caretColumn] carry the presenter's cursor, so a mirror can
+  /// show a class *where* the teacher is typing and not just what appears. Both
+  /// are null whenever the presenter is not in the code editor — the mirror then
+  /// draws no caret rather than a stale one.
+  const factory BoardWidgetConfig.codePlayground({
+    @Default(ProgrammingLanguage.python)
+    @JsonKey(unknownEnumValue: ProgrammingLanguage.python)
+    ProgrammingLanguage language,
+    @Default('print("Hello, class!")\n') String code,
+    @Default('') String stdinText,
+    @Default('') String stdout,
+    @Default('') String stderr,
+    int? exitCode,
+    @Default(false) bool outputTruncated,
+    @Default(0) int durationMs,
+    int? caretLine,
+    int? caretColumn,
+  }) = CodePlaygroundConfig;
 
   factory BoardWidgetConfig.fromJson(Map<String, dynamic> json) => _$BoardWidgetConfigFromJson(json);
 

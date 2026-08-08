@@ -44,13 +44,25 @@ dependencies:
   cookie_jar: 4.0.9
   flutter_secure_storage: 10.3.1
   pretty_qr_code: 3.6.0
+  re_editor: 0.10.0
+  re_highlight: 0.0.3
   rounded_background_text: 0.6.0
   sentry_flutter: 9.25.0
   theme_tailor_annotation: 3.1.3
+  h3xboard_rust:
+    path: rust_builder
+  flutter_rust_bridge: 2.12.0
 
 dependency_overrides:
   external_display:
     path: third_party/external_display
+  # re_editor asks for isolate_manager ^4, whose isolate_contactor dependency
+  # reaches dart:html — which does not exist under dart2wasm, and this app builds
+  # with --wasm. isolate_manager 6 dropped isolate_contactor for package:web and
+  # kept the API re_editor uses, so forcing it forward is what makes the wasm
+  # build compile. Drop this once re_editor widens its own constraint
+  # (reqable/re-editor#79).
+  isolate_manager: 6.3.2
 
 dev_dependencies:
   flutter_test: { sdk: flutter }
@@ -68,3 +80,12 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+
+  # CPython 3.14.7 built for wasm32-wasi, plus its standard library. The Python
+  # Lab widget runs this exact pair on every platform — see
+  # docs/python-wasm-build.md, and tool/build_python_wasm.sh to regenerate.
+  # The zip is deliberately stored rather than deflated: this build has no zlib,
+  # so zipimport cannot inflate a compressed entry.
+  assets:
+    - assets/python/python.wasm
+    - assets/python/python314.zip

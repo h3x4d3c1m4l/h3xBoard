@@ -22,6 +22,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v7
+      with:
+        # The Python Lab ships CPython as LFS-tracked assets; without this the
+        # build would bundle pointer files instead of the real wasm.
+        lfs: true
 
     - name: Install build dependencies
       run: brew install ruby
@@ -45,6 +49,13 @@ jobs:
 
     - name: Detect Flutter version
       uses: kuhnroyal/flutter-fvm-config-action@v3
+
+    # The Code Playground runs Python through a Rust crate (rust/), built by
+    # cargokit during `flutter build`.
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: aarch64-apple-ios,aarch64-apple-ios-sim
 
     - name: Setup Flutter
       uses: hrishikesh-kadam/setup-flutter@v1

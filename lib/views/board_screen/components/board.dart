@@ -18,6 +18,7 @@ import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
+import 'package:h3xboard/views/board_screen/components/canvas_text_editing_scope.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_header_bar.dart';
@@ -260,9 +261,17 @@ class _BoardState extends State<Board> {
 
   // Whether typing is currently going into a text field — the label editor, or
   // any other field in a dialog over the board — rather than at the board itself.
+  //
+  // [EditableText] covers everything built on Flutter's own text field. It does
+  // not cover an editor that implements [DeltaTextInputClient] directly, which
+  // the code editor does: it takes focus without ever putting an EditableText in
+  // the tree, so on that alone an `l` typed into a program would arm the laser.
+  // Such editors wrap themselves in a [CanvasTextEditingScope] to say so.
   bool get _isEditingText {
     final focused = FocusManager.instance.primaryFocus?.context;
-    return focused != null && focused.findAncestorWidgetOfExactType<EditableText>() != null;
+    if (focused == null) return false;
+    return focused.findAncestorWidgetOfExactType<EditableText>() != null ||
+        focused.findAncestorWidgetOfExactType<CanvasTextEditingScope>() != null;
   }
 
   // Moves the arranging widget by [delta] canvas px, coalescing key-repeat bursts

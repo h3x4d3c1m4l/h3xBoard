@@ -73,7 +73,13 @@ class InitializationScreenController extends ScreenControllerBase<Initialization
     await pipeline.execute(
       (ctx) async {
         _updateProgress(runContext, nowInitializingText: 'Loading fonts ...', retries: ctx.attemptNumber);
-        await GoogleFonts.pendingFonts([GoogleFonts.ubuntu(), GoogleFonts.patrickHand()]);
+        // IBM Plex Mono is the Code Playground's code, input and output; its
+        // columns only line up in a true monospace.
+        await GoogleFonts.pendingFonts([
+          GoogleFonts.ubuntu(),
+          GoogleFonts.patrickHand(),
+          GoogleFonts.ibmPlexMono(),
+        ]);
       },
       context: runContext,
     );

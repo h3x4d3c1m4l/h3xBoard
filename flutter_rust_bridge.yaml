@@ -1,0 +1,12 @@
+# flutter_rust_bridge codegen. Run it with `just gen-rust` after changing
+# anything under rust/src/api/.
+#
+# The Dart output goes under lib/services/ rather than the tool's default
+# lib/src/rust, because that is where this repo keeps things that are not
+# screens — beside services/python/, which is its only caller.
+rust_input: crate::api
+rust_root: rust/
+dart_output: lib/services/rust
+# The class-body padding this repo uses by hand does not survive dart format,
+# and the generated files are excluded from analysis anyway.
+dart_format_line_length: 120

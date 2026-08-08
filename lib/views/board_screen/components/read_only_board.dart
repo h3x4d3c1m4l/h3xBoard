@@ -8,6 +8,7 @@ import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
+import 'package:h3xboard/views/board_screen/components/board_mirror_scope.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/components/laser_pointer_overlay.dart';
@@ -84,13 +85,30 @@ class ReadOnlyBoard extends StatelessWidget {
                         child: CustomPaint(painter: _InProgressStrokePainter(inProgress)),
                       ),
                     ),
-                  for (final bw in widgets)
-                    ManipulableBoardWidget(
-                      key: ValueKey(bw.id),
-                      boardWidget: bw,
-                      // Read-only mirror: widgets never edit their own config here.
-                      child: descriptorFor(bw.config).buildWidget(bw.config, (_) {}),
+                  // Read-only mirror: widgets never edit their own config here.
+                  // The no-op callback alone is not enough for the ones that can
+                  // be operated — an editable pane would accept typing and then
+                  // snap back on the presenter's next update — so the scope lets
+                  // them render themselves as the mirror they are.
+                  //
+                  // Positioned.fill so the nested stack's size is stated rather
+                  // than inherited: every ManipulableBoardWidget inside it is
+                  // positioned in canvas space, leaving nothing unpositioned to
+                  // size it from.
+                  Positioned.fill(
+                    child: BoardMirrorScope(
+                      child: Stack(
+                        children: [
+                          for (final bw in widgets)
+                            ManipulableBoardWidget(
+                              key: ValueKey(bw.id),
+                              boardWidget: bw,
+                              child: descriptorFor(bw.config).buildWidget(bw.config, (_) {}),
+                            ),
+                        ],
+                      ),
                     ),
+                  ),
                   // Topmost: the presenter points *at* the board, including at
                   // the widgets on it.
                   if (laser != null) Positioned.fill(child: LaserPointerOverlay(pointer: laser)),

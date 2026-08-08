@@ -13,6 +13,8 @@ analyzer:
     - 'assets/'
     - 'build/'
     - 'lib/l10n/generated/'
+    - 'lib/services/rust/'
+    - 'rust_builder/'
     - 'web/'
 
 linter:

@@ -1,0 +1,44 @@
+[package]
+name = "h3xboard_rust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# `lib` alongside the FFI kinds so `cargo test` can link the crate normally.
+crate-type = ["cdylib", "staticlib", "lib"]
+
+[features]
+default = []
+
+# Turns the interpreter on for a HOST build: `just test-rust` and `just
+# lint-rust`, so the WASI implementation is exercised on a development machine.
+#
+# It is NOT how iOS and Android get it. cargokit never passes `--features` to
+# cargo (grep rust_builder/ — the word does not appear), and cargokit.yaml has
+# no per-platform key, so a feature can only ever be all-targets or no-targets.
+# The mobile builds get the interpreter from the target-gated dependency table
+# below instead, which cargo resolves from the `--target` cargokit always
+# passes. Anything that reads this feature must therefore also read the target —
+# see `runtime_available!` in lib.rs.
+python-runtime = ["dep:wasmi", "dep:getrandom"]
+
+[dependencies]
+flutter_rust_bridge = "=2.12.0"
+
+# Optional here so a host build can opt in; see the feature note above.
+wasmi = { version = "=1.1.0", default-features = false, features = [
+  "std",
+], optional = true }
+getrandom = { version = "=0.4.3", optional = true }
+
+# The real mobile wiring: on iOS and Android the interpreter is not optional, so
+# it is pulled in unconditionally and needs no `--features` from the build tool.
+# `default-features = false` drops wat/wast/wasm-encoder/leb128fmt — a WAT *text*
+# parser this app never feeds, and every byte of it would land in the iOS binary
+# because the podspec force-loads the whole static lib.
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+wasmi = { version = "=1.1.0", default-features = false, features = ["std"] }
+getrandom = "=0.4.3"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

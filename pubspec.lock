@@ -73,6 +73,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.7"
+  build_cli_annotations:
+    dependency: transitive
+    description:
+      name: build_cli_annotations
+      sha256: e563c2e01de8974566a1998410d3f6f03521788160a02503b0b1f1a46c7b3d95
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.1"
   build_config:
     dependency: transitive
     description:
@@ -370,6 +378,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.35"
+  flutter_rust_bridge:
+    dependency: "direct main"
+    description:
+      name: flutter_rust_bridge
+      sha256: e87d6b9ee934dcd24a128ccb2bd91905d2d5fe5c06245d6a8f5477d4907a437a
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.12.0"
   flutter_secure_storage:
     dependency: "direct main"
     description:
@@ -500,6 +516,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.2"
+  h3xboard_rust:
+    dependency: "direct main"
+    description:
+      path: rust_builder
+      relative: true
+    source: path
+    version: "0.0.1"
   hooks:
     dependency: transitive
     description:
@@ -556,6 +579,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
+  isolate_manager:
+    dependency: "direct overridden"
+    description:
+      name: isolate_manager
+      sha256: "806b6195a60f17bcb23e3c6d2f4da1f29e7376c4295b061d135f59613586ad1d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.3.2"
   jni:
     dependency: transitive
     description:
@@ -892,6 +923,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.8.2"
+  re_editor:
+    dependency: "direct main"
+    description:
+      name: re_editor
+      sha256: "66671c4774a6b4c5254c9a53ab35a083e7e7da9ae371c519bcf491c70a2a4e56"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.10.0"
+  re_highlight:
+    dependency: "direct main"
+    description:
+      name: re_highlight
+      sha256: "6c4ac3f76f939fb7ca9df013df98526634e17d8f7460e028bd23a035870024f2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.3"
   recase:
     dependency: transitive
     description:
