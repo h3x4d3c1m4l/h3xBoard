@@ -52,26 +52,58 @@ minutes of compute.
 1. Downloads wasi-sdk 24 and the CPython source into `.python-wasm-build/`.
 2. Runs `python3.14 Tools/wasm/wasi build`, which compiles CPython **twice** —
    once for the host (needed to cross-compile) and once for `wasm32-wasip1`.
-3. Strips the result and packs the standard library.
+3. Strips the result, compiles the standard library to bytecode, and packs it.
 
 Output, both committed as Flutter assets:
 
 | file | size | gzipped |
 |---|---|---|
 | `assets/python/python.wasm` | 7.3 MB | 2.2 MB |
-| `assets/python/python314.zip` | 12 MB | 4.1 MB |
+| `assets/python/python314.zip` | 13 MB | 5.9 MB |
 
-## The three things that are easy to get wrong
+## The four things that are easy to get wrong
 
 **Strip the binary.** CPython's WASI build compiles with `-g` and the debug info
 is roughly three quarters of the output — **29 MB before stripping, 7.3 MB
 after**. Nothing at runtime reads it.
 
-**The stdlib zip must be _stored_, not deflated.** This build has no zlib; it is
+**The stdlib zip must be *stored*, not deflated.** This build has no zlib; it is
 not among the 79 built-in modules, because zlib would have to be cross-compiled
 for WASI separately. So `zipimport` cannot inflate a compressed entry and fails
 with `can't decompress data; zlib not available`. `zip -0` sidesteps it entirely,
-and costs little in practice because the `.py` text compresses in transit anyway.
+and costs little in practice because the transport compresses it anyway.
+
+**The stdlib must be shipped as bytecode, not source.** Compiling a `.py` is
+expensive when the compiler is itself running inside a WebAssembly interpreter,
+and it is paid on *every* run, because every run is a fresh process. Measured
+under wasmi on these artifacts:
+
+| stdlib | normal run | run that raises |
+|---|---|---|
+| source | 327 ms | 5667 ms |
+| bytecode | 225 ms | 566 ms |
+
+The failing case is ten times worse because CPython imports `traceback`,
+`linecache`, `tokenize` and `re` only when it actually has a traceback to print
+— about seventy extra modules to compile, at the exact moment a pupil is waiting
+to be told what they did wrong.
+
+Two flags matter, and the script uses both:
+
+- `-b` writes `foo.pyc` beside `foo.py` instead of into `__pycache__/`, which is
+  the layout `zipimport` looks for.
+- `--invalidation-mode unchecked-hash` because the virtual filesystem both hosts
+  provide reports every mtime as 0. Under the default timestamp invalidation
+  CPython distrusts every file and recompiles it, giving back all of the saving.
+
+The bytecode is compiled with `cross-build/build/python` — the native
+interpreter this build already produced — and not with whatever host Python ran
+the script. Bytecode carries a version-specific magic number, and only that one
+is the same version as the `python.wasm` it ships beside.
+
+The program a pupil writes is unaffected: it is written to `/main.py` as source,
+so a traceback still quotes the offending line. What is lost is source for
+*stdlib* frames, and `inspect.getsource()` on stdlib functions.
 
 **`max-wasm-stack` must be raised to 16 MB.** CPython overflows the default WASM
 stack during interpreter startup. The wrapper CPython generates
@@ -121,3 +153,16 @@ Bump `PYTHON_VERSION` in `tool/build_python_wasm.sh` — and check which wasi-sd
 that release tests against, bumping `WASI_SDK_VERSION` with it. The two are a
 matched pair. Then rebuild, re-run the widget tests, and confirm the stdlib zip
 name in `pubspec.yaml` still matches.
+
+The script compiles the stdlib to bytecode itself, so an upgrade gets that
+treatment automatically — and with the interpreter the build just produced, so
+the magic number always matches. Two things to check afterwards, because both
+fail quietly rather than loudly:
+
+- `unzip -l assets/python/python*.zip | grep -c '\.py$'` should be **0**. Any
+  surviving source means something out-compiled or out-deleted the wrong tree,
+  and the only symptom is that runs get slow again. The script warns, but a
+  warning in fifteen minutes of build output is easy to miss.
+- `just test-rust` — `imports_from_the_standard_library_zip` fails immediately if
+  the bytecode is the wrong version for the interpreter, which is the failure
+  mode to expect if the two ever drift apart.

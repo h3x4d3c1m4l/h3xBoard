@@ -2,20 +2,26 @@ PODS:
   - external_display (0.0.1):
     - Flutter
   - Flutter (1.0.0)
+  - h3xboard_rust (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - external_display (from `.symlinks/plugins/external_display/ios`)
   - Flutter (from `Flutter`)
+  - h3xboard_rust (from `.symlinks/plugins/h3xboard_rust/ios`)
 
 EXTERNAL SOURCES:
   external_display:
     :path: ".symlinks/plugins/external_display/ios"
   Flutter:
     :path: Flutter
+  h3xboard_rust:
+    :path: ".symlinks/plugins/h3xboard_rust/ios"
 
 SPEC CHECKSUMS:
   external_display: 8df061b4d07547d48da8520079d2dd300e139bbf
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  h3xboard_rust: d9e8aff8610508906c45762bc102edc3b811b078
 
 PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
 

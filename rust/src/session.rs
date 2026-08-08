@@ -31,9 +31,16 @@ mod inner {
     /// only an atomic, so Stop is never blocked behind the run it is stopping.
     static LOADED: OnceLock<Mutex<Option<Loaded>>> = OnceLock::new();
 
-    /// Set by [`cancel`] and cleared around every run. Read by the interpreter
-    /// between fuel slices — see `python::run`.
-    static CANCELLED: AtomicBool = AtomicBool::new(false);
+    /// Set by [`cancel`] and cleared around every run.
+    ///
+    /// Read by the interpreter between fuel slices, and by `poll_oneoff` while a
+    /// program sleeps — see `python::run` and `python::wasi`. Shared rather than
+    /// static because the WASI host holds onto it for the duration of a run.
+    static CANCELLED: OnceLock<Arc<AtomicBool>> = OnceLock::new();
+
+    fn cancelled() -> &'static Arc<AtomicBool> {
+        CANCELLED.get_or_init(|| Arc::new(AtomicBool::new(false)))
+    }
 
     fn slot() -> &'static Mutex<Option<Loaded>> {
         LOADED.get_or_init(|| Mutex::new(None))
@@ -58,7 +65,7 @@ mod inner {
     pub fn run(code: String, stdin: String) -> Result<PythonOutcome, String> {
         // Clear here rather than in `cancel`, so a Stop that arrived while
         // nothing was running cannot kill the next program before it starts.
-        CANCELLED.store(false, Ordering::Relaxed);
+        cancelled().store(false, Ordering::Relaxed);
 
         let guard = slot().lock().map_err(|_| POISONED.to_owned())?;
         let loaded = guard
@@ -71,7 +78,7 @@ mod inner {
             Arc::clone(&loaded.stdlib),
             &code,
             &stdin,
-            &CANCELLED,
+            Arc::clone(cancelled()),
         );
 
         Ok(PythonOutcome {
@@ -84,7 +91,7 @@ mod inner {
     }
 
     pub fn cancel() {
-        CANCELLED.store(true, Ordering::Relaxed);
+        cancelled().store(true, Ordering::Relaxed);
     }
 }
 

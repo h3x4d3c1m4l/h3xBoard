@@ -129,6 +129,8 @@ exists because the failure it rules out is worse than a program not working:
 
 - A traceback names `/main.py` and quotes the offending line. The program is
   written to a file and run as one, rather than passed with `-c`, purely for this.
+  It survives the stdlib being shipped as bytecode, because the pupil's own
+  program is still source.
 - Output is capped at 256 KiB per stream and says when it was cut, matching
   `python_worker.js`. Output is mirrored to other screens and saved with the
   board, so a runaway `print` must not grow the board file without bound.

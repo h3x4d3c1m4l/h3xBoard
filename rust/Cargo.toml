@@ -40,5 +40,21 @@ getrandom = { version = "=0.4.3", optional = true }
 wasmi = { version = "=1.1.0", default-features = false, features = ["std"] }
 getrandom = "=0.4.3"
 
+# A debug build still has to *run* an interpreter, and an unoptimised one is
+# useless: `print("hi")` measured 8.65s unoptimised against 0.38s optimised,
+# because almost all of that is CPython starting up inside wasmi. `flutter run`
+# builds this crate in debug (cargokit passes --release only for profile and
+# release), so without this the playground looks hung on every simulator and
+# every debug device run.
+#
+# Optimising dependencies is what buys the speed — wasmi is where the time goes.
+# This crate itself stays at a level that still compiles quickly, since it is the
+# only part anyone iterates on.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
