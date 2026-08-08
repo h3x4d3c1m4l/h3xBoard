@@ -10,6 +10,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/board_widget_desc
 import 'package:h3xboard/views/board_screen/components/widgets/code_playground/code_playground_style.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/code_playground/code_playground_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/code_playground/components/editor_pane.dart';
+import 'package:re_editor/re_editor.dart';
 
 /// Releases focus so the editor stops blinking its caret.
 ///
@@ -495,6 +496,47 @@ void main() {
         (code) => code.onChanged('a = 1', null),
       );
       expect(published, isEmpty);
+    });
+  });
+
+  group('what the editor is told about syntax', () {
+    /// The theme handed to re_editor for a pane.
+    CodeHighlightTheme? themeOf(WidgetTester tester, Finder pane) {
+      final editor = tester.widget<CodeEditor>(
+        find.descendant(of: pane, matching: find.byType(CodeEditor)),
+      );
+      return editor.style?.codeTheme;
+    }
+
+    testWidgets('a plain pane gets no theme at all, never an empty one', (tester) async {
+      // re_editor checks the theme for null, then goes straight to
+      // `maxSizes.reduce(min)` over its languages. An empty map therefore throws
+      // "Bad state: No element" from inside its highlighting isolate — silently
+      // on the web, and as an unhandled exception on a device. Saying "no
+      // highlighting" with null is the only supported way to say it.
+      await pump(tester, const CodePlaygroundConfig(code: 'print(1)', stdinText: 'x'));
+
+      final panes = find.byType(EditorPane);
+      expect(panes, findsNWidgets(2), reason: 'the program and the input');
+
+      final code = themeOf(tester, panes.first);
+      expect(code, isNotNull, reason: 'the program is highlighted');
+      expect(code!.languages, isNotEmpty);
+
+      expect(themeOf(tester, panes.last), isNull, reason: 'the input pane is plain text');
+
+      await dropFocus(tester);
+    });
+
+    testWidgets('nothing throws while a program is highlighted', (tester) async {
+      // Highlighting runs off the main isolate, so a failure there does not stop
+      // the widget building — it just never colours anything and throws
+      // somewhere else. Pump past it and check nothing escaped.
+      await pump(tester, const CodePlaygroundConfig(code: 'def f(x):\n    return x * 2\n'));
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.takeException(), isNull);
+
+      await dropFocus(tester);
     });
   });
 

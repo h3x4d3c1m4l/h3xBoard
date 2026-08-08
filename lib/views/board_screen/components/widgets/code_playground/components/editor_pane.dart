@@ -244,12 +244,20 @@ class _EditorPaneState extends State<EditorPane> {
               backgroundColor: CodePlaygroundStyle.well,
               cursorColor: CodePlaygroundStyle.accent(context),
               selectionColor: CodePlaygroundStyle.accent(context).withValues(alpha: 0.30),
-              // Only the program is code. Leaving the input pane's languages empty
-              // means it renders as plain text.
-              codeTheme: CodeHighlightTheme(
-                languages: widget.highlightPython ? {'python': CodeHighlightThemeMode(mode: langPython)} : const {},
-                theme: CodePlaygroundStyle.syntaxTheme,
-              ),
+              // Only the program is code; the input pane is plain text.
+              //
+              // null rather than a theme with no languages in it. re_editor
+              // checks the theme for null and otherwise goes straight to
+              // `maxSizes.reduce(min)` over the languages — which on an empty
+              // map throws "Bad state: No element" from inside its highlighting
+              // isolate. On the web that surfaced as a silently dead worker; on
+              // a device it is an unhandled exception.
+              codeTheme: widget.highlightPython
+                  ? CodeHighlightTheme(
+                      languages: {'python': CodeHighlightThemeMode(mode: langPython)},
+                      theme: CodePlaygroundStyle.syntaxTheme,
+                    )
+                  : null,
             ),
           ),
         ),

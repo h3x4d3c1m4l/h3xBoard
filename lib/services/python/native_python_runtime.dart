@@ -23,17 +23,38 @@ class NativePythonRuntime implements PythonRuntime {
   /// must wait for the first one's load rather than start its own.
   static Future<void>? _loading;
 
+  /// True without asking Rust, on purpose.
+  ///
+  /// The widget reads this while it builds its toolbar, which is long before
+  /// anything calls [ready] — and every bridge call, including a `sync` one,
+  /// throws until `RustLib.init()` has run. Asking Rust here therefore crashed
+  /// the widget on its first frame.
+  ///
+  /// Answering from Dart is not a guess: this class is only ever constructed on
+  /// iOS and Android (see python_runtime_io.dart), and a `compile_error!` in
+  /// rust/src/lib.rs fails the build if either of those targets ever stops
+  /// including the interpreter. [_load] checks it against Rust for real once the
+  /// bridge is up, so a broken invariant still surfaces — just not as a crash
+  /// before the first frame.
   @override
-  bool get isSupported => rust.pythonIsSupported();
+  bool get isSupported => true;
 
   @override
   Future<void> ready() => _loading ??= _load();
 
   static Future<void> _load() async {
     // Lazily, and only here. Calling this from main() would make every platform
-    // pay to initialise a bridge that only two of them use, and would make the
-    // web build look for a Rust wasm bundle that is deliberately not shipped.
+    // pay to initialise a bridge that only two of them use — and would break the
+    // web app outright, because there RustLib.init() fetches `pkg/*.js`, a Rust
+    // wasm bundle this project deliberately does not ship.
     await RustLib.init();
+
+    if (!rust.pythonIsSupported()) {
+      throw StateError(
+        'This build has no Python interpreter. iOS and Android are supposed to '
+        'get one from the target-gated dependency in rust/Cargo.toml.',
+      );
+    }
 
     // `rootBundle.load` is not cached — despite the bundle being a
     // CachingAssetBundle, only loadString and loadStructuredData are — so each
