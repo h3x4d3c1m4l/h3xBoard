@@ -5,6 +5,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/board_widget_surface.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class StopwatchWidget extends StatefulWidget {
@@ -111,48 +112,45 @@ class _StopwatchWidgetState extends State<StopwatchWidget> {
       timeText = '$minutes:$seconds';
     }
 
-    return Container(
+    return SizedBox(
       width: 300,
       height: 140,
-      decoration: BoxDecoration(
-        color: const Color(0xE6111827),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.24), width: 1),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              timeText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 48,
-                fontWeight: FontWeight.w300,
-                letterSpacing: 3,
-                fontFeatures: [FontFeature.tabularFigures()],
+      child: BoardWidgetSurface(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                timeText,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 48,
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: 3,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _ControlButton(
-                icon: _isRunning ? LucideIcons.pause : LucideIcons.play,
-                onTap: _toggle,
-                highlighted: true,
-              ),
-              const SizedBox(width: 12),
-              _ControlButton(
-                icon: LucideIcons.rotateCcw,
-                onTap: _reset,
-                highlighted: false,
-              ),
-            ],
-          ),
-        ],
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _ControlButton(
+                  icon: _isRunning ? LucideIcons.pause : LucideIcons.play,
+                  onTap: _toggle,
+                  highlighted: true,
+                ),
+                const SizedBox(width: 12),
+                _ControlButton(
+                  icon: LucideIcons.rotateCcw,
+                  onTap: _reset,
+                  highlighted: false,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

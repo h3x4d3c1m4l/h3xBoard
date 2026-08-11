@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/theme/app_theme.dart';
+import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
@@ -146,11 +147,13 @@ class WidgetHeaderBar extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x14000000)),
-        boxShadow: const [
+        shape: ContinuousRectangleBorder(
+          borderRadius: BorderRadius.circular(kWidgetHeaderCornerRadius),
+          side: const BorderSide(color: Color(0x14000000)),
+        ),
+        shadows: const [
           BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
@@ -245,9 +248,11 @@ class _HeaderIconButtonState extends State<_HeaderIconButton> {
           child: Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               color: _hovered ? const Color(0x0F000000) : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
+              shape: ContinuousRectangleBorder(
+                borderRadius: BorderRadius.circular(kWidgetHeaderControlCornerRadius),
+              ),
             ),
             child: Icon(widget.icon, size: 20, color: color),
           ),
@@ -310,9 +315,11 @@ class _HeaderSettingsButtonState extends State<_HeaderSettingsButton> {
             child: Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
                 color: _hovered ? const Color(0x0F000000) : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
+                shape: ContinuousRectangleBorder(
+                  borderRadius: BorderRadius.circular(kWidgetHeaderControlCornerRadius),
+                ),
               ),
               child: Icon(LucideIcons.settings, size: 20, color: _hovered ? context.appTheme.colors.selection : const Color(0xFF475569)),
             ),
@@ -342,12 +349,14 @@ class _DonePill extends StatelessWidget {
         child: Container(
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             // Match the resting background of a primary FilledButton exactly: it
             // uses the accent's brightness-adjusted brush, not the raw accentColor
             // (which is a different, lighter shade).
             color: theme.accentColor.defaultBrushFor(theme.brightness),
-            borderRadius: BorderRadius.circular(6),
+            shape: ContinuousRectangleBorder(
+              borderRadius: BorderRadius.circular(kWidgetHeaderControlCornerRadius),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

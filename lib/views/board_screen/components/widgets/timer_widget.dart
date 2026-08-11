@@ -5,6 +5,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/board_widget_surface.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -173,15 +174,10 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
         final borderColor = finished
             ? const Color(0xFFF87171).withValues(alpha: 0.15 + 0.75 * t)
             : Colors.white.withValues(alpha: 0.24);
-        return Container(
+        return SizedBox(
           width: 300,
           height: 140,
-          decoration: BoxDecoration(
-            color: const Color(0xE6111827),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor, width: 1),
-          ),
-          child: child,
+          child: BoardWidgetSurface(borderColor: borderColor, child: child!),
         );
       },
       child: Column(
