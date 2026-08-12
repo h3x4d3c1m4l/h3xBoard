@@ -3,6 +3,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/board_widget_surface.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -43,52 +44,49 @@ class TodoListWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolvedTitle = title.trim().isEmpty ? context.localizations.todoList_defaultTitle : title;
 
-    return Container(
+    return SizedBox(
       width: width,
-      decoration: BoxDecoration(
-        color: const Color(0xE6111827),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: _borderWidth),
-      ),
-      padding: const EdgeInsets.fromLTRB(_hPad, _topPad, _hPad, _bottomPad),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: _titleHeight,
-            child: Row(
-              mainAxisAlignment: .center,
-              children: [
-                const Icon(LucideIcons.listChecks, color: _checkColor, size: 22),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    resolvedTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      height: 1,
+      child: BoardWidgetSurface(
+        padding: const EdgeInsets.fromLTRB(_hPad, _topPad, _hPad, _bottomPad),
+          child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: _titleHeight,
+              child: Row(
+                mainAxisAlignment: .center,
+                children: [
+                  const Icon(LucideIcons.listChecks, color: _checkColor, size: 22),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      resolvedTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        height: 1,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          //const SizedBox(height: _titleGap),
-          Divider(size: _titleGap, style: DividerThemeData()),
-          if (items.isEmpty)
-            const _EmptyPlaceholder()
-          else
-            for (var i = 0; i < items.length; i++)
-              _TodoRow(
-                item: items[i],
-                onTap: () => onToggle(i),
+                ],
               ),
-        ],
+            ),
+            //const SizedBox(height: _titleGap),
+            Divider(size: _titleGap, style: DividerThemeData()),
+            if (items.isEmpty)
+              const _EmptyPlaceholder()
+            else
+              for (var i = 0; i < items.length; i++)
+                _TodoRow(
+                  item: items[i],
+                  onTap: () => onToggle(i),
+                ),
+            ],
+          ),
       ),
     );
   }

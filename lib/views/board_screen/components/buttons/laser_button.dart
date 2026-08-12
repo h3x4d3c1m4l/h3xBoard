@@ -9,6 +9,7 @@ import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/laser_color_button.dart';
+import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Arms the laser pointer and offers its colours in the same tap.
@@ -120,6 +121,7 @@ class _LaserButtonState extends State<LaserButton> {
   Widget _buildColorPopup(BuildContext context) {
     final appSettings = GetIt.I<AppSettingsController>();
     return FlyoutContent(
+      shape: continuousMenuShape(context),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Observer(
         builder: (_) => Row(

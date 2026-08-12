@@ -35,6 +35,27 @@ const EdgeInsetsGeometry kIconControlPadding = EdgeInsets.all(8);
 /// Corner radius of the whiteboard canvas's continuous-rectangle border.
 const double kBoardCornerRadius = 24;
 
+/// Corner radius of a board widget's own surface — the card a clock or a to-do
+/// list draws itself on. Generous, because these are canvas content rather than
+/// app chrome: they read as objects placed on the board, and the softer corner
+/// is most of what says so.
+///
+/// Safe to raise as far as you like: `BoardWidgetSurface` clamps it to half the
+/// shortest side, so a card too small to take it stops at its own pill rather
+/// than going misshapen. The small ones are already there — the clock is 100
+/// units tall, so it caps at 50 whatever this says.
+const double kBoardWidgetCornerRadius = 64;
+
+/// Corner radius of a board widget's header bar. Half the card's, so the bar
+/// sitting directly above it reads as belonging to it rather than echoing it.
+const double kWidgetHeaderCornerRadius = 24;
+
+/// The small controls *on* the header bar — the hover squares and the Done pill.
+/// Left where they are while the bar grew: these are 40 units across, and at the
+/// bar's radius the curves would meet before the edge had a chance to run
+/// straight, which is the same trap [kShortControlCornerRadius] exists for.
+const double kWidgetHeaderControlCornerRadius = 8;
+
 /// Continuous (squircle) corner radii for the sub-board tab bar. The tab's inner
 /// button hugs the outer indicator concentrically (outer − 1), matching the app's
 /// squircle surfaces instead of fluent's default rounded corners.

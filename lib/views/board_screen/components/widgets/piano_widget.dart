@@ -5,6 +5,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/board_widget_surface.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/piano_audio.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -58,59 +59,57 @@ class _PianoWidgetState extends State<PianoWidget> {
     final octaves = widget.octaves;
     final size = PianoWidget.sizeForOctaves(octaves);
 
-    return Container(
+    return SizedBox(
       width: size.width,
       height: size.height,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: const Color(0xE6111827),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.24), width: 1),
-      ),
-      // LayoutBuilder gives the exact inner size (after padding + border), so the
-      // keys always fit precisely without overflowing.
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final whiteCount = octaves * 7;
-          final whiteWidth = constraints.maxWidth / whiteCount;
-          final blackWidth = whiteWidth * 0.62;
-          final blackHeight = constraints.maxHeight * 0.62;
+      child: BoardWidgetSurface(
+        radius: 32,
+        padding: const EdgeInsets.all(8),
+        // LayoutBuilder gives the exact inner size (after padding + border), so the
+        // keys always fit precisely without overflowing.
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final whiteCount = octaves * 7;
+            final whiteWidth = constraints.maxWidth / whiteCount;
+            final blackWidth = whiteWidth * 0.62;
+            final blackHeight = constraints.maxHeight * 0.62;
 
-          final whiteKeys = <Widget>[];
-          for (var octave = 0; octave < octaves; octave++) {
-            for (final semitone in _whiteSemitones) {
-              final midiNote = PianoAudio.lowestMidi + octave * 12 + semitone;
-              whiteKeys.add(Expanded(child: _buildWhiteKey(midiNote)));
+            final whiteKeys = <Widget>[];
+            for (var octave = 0; octave < octaves; octave++) {
+              for (final semitone in _whiteSemitones) {
+                final midiNote = PianoAudio.lowestMidi + octave * 12 + semitone;
+                whiteKeys.add(Expanded(child: _buildWhiteKey(midiNote)));
+              }
             }
-          }
 
-          final blackKeys = <Widget>[];
-          for (var octave = 0; octave < octaves; octave++) {
-            for (final def in _blackKeyDefs) {
-              final globalWhiteIndex = octave * 7 + def.afterWhite;
-              final midiNote = PianoAudio.lowestMidi + octave * 12 + def.semitone;
-              final left = (globalWhiteIndex + 1) * whiteWidth - blackWidth / 2;
-              blackKeys.add(Positioned(
-                left: left,
-                top: 0,
-                child: _buildBlackKey(midiNote, blackWidth, blackHeight),
-              ));
+            final blackKeys = <Widget>[];
+            for (var octave = 0; octave < octaves; octave++) {
+              for (final def in _blackKeyDefs) {
+                final globalWhiteIndex = octave * 7 + def.afterWhite;
+                final midiNote = PianoAudio.lowestMidi + octave * 12 + def.semitone;
+                final left = (globalWhiteIndex + 1) * whiteWidth - blackWidth / 2;
+                blackKeys.add(Positioned(
+                  left: left,
+                  top: 0,
+                  child: _buildBlackKey(midiNote, blackWidth, blackHeight),
+                ));
+              }
             }
-          }
 
-          return SizedBox.expand(
-            child: Stack(
-              children: [
-                // Stretch fills each white key to the full keyboard height;
-                // Expanded distributes the width evenly across the octaves.
-                Positioned.fill(
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: whiteKeys),
-                ),
-                ...blackKeys,
-              ],
-            ),
-          );
-        },
+            return SizedBox.expand(
+              child: Stack(
+                children: [
+                  // Stretch fills each white key to the full keyboard height;
+                  // Expanded distributes the width evenly across the octaves.
+                  Positioned.fill(
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: whiteKeys),
+                  ),
+                  ...blackKeys,
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

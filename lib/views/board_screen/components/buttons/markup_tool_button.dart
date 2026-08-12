@@ -7,6 +7,7 @@ import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/stroke_preset_row.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart';
+import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 IconData _shapeIcon(ShapeKind shape) => switch (shape) {
@@ -50,6 +51,7 @@ class MarkupToolButton extends StatelessWidget {
         onPressed: controller.onMarkupButtonPressed,
         dismissSignal: controller.drawStartSignal,
         flyoutBuilder: (context) => FlyoutContent(
+          shape: continuousMenuShape(context),
           padding: .symmetric(horizontal: 16, vertical: 8),
           // The flyout is only as wide as its widest row: without this the divider,
           // which has no width of its own, stretches to the overlay's full width

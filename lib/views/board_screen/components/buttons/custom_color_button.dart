@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/theme/app_theme.dart';
+import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 
 class CustomColorButton extends StatefulWidget {
@@ -80,7 +81,9 @@ class _CustomColorButtonState extends State<CustomColorButton> with SingleTicker
     _colorSelectionController.showFlyout(
       // The picker builds its internals out of plain Buttons, which would
       // otherwise pick up the app's neutral-button outline.
-      builder: (context) => FlyoutContent(child: ButtonTheme.merge(
+      builder: (context) => FlyoutContent(
+        shape: continuousMenuShape(context),
+        child: ButtonTheme.merge(
         data: plainControlButtonTheme(context),
         child: ColorPicker(
           orientation: Axis.horizontal,

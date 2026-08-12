@@ -81,6 +81,7 @@ class AppSurfaceStyles extends ThemeExtension<AppSurfaceStyles> with _$AppSurfac
 
   const AppSurfaceStyles({
     required this.toolbar,
+    this.boardWidget = const AppBoardWidgetSurface(),
     this.toolbarPadding = kToolbarPadding,
   });
 
@@ -109,9 +110,85 @@ class AppSurfaceStyles extends ThemeExtension<AppSurfaceStyles> with _$AppSurfac
   @override
   final ShapeDecoration toolbar;
 
+  /// The card a board widget draws itself on. See [AppBoardWidgetSurface].
+  @override
+  final AppBoardWidgetSurface boardWidget;
+
   /// [toolbar]'s inner padding, around the buttons it holds.
   @override
   final EdgeInsetsGeometry toolbarPadding;
+
+}
+
+/// A board widget's own surface — the dark glass card a clock, a timer or the
+/// code playground sits on.
+///
+/// Acrylic rather than a flat fill: these float over a whiteboard that has
+/// drawings, a background image or a chalkboard behind them, and letting that
+/// show through blurred is what makes them read as *on* the board rather than
+/// pasted over it.
+///
+/// Tokens rather than a finished decoration because fluent's [Acrylic] takes
+/// them apart — tint, alpha and blur are separate arguments, and only [shape] is
+/// a [ShapeBorder]. Widgets do not read these directly; they use
+/// `BoardWidgetSurface`, which is the one place they are assembled.
+@TailorMixinComponent()
+class AppBoardWidgetSurface extends ThemeExtension<AppBoardWidgetSurface>
+    with _$AppBoardWidgetSurfaceTailorMixin {
+
+  const AppBoardWidgetSurface({
+    this.tint = const Color(0xFF111827),
+    this.tintAlpha = 0.68,
+    this.blurAmount = 12,
+    this.borderColor = const Color(0x3DFFFFFF),
+    this.onSurface = const Color(0xFFFFFFFF),
+  });
+
+  /// The near-black these cards have always been. Kept as an opaque colour with
+  /// [tintAlpha] beside it so the two can be tuned independently.
+  @override
+  final Color tint;
+
+  /// How much of the board shows through. Low enough to read as glass over a
+  /// drawing, high enough that white text stays legible over whatever is behind
+  /// it — that lower bound is what stops this going further.
+  ///
+  /// Only trustworthy because the blur is composited beneath the tint rather
+  /// than through it; see `BoardWidgetSurface`. Blurred *with* it, a low alpha
+  /// here thinned the card's edges out to nothing.
+  @override
+  final double tintAlpha;
+
+  /// Deliberately modest. Every one of these is a separate `BackdropFilter`, and
+  /// a busy board renders the same widgets again on the external display and for
+  /// every web viewer.
+  @override
+  final double blurAmount;
+
+  /// The hairline that keeps the card's edge legible over a dark drawing, where
+  /// the tint alone would disappear.
+  @override
+  final Color borderColor;
+
+  /// What is legible on top of [tint] — the text and glyphs every one of these
+  /// widgets draws.
+  @override
+  final Color onSurface;
+
+}
+
+/// The squircle a board widget's surface is cut to.
+///
+/// A method rather than a getter on [AppBoardWidgetSurface]: theme_tailor treats
+/// every public getter on a token class as a field, and would put this derived
+/// value into the generated `copyWith` and `lerp` as though it could vary
+/// independently of the [AppBoardWidgetSurface.borderColor] it is built from.
+extension AppBoardWidgetSurfaceShape on AppBoardWidgetSurface {
+
+  ShapeBorder shapeOf({double radius = kBoardWidgetCornerRadius}) => ContinuousRectangleBorder(
+        borderRadius: BorderRadius.circular(radius),
+        side: BorderSide(color: borderColor),
+      );
 
 }
 
