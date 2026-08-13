@@ -154,7 +154,8 @@ class LiveBoardReceiver extends ChangeNotifier {
     final index = _widgets.indexWhere((w) => w.id == widget.id);
     // Replace in place to preserve render order; append when new.
     _widgets = [
-      for (var i = 0; i < _widgets.length; i++) i == index ? widget : _widgets[i],
+      for (var i = 0; i < _widgets.length; i++)
+        if (i == index) widget else _widgets[i],
       if (index == -1) widget,
     ];
   }

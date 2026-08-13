@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:desktop_drop/desktop_drop.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
@@ -16,6 +16,18 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// board so an image uploaded once can be reused across boards and widgets.
 const String backgroundsFolder = 'backgrounds';
 const String imagesFolder = 'images';
+
+/// What the native "open file" dialog offers. Every platform reads a different
+/// field of an [XTypeGroup] — extensions on Windows/Linux/macOS, MIME types on
+/// Android and the web, uniform type identifiers on iOS/macOS — so all three
+/// are filled in, and they have to agree with the extensions
+/// [imageContentTypeForName] recognises.
+const _imageTypeGroup = XTypeGroup(
+  label: 'Images',
+  extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'],
+  mimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'],
+  uniformTypeIdentifiers: ['public.image'],
+);
 
 /// The outcome of a [FilePickerDialog]. A `null` [fileId] means the user chose to
 /// clear/remove the current selection (only offered when `allowRemove` is set);
@@ -116,10 +128,8 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
   void _openFolder(String name) => _loadFolder(_path.isEmpty ? name : '$_path/$name');
 
   Future<void> _uploadNew() async {
-    final picked = await FilePicker.pickFiles(type: FileType.image, withData: true);
-    final file = picked?.files.singleOrNull;
-    final bytes = file?.bytes;
-    if (file == null || bytes == null) return;
+    final file = await openFile(acceptedTypeGroups: const [_imageTypeGroup]);
+    if (file == null) return;
 
     setState(() {
       _busy = true;
@@ -127,9 +137,9 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
     });
     try {
       final summary = await widget.fileService.upload(
-        bytes: bytes,
+        bytes: await file.readAsBytes(),
         fileName: file.name,
-        contentType: contentTypeForImageExtension(file.extension),
+        contentType: imageContentTypeForName(file.name) ?? 'application/octet-stream',
         path: _path,
       );
       if (!mounted) return;
@@ -609,32 +619,24 @@ String? _imageContentTypeFor(DropItem file) {
   final mimeType = file.mimeType;
   if (mimeType != null && mimeType.startsWith('image/')) return mimeType;
 
-  final name = file.name;
+  return imageContentTypeForName(file.name);
+}
+
+/// Maps a file name to an image MIME type for the upload's content type, or
+/// `null` when the extension is not one we recognise as an image. Neither the
+/// native open dialog nor a desktop drop reliably surfaces a MIME type, so the
+/// extension is what both paths fall back to.
+String? imageContentTypeForName(String name) {
   final dot = name.lastIndexOf('.');
   if (dot < 0) return null;
 
-  final contentType = contentTypeForImageExtension(name.substring(dot + 1));
-  return contentType.startsWith('image/') ? contentType : null;
-}
-
-/// Maps a file extension to an image MIME type for the upload's content type
-/// (file_picker does not surface the MIME). Falls back to a generic binary type.
-String contentTypeForImageExtension(String? extension) {
-  switch (extension?.toLowerCase()) {
-    case 'png':
-      return 'image/png';
-    case 'jpg':
-    case 'jpeg':
-      return 'image/jpeg';
-    case 'gif':
-      return 'image/gif';
-    case 'webp':
-      return 'image/webp';
-    case 'bmp':
-      return 'image/bmp';
-    case 'svg':
-      return 'image/svg+xml';
-    default:
-      return 'application/octet-stream';
-  }
+  return switch (name.substring(dot + 1).toLowerCase()) {
+    'png' => 'image/png',
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'gif' => 'image/gif',
+    'webp' => 'image/webp',
+    'bmp' => 'image/bmp',
+    'svg' => 'image/svg+xml',
+    _ => null,
+  };
 }

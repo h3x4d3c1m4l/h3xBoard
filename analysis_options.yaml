@@ -11,9 +11,14 @@ analyzer:
     - '**/*.json.dart'
     - '.*/'
     - 'assets/'
-    - 'build/'
     - 'lib/l10n/generated/'
-    - 'web/'
+    - 'build/**'
+    - 'android/**'
+    - 'ios/**'
+    - 'web/**'
+    - 'windows/**'
+    - 'macos/**'
+    - 'linux/**'
 
 linter:
   # More info: https://dart.dev/tools/linter-rules
