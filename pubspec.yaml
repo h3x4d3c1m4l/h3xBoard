@@ -6,7 +6,7 @@ publish_to: 'none'
 version: 0.4.0+1
 
 environment:
-  sdk: ^3.12.0
+  sdk: ^3.13.0
 
 dependencies:
   flutter: { sdk: flutter }
@@ -45,7 +45,7 @@ dependencies:
   flutter_secure_storage: 11.0.0
   pretty_qr_code: 3.6.0
   rounded_background_text: 0.6.0
-  sentry_flutter: 9.26.0
+  sentry_flutter: 9.27.0
   theme_tailor_annotation: 3.1.3
 
 dependency_overrides:

@@ -29,7 +29,6 @@ linter:
     - avoid_bool_literals_in_conditional_expressions
     - avoid_dynamic_calls
     - avoid_field_initializers_in_const_classes
-    - avoid_private_typedef_functions
     - avoid_slow_async_io
     - avoid_type_to_string
     - avoid_types_on_closure_parameters
