@@ -12,6 +12,7 @@ import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_ba
 import 'package:h3xboard/views/board_screen/components/dialogs/color_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
@@ -100,7 +101,7 @@ class _BoardSettingsDialogState extends State<BoardSettingsDialog> {
   // --- Background image ----------------------------------------------------
 
   Future<void> _chooseBackgroundImage() async {
-    final result = await showDialog<FilePickerResult>(
+    final result = await showAppDialog<FilePickerResult>(
       context: context,
       builder: (_) => FilePickerDialog(
         apiClient: widget.apiClient,

@@ -4,6 +4,7 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
@@ -139,7 +140,7 @@ class QrCodeWidgetDescriptor extends BoardWidgetDescriptor {
     final loc = context.localizations;
     final controller = TextEditingController(text: config.data);
 
-    showDialog<void>(
+    showAppDialog<void>(
       context: context,
       builder: (ctx) => ThemableContentDialog(
         title: Text(loc.qrCodeSettingsMenu_editDataDialogTitle),

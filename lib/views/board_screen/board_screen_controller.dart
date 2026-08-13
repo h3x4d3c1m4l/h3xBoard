@@ -35,6 +35,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/image_widget.dart
 import 'package:h3xboard/views/board_screen/components/widgets/text_box_widget.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
 import 'package:mobx/mobx.dart';
@@ -105,6 +106,11 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   // stopped) — see [isBoardMirrored].
   ReactionDisposer? _mirroringReactionDisposer;
 
+  // Whether the last load failed because this build can't read the board's
+  // content, rather than because fetching it went wrong. That failure gets its
+  // own dialog: retrying would decode the same bytes again.
+  bool _contentUnsupported = false;
+
   // Initialization/Deinitialization
 
   BoardScreenController({
@@ -142,8 +148,16 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     if (preloadedDetail != null) {
       // The boards overview already fetched this board (and showed the loading
       // UI), so apply it straight away — the board paints on the first frame with
-      // no second spinner.
-      _applyDetail(preloadedDetail);
+      // no second spinner. A board this build can't read must not throw out of
+      // the constructor: that lands in `initState` and takes the whole screen
+      // down to an error widget, so it becomes the same modal every other load
+      // failure gets — once there is a frame to show it on.
+      try {
+        _applyDetail(preloadedDetail);
+      } on UnsupportedBoardContentException catch (e) {
+        _markContentUnsupported(e);
+        WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_showLoadErrorDialog()));
+      }
       viewModel.setIsLoading(false);
     } else {
       // Entered directly (deep link / web reload): load the board ourselves.
@@ -170,11 +184,14 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   // Persistence
 
   Future<void> _loadBoard() async {
+    _contentUnsupported = false;
     viewModel
       ..setIsLoading(true)
       ..setLoadError(null);
     try {
       _applyDetail(await _wsClient.getBoard(boardId));
+    } on UnsupportedBoardContentException catch (e) {
+      _markContentUnsupported(e);
     } on H3xBoardApiException catch (e) {
       viewModel.setLoadError(e.message);
     } catch (e) {
@@ -187,11 +204,24 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     }
   }
 
+  /// Records that the board came down fine but this build can't read what is in
+  /// it. [BoardScreenViewModel.loadError] is what blanks the body behind the
+  /// dialog; the flag is what picks *which* dialog.
+  void _markContentUnsupported(UnsupportedBoardContentException e) {
+    _contentUnsupported = true;
+    viewModel.setLoadError(e.toString());
+  }
+
   /// Loads a fetched board's content into the view model and seeds the drawing
   /// canvas with the active sub-board's saved strokes. Shared by the self-load
   /// path and the pre-fetched (boards-overview) path.
+  ///
+  /// Throws [UnsupportedBoardContentException] if the stored content can't be
+  /// read. It parses before touching the view model, so a board that fails here
+  /// leaves the screen on its empty defaults — which the caller must never let
+  /// autosave write back over the real (unreadable) board.
   void _applyDetail(BoardDetail detail) {
-    final content = detail.data.isEmpty ? const BoardContent() : BoardContent.fromJson(detail.data);
+    final content = parseBoardContent(detail.data);
     viewModel.setInitialContent(content);
     drawingController.clear();
     final saved = viewModel.restoreSubBoardDrawing(viewModel.activeSubBoardId);
@@ -204,8 +234,9 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   /// load or return to the boards overview. Shown whenever [_loadBoard] fails,
   /// replacing the inline error banner so the choice is always front-and-center.
   Future<void> _showLoadErrorDialog() async {
+    if (_contentUnsupported) return _showUnsupportedContentDialog();
     final context = contextAccessor.buildContext;
-    final retry = await showDialog<bool>(
+    final retry = await showAppDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => ThemableContentDialog(
@@ -229,6 +260,36 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     } else {
       await _goToBoards();
     }
+  }
+
+  /// The board arrived intact but holds something this build doesn't know how to
+  /// render — practically always a board last saved by a newer version of the
+  /// app (see [UnsupportedBoardContentException]).
+  ///
+  /// A warning rather than an error: nothing is broken and nothing is lost, the
+  /// board is simply ahead of this app. There is no Try again either — the same
+  /// bytes would fail to decode the same way — so the only way on is back to the
+  /// overview, and updating the app.
+  Future<void> _showUnsupportedContentDialog() async {
+    final context = contextAccessor.buildContext;
+    if (context.mounted) {
+      await showAppDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => ThemableContentDialog(
+          severity: ThemableDialogSeverity.warning,
+          title: Text(localizations.boardScreen_unsupportedContentTitle),
+          content: Text(localizations.boardScreen_unsupportedContentMessage),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(localizations.boardScreen_loadErrorGoBack),
+            ),
+          ],
+        ),
+      );
+    }
+    await _goToBoards();
   }
 
   void _scheduleSave() {
@@ -313,7 +374,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
         // but the builder only runs on the next frame. A fast failure can
         // resolve before that frame, leaving the dialog un-poppable.
         final navigator = Navigator.of(context, rootNavigator: true);
-        unawaited(showDialog<void>(
+        unawaited(showAppDialog<void>(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => ThemableLoadingDialog(message: localizations.boardScreen_closing),
@@ -611,7 +672,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   /// nothing if the dialog is dismissed without a selection.
   Future<void> onShowWidgetCatalog() async {
     final context = contextAccessor.buildContext;
-    final config = await showDialog<BoardWidgetConfig>(
+    final config = await showAppDialog<BoardWidgetConfig>(
       context: context,
       builder: (_) => const WidgetCatalogDialog(),
       barrierDismissible: true,
@@ -691,7 +752,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     final context = contextAccessor.buildContext;
 
     BuildContext? dialogContext;
-    unawaited(showDialog<void>(
+    unawaited(showAppDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
@@ -743,7 +804,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     final message = result.failed > 0
         ? (result.serverMessage ?? localizations.board_dropError)
         : localizations.filePicker_dropSkipped;
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: context,
       builder: (ctx) => ThemableContentDialog(
         severity: ThemableDialogSeverity.error,
@@ -1045,7 +1106,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     final context = contextAccessor.buildContext;
     final boardId = viewModel.activeSubBoardId;
     final before = viewModel.board;
-    final result = await showDialog<Board>(
+    final result = await showAppDialog<Board>(
       context: context,
       builder: (_) => BoardSettingsDialog(
         board: before,

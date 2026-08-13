@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/routing/app_router.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/widget_gallery_dialog.dart';
 
@@ -49,7 +50,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
     if (_isOpen || navigatorContext == null) return;
 
     _isOpen = true;
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: navigatorContext,
       builder: (dialogContext) => _DebugPanel(actions: _debugActions(dialogContext)),
     );
@@ -70,7 +71,7 @@ class _DebugOverlayState extends State<DebugOverlay> {
   ];
 
   Future<void> _showSampleDialog(BuildContext context, ThemableDialogSeverity severity) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => ThemableContentDialog(
         severity: severity,

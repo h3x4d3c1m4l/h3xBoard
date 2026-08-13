@@ -13,6 +13,7 @@ import 'package:h3xboard/services/pending_navigation_service.dart';
 import 'package:h3xboard/services/server_controller.dart';
 import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
+import 'package:h3xboard/views/components/dialogs/watch_code_dialog.dart';
 import 'package:h3xboard/views/login_screen/login_screen_view_model.dart';
 
 class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
@@ -63,9 +64,16 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
 
   void toggleMode() => viewModel.toggleMode();
 
-  /// Opens the anonymous board viewer (pushed, so back returns here).
-  void onWatchBoard() {
-    unawaited(contextAccessor.buildContext.router.push(const ViewerEntryRoute()));
+  /// Asks for a share code and opens the anonymous board viewer on it (pushed,
+  /// so leaving the viewer returns here).
+  void onWatchBoard() => unawaited(_promptForCode());
+
+  Future<void> _promptForCode() async {
+    final code = await showWatchCodeDialog(contextAccessor.buildContext);
+    if (code == null) return;
+    final context = contextAccessor.buildContext;
+    if (!context.mounted) return;
+    unawaited(context.router.push(ViewerRoute(code: code)));
   }
 
   Future<void> submit() async {

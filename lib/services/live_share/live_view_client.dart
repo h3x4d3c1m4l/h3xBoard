@@ -68,6 +68,10 @@ class LiveViewClient {
 
   LiveViewClient({required this.serverUrl, required this.code});
 
+  /// Codes are shown (and typed) with grouping dashes and in any case; this is
+  /// the canonical form the server generates and this client connects with.
+  static String normalizeCode(String raw) => raw.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
+
   /// Board-content frames, for a `LiveBoardView`.
   Stream<LiveShareMessage> get messages => _messages.stream;
 

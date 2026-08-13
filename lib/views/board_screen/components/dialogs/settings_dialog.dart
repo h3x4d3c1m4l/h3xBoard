@@ -12,6 +12,7 @@ import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/components/continuous_combo_box.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mobx/mobx.dart';
 import 'package:scroll_edge_hint/scroll_edge_hint.dart';
@@ -20,11 +21,11 @@ import 'package:scroll_edge_hint/scroll_edge_hint.dart';
 /// (and any future menu entry) so every entry point shares one code path.
 /// Opens the preferences dialog.
 ///
-/// [useRootNavigator] defaults to `true` (matching Flutter's `showDialog`). Pass
+/// [useRootNavigator] defaults to `true` (matching `showAppDialog`). Pass
 /// `false` when opening from inside a flyout so the dialog lands on the same
 /// navigator the flyout is dismissing on — otherwise a root-level barrier stacks
 /// over the still-closing flyout and leaves it visible behind the dialog.
-Future<void> showSettingsDialog(BuildContext context, {bool useRootNavigator = true}) => showDialog<void>(
+Future<void> showSettingsDialog(BuildContext context, {bool useRootNavigator = true}) => showAppDialog<void>(
   context: context,
   barrierDismissible: true,
   useRootNavigator: useRootNavigator,

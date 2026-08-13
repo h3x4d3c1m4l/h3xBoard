@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/services/live_share/live_view_client.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/components/board_assets.dart';
-import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/watch_code_dialog.dart';
 import 'package:h3xboard/views/components/live_board_view.dart';
 import 'package:h3xboard/views/viewer_screen/viewer_screen_controller.dart';
 import 'package:h3xboard/views/viewer_screen/viewer_screen_view_model.dart';
@@ -20,49 +22,7 @@ class ViewerScreenView extends ScreenViewBase<ViewerScreenViewModel, ViewerScree
   @override
   Widget get body {
     final client = controller.client;
-    return client == null ? _buildCodeEntry() : _buildViewer(client);
-  }
-
-  /// The "enter a code" form, styled like the login screen.
-  Widget _buildCodeEntry() {
-    return ScaffoldPage(
-      content: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 16,
-            children: [
-              Text(
-                localizations.viewerScreen_title,
-                style: FluentTheme.of(context).typography.title,
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                localizations.viewerScreen_codeDescription,
-                textAlign: TextAlign.center,
-              ),
-              ContinuousTextBox(
-                controller: viewModel.codeController,
-                placeholder: localizations.viewerScreen_codePlaceholder,
-                autofocus: true,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => controller.onSubmitCode(),
-              ),
-              FilledButton(
-                onPressed: controller.onSubmitCode,
-                child: Text(localizations.viewerScreen_watch),
-              ),
-              Button(
-                onPressed: controller.onLeave,
-                child: Text(localizations.viewerScreen_back, textAlign: TextAlign.center),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return client == null ? _CodeEntryPrompt(controller: controller) : _buildViewer(client);
   }
 
   /// The live mirror: the shared board full-bleed, with session-lifecycle
@@ -76,7 +36,13 @@ class ViewerScreenView extends ScreenViewBase<ViewerScreenViewModel, ViewerScree
             resolver: controller.assetResolver!,
             child: LiveBoardView(
               messages: client.messages,
-              placeholder: _WaitingView(),
+              // Connected, but nothing is being presented — the web analogue of
+              // the external display's idle placeholder.
+              placeholder: _PlaceholderView(
+                icon: LucideIcons.monitor,
+                title: localizations.viewerScreen_waiting_title,
+                message: localizations.viewerScreen_waiting_message,
+              ),
               onGapDetected: controller.onGapDetected,
             ),
           ),
@@ -132,9 +98,69 @@ class ViewerScreenView extends ScreenViewBase<ViewerScreenViewModel, ViewerScree
 
 }
 
-/// Shown while connected but nothing is being presented — the web analogue of
-/// the external display's idle placeholder.
-class _WaitingView extends StatelessWidget {
+/// The "no code yet" face of the viewer (`/view`, and "enter another code"):
+/// the idle placeholder with the code popup opened over it.
+///
+/// The popup *is* this page — there is nothing to do here without it — so it
+/// opens on the first frame and dismissing it leaves the viewer altogether
+/// rather than stranding the user on an empty screen.
+class _CodeEntryPrompt extends StatefulWidget {
+
+  final ViewerScreenController controller;
+
+  const _CodeEntryPrompt({required this.controller});
+
+  @override
+  State<_CodeEntryPrompt> createState() => _CodeEntryPromptState();
+
+}
+
+class _CodeEntryPromptState extends State<_CodeEntryPrompt> {
+
+  @override
+  void initState() {
+    super.initState();
+    // A dialog needs a navigator-attached context, which this one only has once
+    // the page it belongs to is in the tree.
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_promptForCode()));
+  }
+
+  Future<void> _promptForCode() async {
+    if (!mounted) return;
+    final code = await showWatchCodeDialog(context);
+    if (!mounted) return;
+    if (code == null) {
+      widget.controller.onLeave();
+    } else {
+      widget.controller.onCodeEntered(code);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PlaceholderView(
+      icon: LucideIcons.monitor,
+      title: context.localizations.viewerScreen_title,
+      message: context.localizations.viewerScreen_codeDescription,
+    );
+  }
+
+}
+
+/// The viewer's calm full-screen placeholder: a large glyph over a title and a
+/// line of explanation, gray on the same light background the external display
+/// uses when it has nothing to show.
+class _PlaceholderView extends StatelessWidget {
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const _PlaceholderView({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -148,14 +174,14 @@ class _WaitingView extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             spacing: 24,
             children: [
-              Icon(LucideIcons.monitor, size: 128, color: gray),
+              Icon(icon, size: 128, color: gray),
               Text(
-                context.localizations.viewerScreen_waiting_title,
+                title,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: gray),
               ),
               Text(
-                context.localizations.viewerScreen_waiting_message,
+                message,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 20, color: gray),
               ),

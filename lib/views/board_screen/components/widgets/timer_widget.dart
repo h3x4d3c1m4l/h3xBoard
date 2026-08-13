@@ -7,6 +7,7 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_surface.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -323,7 +324,7 @@ class TimerWidgetDescriptor extends BoardWidgetDescriptor {
 
     int parse(TextEditingController c) => int.tryParse(c.text.trim()) ?? 0;
 
-    showDialog<void>(
+    showAppDialog<void>(
       context: context,
       builder: (ctx) => ThemableContentDialog(
         title: Text(loc.timerSettingsMenu_setDurationDialogTitle),

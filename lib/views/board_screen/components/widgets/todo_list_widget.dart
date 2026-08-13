@@ -5,6 +5,7 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_surface.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -249,7 +250,7 @@ class TodoListWidgetDescriptor extends BoardWidgetDescriptor {
     final titleController = TextEditingController(text: config.title);
     final itemsController = TextEditingController(text: config.items.map((i) => i.text).join('\n'));
 
-    showDialog<void>(
+    showAppDialog<void>(
       context: context,
       builder: (ctx) => ThemableContentDialog(
         title: Text(loc.todoListSettingsMenu_editDialogTitle),

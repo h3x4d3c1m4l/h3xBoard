@@ -24,7 +24,7 @@ class ViewerScreenController extends ScreenControllerBase<ViewerScreenViewModel>
     required super.viewModel,
     required super.contextAccessor,
   }) {
-    final code = normalizeCode(initialCode ?? '');
+    final code = LiveViewClient.normalizeCode(initialCode ?? '');
     if (code.isEmpty) return;
     final serverUrl = GetIt.I<ServerController>().serverUrl;
     client = LiveViewClient(serverUrl: serverUrl, code: code);
@@ -32,14 +32,9 @@ class ViewerScreenController extends ScreenControllerBase<ViewerScreenViewModel>
     unawaited(client!.start());
   }
 
-  /// Codes are entered/displayed with grouping dashes and in any case;
-  /// normalize to the canonical form the server generates.
-  static String normalizeCode(String raw) => raw.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
-
-  /// Opens the viewer for the entered code by re-navigating this route with
-  /// the code as its path parameter (so the flow matches a share link).
-  void onSubmitCode() {
-    final code = normalizeCode(viewModel.codeController.text);
+  /// Opens the viewer for [code] by re-navigating this route with the code as
+  /// its path parameter (so the flow matches a share link).
+  void onCodeEntered(String code) {
     if (code.isEmpty) return;
     unawaited(contextAccessor.buildContext.router.replace(ViewerRoute(code: code)));
   }

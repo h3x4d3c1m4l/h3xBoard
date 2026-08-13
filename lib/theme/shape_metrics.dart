@@ -32,6 +32,31 @@ const double kShortControlCornerRadius = 18;
 /// padding keeps them square (fluent's own default for a large icon button).
 const EdgeInsetsGeometry kIconControlPadding = EdgeInsets.all(8);
 
+/// The account chip in the boards top bar — the inset around its initials tile.
+///
+/// Picked so the chip stands exactly as tall as the search box beside it: the
+/// text box is [kControlPadding]'s 12 above and below a line of text (44px), and
+/// the chip is this inset above and below its [kAccountTileSize] tile. The two
+/// controls sit side by side, so they have to agree on height as well as on
+/// [kControlCornerRadius].
+const double kAccountChipInset = 6;
+
+/// The square the account chip draws the user's initials on.
+const double kAccountTileSize = 32;
+
+/// That square's corner radius: the largest a tile this size can take, which is
+/// half its side.
+///
+/// Deliberately *not* concentric with the chip around it. Concentric would be
+/// `kControlCornerRadius - kAccountChipInset` = 22, and unlike a rounded
+/// rectangle a [ContinuousRectangleBorder] does not clamp an over-large radius —
+/// past half the side its corner curves eat the straight edges, bowing them
+/// inward, and by 28 the shape is visibly deformed and painting outside its own
+/// box. This is the trap [kShortControlCornerRadius] exists for, met from the
+/// other direction: there the control is too short for the radius, here the tile
+/// is.
+const double kAccountTileCornerRadius = kAccountTileSize / 2;
+
 /// Corner radius of the whiteboard canvas's continuous-rectangle border.
 const double kBoardCornerRadius = 24;
 

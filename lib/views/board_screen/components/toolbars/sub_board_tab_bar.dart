@@ -4,6 +4,7 @@ import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
@@ -285,7 +286,7 @@ class _SubBoardTabBarState extends State<SubBoardTabBar> {
     // Preselect the current name so the user can immediately overwrite it.
     textController.selection = TextSelection(baseOffset: 0, extentOffset: textController.text.length);
     try {
-      final newTitle = await showDialog<String>(
+      final newTitle = await showAppDialog<String>(
         context: context,
         builder: (ctx) {
           void submit() {
@@ -326,7 +327,7 @@ class _SubBoardTabBarState extends State<SubBoardTabBar> {
     final board = _activeBoard;
     if (board == null) return;
     final loc = context.localizations;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => ThemableContentDialog(
         severity: ThemableDialogSeverity.warning,

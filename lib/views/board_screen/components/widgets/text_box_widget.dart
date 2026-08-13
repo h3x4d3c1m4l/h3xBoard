@@ -11,6 +11,7 @@ import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/color_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/toggle_button_toolbar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:rounded_background_text/rounded_background_text.dart';
@@ -172,7 +173,7 @@ void showTextBoxEditor(
   var draft = config;
   var cancelled = false;
 
-  showDialog<void>(
+  showAppDialog<void>(
     context: context,
     barrierDismissible: true,
     builder: (dialogContext) => _TextBoxEditor(

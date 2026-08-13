@@ -8,6 +8,7 @@ import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/services/live_share/live_share_session_service.dart';
 import 'package:h3xboard/services/server_controller.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
@@ -15,7 +16,7 @@ import 'package:pretty_qr_code/pretty_qr_code.dart';
 /// Opens the live-share dialog: start/stop sharing this board session and,
 /// while sharing, show the viewer code, link, QR and live viewer count.
 Future<void> showShareDialog(BuildContext context) {
-  return showDialog<void>(
+  return showAppDialog<void>(
     context: context,
     barrierDismissible: true,
     builder: (_) => const ShareDialog(),

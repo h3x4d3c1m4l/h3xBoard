@@ -12,6 +12,7 @@ import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/components/board_assets.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Renders an uploaded image by its file id, resolving the bytes through the
@@ -143,7 +144,7 @@ class ImageWidgetDescriptor extends BoardWidgetDescriptor {
     void Function(BoardWidgetConfig) onChange,
   ) async {
     final fileService = GetIt.I<H3xBoardFileService>();
-    final result = await showDialog<FilePickerResult>(
+    final result = await showAppDialog<FilePickerResult>(
       context: context,
       builder: (_) => FilePickerDialog(
         apiClient: GetIt.I<H3xBoardApiClient>(),

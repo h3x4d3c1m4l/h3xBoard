@@ -341,6 +341,7 @@ class AppDialogStyles extends ThemeExtension<AppDialogStyles> with _$AppDialogSt
     this.panelBorderColor = const Color(0xFF6B7280),
     this.panelBorderWidth = 1.5,
     this.patternColor = const Color(0xCCFFFFFF),
+    this.barrierBlur = 8,
   });
 
   /// The calm surface behind a large panel dialog (Settings, Add Widget).
@@ -358,6 +359,16 @@ class AppDialogStyles extends ThemeExtension<AppDialogStyles> with _$AppDialogSt
   /// white, softened just enough to stay a watermark.
   @override
   final Color patternColor;
+
+  /// How far the screen behind an open dialog is blurred, at the end of the
+  /// dialog's entrance animation (`showAppDialog` ramps it up from zero).
+  ///
+  /// Modest on purpose: this is one full-screen `BackdropFilter` over whatever
+  /// the dialog covers — a board with drawings, widgets and their own acrylic
+  /// surfaces — and it only has to push the page back far enough that the
+  /// dialog reads as the thing in focus.
+  @override
+  final double barrierBlur;
 
 }
 

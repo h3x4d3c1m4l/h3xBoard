@@ -13,8 +13,10 @@ import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/watch_code_dialog.dart';
 
 // Matches 'Board N' titles to pick the next auto-number for a new board.
 final _boardTitleRegex = RegExp(r'^Board (\d+)$');
@@ -91,11 +93,17 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
 
   void onSearchChanged(String query) => viewModel.setSearchQuery(query);
 
-  /// Opens the live-share viewer's code-entry screen. The viewer talks to the
-  /// anonymous share endpoints regardless of who is signed in, so this works
-  /// for a board shared by any other user; leaving it returns here.
-  void onWatchSharedBoardPressed() {
-    unawaited(contextAccessor.buildContext.router.push(const ViewerEntryRoute()));
+  /// Asks for a share code and opens the live-share viewer on it. The viewer
+  /// talks to the anonymous share endpoints regardless of who is signed in, so
+  /// this works for a board shared by any other user; leaving it returns here.
+  void onWatchSharedBoardPressed() => unawaited(_promptForShareCode());
+
+  Future<void> _promptForShareCode() async {
+    final code = await showWatchCodeDialog(contextAccessor.buildContext);
+    if (code == null) return;
+    final context = contextAccessor.buildContext;
+    if (!context.mounted) return;
+    unawaited(context.router.push(ViewerRoute(code: code)));
   }
 
   Future<void> openBoard(BoardSummary board) async {
@@ -125,7 +133,7 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
       // socket is already down) can resolve before that frame, leaving the
       // dialog un-poppable and stacking on every retry.
       final navigator = Navigator.of(context, rootNavigator: true);
-      unawaited(showDialog<void>(
+      unawaited(showAppDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => ThemableLoadingDialog(message: localizations.boardsScreen_openingBoard),
@@ -150,7 +158,7 @@ class BoardsScreenController extends ScreenControllerBase<BoardsScreenViewModel>
   Future<bool> _confirmRetryOpen() async {
     final context = contextAccessor.buildContext;
     if (!context.mounted) return false;
-    final retry = await showDialog<bool>(
+    final retry = await showAppDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => ThemableContentDialog(

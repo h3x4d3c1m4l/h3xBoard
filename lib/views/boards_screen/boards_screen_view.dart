@@ -16,6 +16,7 @@ import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
 import 'package:h3xboard/views/boards_screen/components/scroll_shadow.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
@@ -284,7 +285,7 @@ class _AccountMenuState extends State<_AccountMenu> {
 
   Future<void> _confirmSignOut(BuildContext context) async {
     final loc = context.localizations;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       useRootNavigator: false,
       builder: (ctx) => ThemableContentDialog(
@@ -308,33 +309,63 @@ class _AccountMenuState extends State<_AccountMenu> {
       child: HoverButton(
         onPressed: _showMenu,
         builder: (context, states) {
-          return AnimatedContainer(
+          // A DecoratedBox around its own Padding, exactly like ContinuousTextBox
+          // — not a Container. A Container adds a bordered decoration's
+          // dimensions (1px a side) *on top of* its padding, which would stand
+          // this chip 46px tall against the 44px search box beside it.
+          return TweenAnimationBuilder<Color?>(
             duration: const Duration(milliseconds: 120),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: states.isPressed || states.isHovered
+            tween: ColorTween(
+              begin: Colors.transparent,
+              end: states.isPressed || states.isHovered
                   ? theme.resources.subtleFillColorSecondary
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.displayName.isNotEmpty) ...[
-                  Text(widget.displayName, style: theme.typography.body),
-                  const SizedBox(width: 8),
-                ],
-                Container(
-                  width: 32,
-                  height: 32,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: theme.accentColor, shape: BoxShape.circle),
-                  child: Text(
-                    widget.initials,
-                    style: theme.typography.caption?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+            builder: (context, fill, child) => DecoratedBox(
+              // The app's squircle at the control radius, outlined like the
+              // search box next to it — the two are a pair in this bar, so the
+              // chip wears the text box's shape, stroke and height rather than
+              // one of its own.
+              decoration: ShapeDecoration(
+                color: fill ?? Colors.transparent,
+                shape: ContinuousRectangleBorder(
+                  borderRadius: BorderRadius.circular(kControlCornerRadius),
+                  side: BorderSide(color: theme.resources.controlStrokeColorDefault),
                 ),
-              ],
+              ),
+              child: child,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(kAccountChipInset),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.displayName.isNotEmpty) ...[
+                    // The tile is inset evenly by [kAccountChipInset]; the name
+                    // needs more room off the border than a solid square does.
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(start: kAccountChipInset),
+                      child: Text(widget.displayName, style: theme.typography.body),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Container(
+                    width: kAccountTileSize,
+                    height: kAccountTileSize,
+                    alignment: Alignment.center,
+                    decoration: ShapeDecoration(
+                      color: theme.accentColor,
+                      shape: ContinuousRectangleBorder(
+                        borderRadius: BorderRadius.circular(kAccountTileCornerRadius),
+                      ),
+                    ),
+                    child: Text(
+                      widget.initials,
+                      style: theme.typography.caption?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -782,7 +813,7 @@ class _CardMenuState extends State<_CardMenu> {
     // Preselect the current name so the user can immediately overwrite it.
     textController.selection = TextSelection(baseOffset: 0, extentOffset: textController.text.length);
     try {
-      final newTitle = await showDialog<String>(
+      final newTitle = await showAppDialog<String>(
         context: context,
         useRootNavigator: false,
         builder: (ctx) {
@@ -822,7 +853,7 @@ class _CardMenuState extends State<_CardMenu> {
 
   Future<void> _confirmDelete(BuildContext context) async {
     final loc = context.localizations;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       useRootNavigator: false,
       builder: (ctx) => ThemableContentDialog(

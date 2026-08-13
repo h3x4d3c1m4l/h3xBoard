@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/components/continuous_combo_box.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -28,7 +29,7 @@ enum _GalleryBackdrop {
 
 /// Opens the fluent_ui widget gallery — a debug-only page showing one of every
 /// button type the app can use, over a switchable backdrop.
-Future<void> showWidgetGalleryDialog(BuildContext context) => showDialog<void>(
+Future<void> showWidgetGalleryDialog(BuildContext context) => showAppDialog<void>(
   context: context,
   builder: (_) => const WidgetGalleryDialog(),
 );

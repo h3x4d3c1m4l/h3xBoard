@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -72,7 +73,7 @@ void showServerUrlDialog(
     Navigator.of(ctx).pop();
   }
 
-  showDialog<void>(
+  showAppDialog<void>(
     context: context,
     builder: (ctx) => ThemableContentDialog(
       title: Text(loc.serverUrlDialog_title),
