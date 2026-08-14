@@ -37,6 +37,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
 
   late HSVColor _hsv = HSVColor.fromColor(Color(widget.initial.toARGB32()).withValues(alpha: 1));
   final TextEditingController _hexController = TextEditingController();
+  final FocusNode _hexFocus = FocusNode();
 
   @override
   void initState() {
@@ -47,6 +48,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
   @override
   void dispose() {
     _hexController.dispose();
+    _hexFocus.dispose();
     super.dispose();
   }
 
@@ -115,12 +117,21 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
                 Expanded(
                   child: ContinuousTextBox(
                     controller: _hexController,
+                    focusNode: _hexFocus,
                     prefix: Padding(
                       padding: const EdgeInsetsDirectional.only(start: 8),
                       child: Text(loc.colorPicker_hex, style: theme.typography.caption),
                     ),
                     onSubmitted: _onHexSubmitted,
-                    onTapOutside: (_) => _onHexSubmitted(_hexController.text),
+                    // Handling this ourselves opts the field out of the app-wide
+                    // KeyboardDismisser, so drop focus here too — otherwise this
+                    // is the one field whose keyboard stays up. Dragging the
+                    // saturation field also stops the caret thrashing that
+                    // _syncHexField causes by rewriting the text every frame.
+                    onTapOutside: (_) {
+                      _onHexSubmitted(_hexController.text);
+                      _hexFocus.unfocus();
+                    },
                   ),
                 ),
               ],

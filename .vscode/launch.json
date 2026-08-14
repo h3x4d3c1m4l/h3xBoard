@@ -5,44 +5,61 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "h3xBoard",
+            "name": "h3xBoard (mobile, debug)",
             "request": "launch",
             "type": "dart",
-            "args": ["--wasm", "--web-port=8080", "--web-browser-flag=--disable-web-security"]
         },
         {
-            "name": "h3xBoard (profile mode)",
+            "name": "h3xBoard (mobile, profile)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "h3xBoard (mobile, release)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "h3xBoard (web, debug)",
+            "request": "launch",
+            "type": "dart",
+            "args": ["--web-port=8080", "--web-browser-flag=--disable-web-security"]
+        },
+        {
+            "name": "h3xBoard (web, profile)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile",
-            "args": ["--wasm", "--web-port=8080", "--web-browser-flag=--disable-web-security"]
+            "args": ["--web-port=8080", "--web-browser-flag=--disable-web-security"]
         },
         {
-            "name": "h3xBoard (release mode)",
+            "name": "h3xBoard (web, release)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release",
-            "args": ["--wasm", "--web-port=8080", "--web-browser-flag=--disable-web-security"]
+            "args": ["--web-port=8080", "--web-browser-flag=--disable-web-security"]
         },
         {
-            "name": "h3xBoard (public :8080)",
+            "name": "h3xBoard (web, public :8080, debug)",
             "request": "launch",
             "type": "dart",
-            "args": ["--wasm", "--web-hostname=0.0.0.0", "--web-port=8080", "--web-browser-flag=--disable-web-security"]
+            "args": ["--web-hostname=0.0.0.0", "--web-port=8080", "--web-browser-flag=--disable-web-security"]
         },
         {
-            "name": "h3xBoard (public :8080, profile mode)",
+            "name": "h3xBoard (web, public :8080, profile)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile",
-            "args": ["--wasm", "--web-hostname=0.0.0.0", "--web-port=8080", "--web-browser-flag=--disable-web-security"]
+            "args": ["--web-hostname=0.0.0.0", "--web-port=8080", "--web-browser-flag=--disable-web-security"]
         },
         {
-            "name": "h3xBoard (public :8080, release mode)",
+            "name": "h3xBoard (web, public :8080, release)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release",
-            "args": ["--wasm", "--web-hostname=0.0.0.0", "--web-port=8080", "--web-browser-flag=--disable-web-security"]
+            "args": ["--web-hostname=0.0.0.0", "--web-port=8080", "--web-browser-flag=--disable-web-security"]
         },
     ]
 }

@@ -10,6 +10,7 @@ import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/theme/theme.dart';
 import 'package:h3xboard/views/components/connection_banner.dart';
 import 'package:h3xboard/views/components/debug_overlay.dart';
+import 'package:h3xboard/views/components/keyboard_dismisser.dart';
 
 class BoardApp extends StatefulWidget {
 
@@ -38,7 +39,8 @@ class _BoardAppState extends State<BoardApp> {
         builder: (context, child) {
           Widget content = child ?? const SizedBox.shrink();
           Widget connectionBanner = ConnectionBanner(child: content);
-          return kDebugMode ? DebugOverlay(child: connectionBanner) : connectionBanner;
+          Widget overlay = kDebugMode ? DebugOverlay(child: connectionBanner) : connectionBanner;
+          return KeyboardDismisser(child: overlay);
         },
         localizationsDelegates: const [
           AppLocalizations.delegate,
