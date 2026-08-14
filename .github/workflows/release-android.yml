@@ -46,6 +46,11 @@ jobs:
     - name: Code generation
       run: dart run build_runner build
 
+    - name: Generate emoji assets
+      run: |
+        flutter precache --universal
+        dart run tool/generate_emoji_assets.dart
+
     - name: Flutter analyze
       run: flutter analyze
 

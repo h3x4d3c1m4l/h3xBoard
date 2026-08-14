@@ -57,6 +57,11 @@ app.*.map.json
 # l10n
 lib/l10n/generated/
 
+# Emoji artwork and metadata, built by `just gen-emoji` from pinned upstream
+# sources. ~3.5k files / ~16 MB of generated output, so it is rebuilt rather
+# than committed, like every other generated artifact above.
+assets/emoji/
+
 # Environment variables (use .env.example as template)
 .env
 

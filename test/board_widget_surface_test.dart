@@ -45,6 +45,7 @@ void main() {
     ImageConfig,
     AnalogClockConfig,
     TextBoxConfig,
+    EmojiConfig,
   };
 
   Future<void> pump(WidgetTester tester, BoardWidgetConfig config) async {

@@ -12,6 +12,8 @@ just get-deps           # fvm flutter pub get
 just gen-code           # dart run build_runner build
 just watch-code         # Watch mode for code generation during development
 just gen-l10n           # fvm flutter gen-l10n
+just gen-emoji          # Build assets/emoji/ (gitignored; no-ops when current)
+just gen-emoji-force    # Rebuild it after bumping the pinned Emoji/Noto/CLDR versions
 just lint               # fvm flutter analyze
 just test               # fvm flutter test
 just build              # fvm flutter build web (debug)
@@ -19,6 +21,10 @@ just build-release      # Platform-specific release build
 ```
 
 After modifying any `@observable`, `@action`, `@freezed`, or `@RoutePage()` annotated code, re-run `just gen-code` (or keep `just watch-code` running).
+
+**The `sdk: ^3.12.0` constraint in pubspec.yaml is load-bearing — do not raise it to match the Flutter pin.** Dart 3.13 dropped support for `final` on constructor parameters, which freezed 3.2.5 still emits, so generated code stops compiling (`Error: Can't have modifier 'final' here`). The lower bound of `sdk:` is this package's *language version*, so declaring 3.12 keeps that syntax legal while everything still runs on the Flutter 3.47 / Dart 3.13 SDK. Nothing needs patching.
+
+The trap if it ever does get raised: `flutter analyze` accepts the offending code, so lint stays green while every build and test fails. Raising it needs freezed 4.x, which is itself blocked — it wants `analyzer ^13` while `mobx_codegen` (latest 2.7.7) caps `analyzer <13`.
 
 ## Architecture
 
@@ -131,6 +137,42 @@ lib/views/board_screen/components/widgets/
 No other files need changes. Settings menu items (Fluent UI flyout) are provided by the descriptor's `settingsMenuItems()`.
 
 **Layers**: Widget list order = render order (last = topmost). Layer operations (`moveToTop`, `moveUp`, etc.) reorder the list.
+
+### Emoji
+
+The emoji widget draws from **bundled Noto Emoji vector artwork**, not from a color font. This is not a preference: Flutter's Impeller renderer rasterizes neither CBDT/CBLC bitmap tables nor COLRv1 vector tables, so a bundled emoji font renders as *nothing at all* on iOS/Android/macOS. Compiled `vector_graphics` (`.vec`) go through the ordinary canvas path, so an emoji looks the same in the editor, the external-display isolate and the web viewer — and stays sharp at any scale.
+
+```text
+tool/generate_emoji_assets.dart     # `just gen-emoji` — the whole pipeline
+assets/emoji/vec/<key>.vec          # 3564 compiled artworks (~16 MB)
+assets/emoji/packs/<group>.pack     # the same base artwork, one file per category
+assets/emoji/packs/<group>.<tone>.pack   # that category's skin-tone variants
+assets/emoji/index.json             # groups, Unicode order, skin-tone variants
+assets/emoji/labels_<locale>.json   # CLDR names + search keywords per locale
+lib/services/emoji/emoji_repository.dart   # asset keys, lazy catalog, search
+lib/services/emoji/emoji_pack_store.dart   # pack parsing + BytesLoader
+```
+
+Every asset directory is listed separately in pubspec.yaml — **Flutter does not recurse into subdirectories**, so a new folder under `assets/emoji/` is silently absent until it is declared.
+
+**Two ways in to the same artwork, because the board and the picker want opposite things.** The board draws a handful of emoji, so it loads each `.vec` individually — on web that is one small fetch per emoji actually on the page, which is what keeps the anonymous viewer cheap. The picker shows hundreds at once, where that same design cost ~113 requests to open and ~1900 to browse the catalog. It reads one pack per category instead: 1 request to open, 9 to browse everything.
+
+Three things that are easy to get wrong here:
+
+- **Skin tones get their own packs** (`peopleBody.dark.pack`), fetched only while that tone is selected. Folding them into the base pack took People & Body from ~1.5 MB to ~9 MB that most users never display; leaving them out entirely was worse, because anyone with a tone selected then pulled hundreds of individual files — the exact problem packs exist to solve. Only categories with toned emoji have toned packs, so `EmojiGroup.hasSkinTones` decides whether to ask (otherwise every category costs a 404).
+- **Pack loading is driven by scroll geometry, not by tile builds.** Slivers build a probe child per category to establish geometry, so loading on first build pulls all nine packs the moment the picker opens. `EmojiPackStore.isLoaded` is therefore a pure query and `request` is explicit, called from `_requestVisiblePacks`.
+- **The pack format is a contract between the generator and the runtime**, and a wrong offset draws the wrong emoji rather than failing. `test/emoji_pack_test.dart` compares every packed entry byte-for-byte against its individual asset.
+
+Everything under `assets/emoji/` is generated and **gitignored**, like every other generated artifact in this repo — ~3.5k files / ~16 MB is rebuilt rather than committed. `just gen-emoji` therefore runs as part of the default setup; it stamps the pinned versions into `index.json` and no-ops when the output already matches, so only a fresh clone or a version bump pays for it. It prints a coverage report and **names** any emoji it had to skip, so a gap can't hide as a silent success.
+
+To adopt a newer Emoji release, bump `_notoTag` / `_cldrTag` / `_expectedEmojiVersion` at the top of the script and run `just gen-emoji-force`. `emoji-test.txt` is the one source that can't be pinned by URL — Unicode publishes no per-version directory for 17.0 — so the generator hard-fails if `latest/` ever serves a version other than `_expectedEmojiVersion`, rather than quietly building against a spec the artwork doesn't cover.
+
+Two things to know:
+
+- **Asset keys are derived, not stored.** A board stores the literal emoji characters; `emojiAssetKey` in the repository re-derives the file name from them (variation selectors dropped, code points padded to four hex digits — Noto's own convention). The generator and the runtime must produce byte-identical keys; `test/emoji_catalog_test.dart` is what holds that contract, and it checks every bundled emoji resolves.
+- **Country flags come from a second source.** Noto keeps them in `third_party/region-flags/waved-svg`, not in `svg/` — miss that and 262 flags silently vanish.
+
+Adding a locale means adding it to `_locales` in the generator and re-running; unlisted locales fall back to English names so the picker still works everywhere.
 
 ### Drawing Canvas
 

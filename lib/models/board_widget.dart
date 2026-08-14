@@ -173,6 +173,10 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     @Default(QrCodeStyle.smooth) QrCodeStyle style,
   }) = QrCodeConfig;
 
+  const factory BoardWidgetConfig.emoji({
+    @Default('😀') String emoji,
+  }) = EmojiConfig;
+
   factory BoardWidgetConfig.fromJson(Map<String, dynamic> json) => _$BoardWidgetConfigFromJson(json);
 
 }

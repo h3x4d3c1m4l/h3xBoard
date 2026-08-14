@@ -1,5 +1,6 @@
 import 'package:h3xboard/models/app_settings_enums.dart';
 import 'package:h3xboard/models/laser_pointer.dart';
+import 'package:h3xboard/services/emoji/emoji_repository.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:mobx/mobx.dart';
 
@@ -25,6 +26,7 @@ abstract class AppSettingsControllerBase with Store {
   static const String keyBarOrder = 'ui.bars.order';
   static const String keyExternalResolution = 'ui.externalDisplay.resolution';
   static const String keyLaserColor = 'ui.laser.color';
+  static const String keyEmojiSkinTone = 'ui.emoji.skinTone';
 
   final H3xBoardApiClient _api;
 
@@ -63,6 +65,12 @@ abstract class AppSettingsControllerBase with Store {
   @readonly
   LaserColor _laserColor = LaserColor.red;
 
+  /// Skin tone the emoji picker offers by default. Like [_laserColor] this is a
+  /// personal preference, not board content — the emoji already on a board keep
+  /// whatever tone they were picked with.
+  @readonly
+  EmojiSkinTone _emojiSkinTone = EmojiSkinTone.none;
+
   /// Loads all settings from the server into the observables. Missing or invalid
   /// values fall back to their defaults; unknown keys are ignored. Never throws —
   /// a failed load simply leaves the defaults in place.
@@ -85,6 +93,7 @@ abstract class AppSettingsControllerBase with Store {
       (c) => c.name == values[keyLaserColor],
       orElse: () => LaserColor.red,
     );
+    _emojiSkinTone = EmojiSkinTone.fromWire(values[keyEmojiSkinTone]);
   }
 
   /// Persists and applies the laser colour on its own. Unlike the settings in
@@ -100,6 +109,20 @@ abstract class AppSettingsControllerBase with Store {
       await _api.setSetting(keyLaserColor, color.name);
     } catch (_) {
       // Keep the picked colour for this session; the next successful write wins.
+    }
+  }
+
+  /// Persists the emoji picker's skin tone. Committed on its own for the same
+  /// reason as [setLaserColor]: it is picked inline rather than in the Settings
+  /// dialog, and a failed write must not snap the strip back to another tone.
+  @action
+  Future<void> setEmojiSkinTone(EmojiSkinTone tone) async {
+    if (tone == _emojiSkinTone) return;
+    _emojiSkinTone = tone;
+    try {
+      await _api.setSetting(keyEmojiSkinTone, tone.name);
+    } catch (_) {
+      // Keep the picked tone for this session; the next successful write wins.
     }
   }
 

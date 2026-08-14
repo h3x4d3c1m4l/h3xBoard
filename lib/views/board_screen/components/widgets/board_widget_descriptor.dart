@@ -3,6 +3,7 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/analog_clock_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/emoji_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/geodreieck_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/image_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/memo_note_widget.dart';
@@ -90,6 +91,7 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   GeodreieckConfig: GeodreieckWidgetDescriptor.instance,
   ImageConfig: ImageWidgetDescriptor.instance,
   QrCodeConfig: QrCodeWidgetDescriptor.instance,
+  EmojiConfig: EmojiWidgetDescriptor.instance,
 };
 
 // All registered descriptors, exposed for building the "add widget" menu.
