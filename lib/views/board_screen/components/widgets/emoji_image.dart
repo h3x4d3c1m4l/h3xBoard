@@ -1,7 +1,9 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/services/emoji/emoji_pack_store.dart';
 import 'package:h3xboard/services/emoji/emoji_repository.dart';
-import 'package:vector_graphics/vector_graphics.dart';
+// The compat entry point rather than the plain one: it is the only public way
+// to reach [RenderingStrategy.picture], which the board needs — see [isScaled].
+import 'package:vector_graphics/vector_graphics_compat.dart';
 
 /// Draws one emoji from the bundled Noto artwork, filling whatever box it is
 /// given.
@@ -20,12 +22,39 @@ class EmojiImage extends StatelessWidget {
   /// costs one fetch rather than one per tile (see [EmojiPackStore]).
   final BytesLoader? loader;
 
-  const EmojiImage({super.key, required this.emoji, this.loader});
+  /// Whether this emoji gets scaled after layout, as it is on the board.
+  ///
+  /// The plain `VectorGraphic` constructor hardcodes [RenderingStrategy.raster]:
+  /// it rasterizes to a bitmap the size of its layout box and reuses that from
+  /// frame to frame. On the board, where the artwork lays out at its natural 220
+  /// and is then scaled up, that means magnifying a 220px bitmap — vector
+  /// artwork that goes soft exactly like a PNG would. Drawing it as a picture
+  /// re-renders the paths at the final transform, so it stays sharp at any size.
+  ///
+  /// The picker keeps the raster path on purpose: its tiles are small and never
+  /// scaled, and reusing one bitmap per tile is what keeps a grid of hundreds
+  /// cheap to scroll.
+  final bool isScaled;
+
+  const EmojiImage({super.key, required this.emoji, this.loader, this.isScaled = false});
 
   @override
   Widget build(BuildContext context) {
+    final bytes = loader ?? AssetBytesLoader(emojiAssetPath(emoji));
+
+    if (isScaled) {
+      return createCompatVectorGraphic(
+        loader: bytes,
+        strategy: RenderingStrategy.picture,
+        fit: BoxFit.contain,
+        semanticsLabel: emoji,
+        errorBuilder: (context, error, stackTrace) => _EmojiTextFallback(emoji: emoji),
+        placeholderBuilder: (context) => const SizedBox.shrink(),
+      );
+    }
+
     return VectorGraphic(
-      loader: loader ?? AssetBytesLoader(emojiAssetPath(emoji)),
+      loader: bytes,
       fit: BoxFit.contain,
       semanticsLabel: emoji,
       // A board saved against a newer emoji set can name artwork this build

@@ -26,7 +26,7 @@ class EmojiWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox.fromSize(
       size: naturalSize,
-      child: EmojiImage(emoji: emoji),
+      child: EmojiImage(emoji: emoji, isScaled: true),
     );
   }
 
