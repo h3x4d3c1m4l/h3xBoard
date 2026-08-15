@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
@@ -11,12 +12,28 @@ import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+// The ring's own metrics: how thick it is, how far its centre line sits inside
+// the card's rim, and how much room that leaves the readout in the middle.
+const double _ringStroke = 12;
+const double _ringInset = 16;
+const double _ringContentInset = _ringInset + _ringStroke + 28;
+
 class TimerWidget extends StatefulWidget {
 
-  static const Size naturalSize = Size(300, 140);
+  /// The wide card: a readout with the controls under it.
+  static const Size digitalSize = Size(300, 140);
+
+  /// The ring: square, because the card is cut as a circle in this mode, with the
+  /// readout and the controls inside it.
+  static const Size ringSize = Size(260, 260);
+
+  static Size sizeFor({required bool showProgressRing}) => showProgressRing ? ringSize : digitalSize;
 
   final int durationSeconds;
   final bool showCentiseconds;
+
+  /// Draws the remaining time as a depleting ring rather than digits alone.
+  final bool showProgressRing;
 
   // Wall-clock anchor for the running state, carried in the widget's config so the
   // external display reconstructs the exact same remaining time from the same
@@ -32,6 +49,7 @@ class TimerWidget extends StatefulWidget {
     super.key,
     this.durationSeconds = 300,
     this.showCentiseconds = false,
+    this.showProgressRing = true,
     this.elapsedMs = 0,
     this.startedAtEpochMs,
     required this.onChanged,
@@ -73,6 +91,14 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
 
   bool get _finished => _remaining == Duration.zero && _elapsed > Duration.zero;
 
+  // How much of the duration is still to run, 1 at the start and 0 at the end —
+  // the ring's sweep.
+  double get _remainingFraction {
+    final total = _total.inMilliseconds;
+    if (total <= 0) return 0;
+    return (_remaining.inMilliseconds / total).clamp(0.0, 1.0);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -85,7 +111,8 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
     if (oldWidget.startedAtEpochMs != widget.startedAtEpochMs ||
         oldWidget.elapsedMs != widget.elapsedMs ||
         oldWidget.durationSeconds != widget.durationSeconds ||
-        oldWidget.showCentiseconds != widget.showCentiseconds) {
+        oldWidget.showCentiseconds != widget.showCentiseconds ||
+        oldWidget.showProgressRing != widget.showProgressRing) {
       _syncState();
     }
   }
@@ -103,8 +130,11 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
     _ticker?.cancel();
     _ticker = null;
     if (_isRunning && _remaining > Duration.zero) {
+      // A ring that steps once a second reads as stuck rather than counting, so
+      // it refreshes at the same rate the centisecond readout does.
+      final fine = widget.showCentiseconds || widget.showProgressRing;
       _ticker = Timer.periodic(
-        widget.showCentiseconds ? const Duration(milliseconds: 50) : const Duration(seconds: 1),
+        fine ? const Duration(milliseconds: 50) : const Duration(seconds: 1),
         _onTick,
       );
     }
@@ -164,6 +194,43 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
     }
 
     final finished = _finished;
+    final size = TimerWidget.sizeFor(showProgressRing: widget.showProgressRing);
+
+    final readout = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            timeText,
+            style: TextStyle(
+              color: finished ? const Color(0xFFF87171) : Colors.white,
+              fontSize: 48,
+              fontWeight: FontWeight.w300,
+              letterSpacing: 3,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _ControlButton(
+              icon: _isRunning ? LucideIcons.pause : LucideIcons.play,
+              onTap: _toggle,
+              highlighted: true,
+            ),
+            const SizedBox(width: 12),
+            _ControlButton(
+              icon: LucideIcons.rotateCcw,
+              onTap: _reset,
+              highlighted: false,
+            ),
+          ],
+        ),
+      ],
+    );
 
     // The flicker fades the red border between near-invisible and full while the
     // timer is finished; eased so the pulse breathes rather than blinks. The inner
@@ -176,46 +243,34 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
             ? const Color(0xFFF87171).withValues(alpha: 0.15 + 0.75 * t)
             : Colors.white.withValues(alpha: 0.24);
         return SizedBox(
-          width: 300,
-          height: 140,
-          child: BoardWidgetSurface(borderColor: borderColor, child: child!),
+          width: size.width,
+          height: size.height,
+          child: BoardWidgetSurface(
+            borderColor: borderColor,
+            // Round in ring mode, so the card's rim is concentric with the arc
+            // inside it rather than a squircle around a circle.
+            circular: widget.showProgressRing,
+            child: child!,
+          ),
         );
       },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              timeText,
-              style: TextStyle(
-                color: finished ? const Color(0xFFF87171) : Colors.white,
-                fontSize: 48,
-                fontWeight: FontWeight.w300,
-                letterSpacing: 3,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _ControlButton(
-                icon: _isRunning ? LucideIcons.pause : LucideIcons.play,
-                onTap: _toggle,
-                highlighted: true,
-              ),
-              const SizedBox(width: 12),
-              _ControlButton(
-                icon: LucideIcons.rotateCcw,
-                onTap: _reset,
-                highlighted: false,
-              ),
-            ],
-          ),
-        ],
-      ),
+      child: widget.showProgressRing
+          // The arc runs just inside the card's rim; the readout and the controls
+          // sit in the middle of it, inset far enough to stay clear of the stroke.
+          ? Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(painter: _TimerRingPainter(remainingFraction: _remainingFraction)),
+                ),
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.all(_ringContentInset),
+                    child: readout,
+                  ),
+                ),
+              ],
+            )
+          : readout,
     );
   }
 
@@ -252,6 +307,45 @@ class _ControlButton extends StatelessWidget {
 
 }
 
+// The countdown as a shape: a full ring that empties clockwise from twelve
+// o'clock, so the time left can be read across a room without reading digits.
+// Nothing is drawn for the finished state — an empty ring says it, and the card
+// flashes its rim red around it.
+class _TimerRingPainter extends CustomPainter {
+
+  final double remainingFraction;
+
+  const _TimerRingPainter({required this.remainingFraction});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height).deflate(_ringInset + _ringStroke / 2);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _ringStroke
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.12);
+
+    // The track first, so the ring reads as a dial that empties rather than a
+    // stroke that shrinks into nothing.
+    canvas.drawArc(rect, 0, 2 * math.pi, false, paint);
+
+    final sweep = 2 * math.pi * remainingFraction;
+    if (sweep <= 0) return;
+    canvas.drawArc(
+      rect,
+      -math.pi / 2,
+      sweep,
+      false,
+      paint..color = Colors.white.withValues(alpha: 0.85),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TimerRingPainter oldDelegate) => oldDelegate.remainingFraction != remainingFraction;
+
+}
+
 class TimerWidgetDescriptor extends BoardWidgetDescriptor {
 
   static const TimerWidgetDescriptor instance = TimerWidgetDescriptor._();
@@ -264,7 +358,8 @@ class TimerWidgetDescriptor extends BoardWidgetDescriptor {
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_timer;
 
   @override
-  Size naturalSize(BoardWidgetConfig config) => TimerWidget.naturalSize;
+  Size naturalSize(BoardWidgetConfig config) =>
+      TimerWidget.sizeFor(showProgressRing: (config as TimerConfig).showProgressRing);
 
   @override
   BoardWidgetConfig get defaultConfig => const TimerConfig();
@@ -277,6 +372,7 @@ class TimerWidgetDescriptor extends BoardWidgetDescriptor {
       key: ValueKey('timer_${c.durationSeconds}'),
       durationSeconds: c.durationSeconds,
       showCentiseconds: c.showCentiseconds,
+      showProgressRing: c.showProgressRing,
       elapsedMs: c.elapsedMs,
       startedAtEpochMs: c.startedAtEpochMs,
       onChanged: (elapsedMs, startedAtEpochMs) =>
@@ -301,6 +397,11 @@ class TimerWidgetDescriptor extends BoardWidgetDescriptor {
         value: c.showCentiseconds,
         text: Text(context.localizations.stopwatchSettingsMenu_showCentiseconds),
         onChanged: (value) => onChange(c.copyWith(showCentiseconds: value)),
+      ),
+      ToggleMenuFlyoutItem(
+        value: c.showProgressRing,
+        text: Text(context.localizations.timerSettingsMenu_showProgressRing),
+        onChanged: (value) => onChange(c.copyWith(showProgressRing: value)),
       ),
     ];
   }

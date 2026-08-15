@@ -94,6 +94,7 @@ void main() {
       const idle = TimerConfig();
       expect(isWidgetRuntimeOnlyChange(idle, idle.copyWith(startedAtEpochMs: 1000)), isTrue);
       expect(isWidgetRuntimeOnlyChange(idle, idle.copyWith(durationSeconds: 60)), isFalse);
+      expect(isWidgetRuntimeOnlyChange(idle, idle.copyWith(showProgressRing: false)), isFalse);
     });
   });
 

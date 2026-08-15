@@ -509,6 +509,8 @@
     "@stopwatchSettingsMenu_showCentiseconds": {},
     "timerSettingsMenu_setDuration": "Set duration",
     "@timerSettingsMenu_setDuration": {},
+    "timerSettingsMenu_showProgressRing": "Show progress ring",
+    "@timerSettingsMenu_showProgressRing": {},
     "timerSettingsMenu_setDurationDialogTitle": "Set timer duration",
     "@timerSettingsMenu_setDurationDialogTitle": {},
     "timerSettingsMenu_minutes": "Minutes",

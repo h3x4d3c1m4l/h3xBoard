@@ -124,6 +124,7 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
   const factory BoardWidgetConfig.timer({
     @Default(300) int durationSeconds,
     @Default(false) bool showCentiseconds,
+    @Default(true) bool showProgressRing,
     // Same wall-clock anchor as the stopwatch; remaining = duration - elapsed.
     @Default(0) int elapsedMs,
     int? startedAtEpochMs,

@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
@@ -92,7 +93,7 @@ class _WidgetCatalogDialogState extends State<WidgetCatalogDialog> {
                         backgroundColor: Colors.white,
                         builder: (context, controller) => GridView.builder(
                           controller: controller,
-                          padding: const EdgeInsets.only(right: 4),
+                          padding: const EdgeInsets.only(right: 4, bottom: 12),
                           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                             maxCrossAxisExtent: 220,
                             childAspectRatio: 1.15,
@@ -177,53 +178,59 @@ class _WidgetTile extends StatelessWidget {
     return HoverButton(
       onPressed: onPressed,
       builder: (context, states) {
+        final shape = ContinuousRectangleBorder(
+          borderRadius: BorderRadius.circular(kControlCornerRadius),
+          side: BorderSide(
+            color: states.isHovered
+                ? theme.accentColor.withValues(alpha: 0.5)
+                : theme.resources.controlStrokeColorDefault,
+            width: states.isHovered ? 2 : 1,
+          ),
+        );
+
         return AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          decoration: BoxDecoration(
-            color: theme.resources.cardBackgroundFillColorDefault,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: states.isHovered
-                  ? theme.accentColor.withValues(alpha: 0.5)
-                  : theme.resources.controlStrokeColorDefault,
-              width: states.isHovered ? 2 : 1,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: ColoredBox(
-                  color: theme.resources.cardBackgroundFillColorSecondary,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: IgnorePointer(
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: SizedBox.fromSize(
-                          size: size,
-                          child: descriptor.buildWidget(descriptor.defaultConfig, (_) {}),
+          foregroundDecoration: ShapeDecoration(shape: shape),
+          child: ClipPath(
+            clipper: ShapeBorderClipper(shape: shape),
+            child: ColoredBox(
+              color: theme.resources.cardBackgroundFillColorDefault,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: ColoredBox(
+                      color: theme.resources.cardBackgroundFillColorSecondary,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: IgnorePointer(
+                          child: FittedBox(
+                            fit: BoxFit.contain,
+                            child: SizedBox.fromSize(
+                              size: size,
+                              child: descriptor.buildWidget(descriptor.defaultConfig, (_) {}),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: theme.resources.controlStrokeColorDefault)),
+                    ),
+                    child: Text(
+                      descriptor.label(loc),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.typography.bodyStrong,
+                    ),
+                  ),
+                ],
               ),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: theme.resources.controlStrokeColorDefault)),
-                ),
-                child: Text(
-                  descriptor.label(loc),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.typography.bodyStrong,
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },

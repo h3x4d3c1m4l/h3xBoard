@@ -35,6 +35,12 @@ class BoardWidgetSurface extends StatelessWidget {
   /// the timer flashes its border red when it finishes.
   final Color? borderColor;
 
+  /// Cuts the card as a circle instead of the family squircle, ignoring [radius].
+  /// For a widget that is round in its own right — the timer's progress ring —
+  /// where a squircle rim would run at a visibly different distance from the
+  /// content at the corners than at the sides.
+  final bool circular;
+
   const BoardWidgetSurface({
     super.key,
     required this.child,
@@ -42,6 +48,7 @@ class BoardWidgetSurface extends StatelessWidget {
     this.radius = kBoardWidgetCornerRadius,
     this.alignment,
     this.borderColor,
+    this.circular = false,
   });
 
   @override
@@ -63,7 +70,7 @@ class BoardWidgetSurface extends StatelessWidget {
     // the token can be set for how the big cards should look, and the small ones
     // quietly stop at their own pill instead of going misshapen.
     final limit = size.shortestSide.isFinite ? size.shortestSide / 2 : radius;
-    final shape = tokens.shapeOf(radius: radius.clamp(0.0, limit));
+    final shape = circular ? tokens.circleOf() : tokens.shapeOf(radius: radius.clamp(0.0, limit));
 
     // Didn't like the way the Acrylic widget of fluent_ui looked,
     // as such the effect is composed in a custom way here.

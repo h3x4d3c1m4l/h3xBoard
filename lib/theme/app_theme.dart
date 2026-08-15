@@ -190,6 +190,14 @@ extension AppBoardWidgetSurfaceShape on AppBoardWidgetSurface {
         side: BorderSide(color: borderColor),
       );
 
+  /// The same rim, cut as a true circle.
+  ///
+  /// [ContinuousRectangleBorder] cannot draw one at any radius — it clamps to
+  /// half the shortest side, which is the squircle, not a circle. A widget whose
+  /// content is itself round (the timer's progress ring) needs its card to be
+  /// concentric with what it draws, so it asks for this instead.
+  ShapeBorder circleOf() => CircleBorder(side: BorderSide(color: borderColor));
+
 }
 
 /// One [ButtonStyle] per *role* a button plays in this app.

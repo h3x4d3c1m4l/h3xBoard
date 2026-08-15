@@ -509,6 +509,8 @@
     "@stopwatchSettingsMenu_showCentiseconds": {},
     "timerSettingsMenu_setDuration": "Tijd instellen",
     "@timerSettingsMenu_setDuration": {},
+    "timerSettingsMenu_showProgressRing": "Voortgangsring tonen",
+    "@timerSettingsMenu_showProgressRing": {},
     "timerSettingsMenu_setDurationDialogTitle": "Timertijd instellen",
     "@timerSettingsMenu_setDurationDialogTitle": {},
     "timerSettingsMenu_minutes": "Minuten",
