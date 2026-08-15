@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_surface.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/timer_widget.dart';
@@ -15,7 +16,7 @@ Widget _host(Widget child) => FluentApp(
       locale: const Locale('en'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      theme: FluentThemeData(accentColor: const Color(0xFF00FF80).toAccentColor()),
+      theme: FluentThemeData(accentColor: kAccentColor.toAccentColor()),
       home: Center(child: child),
     );
 

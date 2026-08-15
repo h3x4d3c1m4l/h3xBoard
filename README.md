@@ -1,6 +1,6 @@
 # h3xBoard
 
-A new Flutter project.
+A whiteboard app with interactive widgets for teaching purposes.
 
 ## Getting Started
 

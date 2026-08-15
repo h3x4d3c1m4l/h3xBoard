@@ -4,6 +4,19 @@ import 'package:theme_tailor_annotation/theme_tailor_annotation.dart';
 
 part 'app_theme.tailor.dart';
 
+/// The app's accent — the one color everything else is tuned against.
+///
+/// Named here rather than inline in [buildAppTheme] because a handful of places
+/// cannot reach a theme to ask: the gallery's accent backdrop, and a test that
+/// builds its own [FluentThemeData]. Everything else reads it back off the theme
+/// as `theme.accentColor` — fluent's generated swatch — so the lighter/darker
+/// shades, `defaultBrushFor` and the 12% blends all follow from this value and
+/// need no maintenance of their own.
+///
+/// The web loader in `web/index.html` keeps its own copy of the hex, as the page
+/// that boots Dart cannot share a Dart const.
+const Color kAccentColor = Color(0xFF3D61D8);
+
 /// The gray outline on a neutral (secondary) button. Fluent's own control stroke
 /// is barely a shade off white, which leaves those buttons melting into the light
 /// surface behind them — most of all a dialog's gray actions bar.
@@ -57,7 +70,7 @@ class AppTheme extends ThemeExtension<AppTheme> with _$AppThemeTailorMixin {
       buttons: AppButtonStyles.standard(theme),
       surfaces: AppSurfaceStyles.standard(theme),
       dialogs: const AppDialogStyles(),
-      colors: const AppSemanticColors(),
+      colors: AppSemanticColors.standard(theme),
     );
   }
 
@@ -402,8 +415,14 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> with _$AppSema
 
   const AppSemanticColors({
     this.destructive = const Color(0xFFEF4444),
-    this.selection = const Color(0xFF3B82F6),
+    this.selection = kAccentColor,
   });
+
+  /// Derives the tokens that track the theme they sit on — [selection] follows
+  /// the accent color, so there is no second blue to keep in step with it.
+  factory AppSemanticColors.standard(FluentThemeData theme) {
+    return AppSemanticColors(selection: theme.accentColor);
+  }
 
   /// Delete/remove actions — the red on a "Delete" menu item's glyph, and what a
   /// destructive header-bar button turns on hover.
@@ -411,9 +430,9 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> with _$AppSema
   final Color destructive;
 
   /// The selected board widget's outline, its resize/rotate handles and its
-  /// header bar's active glyphs. Deliberately not the app accent: it marks
-  /// *what is selected*, and has to stay legible over drawings in the accent
-  /// color.
+  /// header bar's active glyphs, and the emoji picker's selected tone/category.
+  /// The app accent: it marks *what is selected*, and the accent is the one
+  /// color the app already uses to mean "active".
   @override
   final Color selection;
 

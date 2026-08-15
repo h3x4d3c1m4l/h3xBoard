@@ -15,7 +15,7 @@ enum _GalleryBackdrop {
   scaffold('Scaffold', Color(0xFFEAE9E6)),
   slate('Slate', Color(0xFF6B7280)),
   chalkboard('Chalkboard', Color(0xFF1F2A24)),
-  accent('Accent', Color(0xFF00FF80));
+  accent('Accent', kAccentColor);
 
   const _GalleryBackdrop(this.label, this.color);
 

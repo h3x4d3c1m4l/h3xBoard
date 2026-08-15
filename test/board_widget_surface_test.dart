@@ -20,7 +20,7 @@ Widget _host(Widget child) => FluentApp(
       locale: const Locale('en'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      theme: FluentThemeData(accentColor: const Color(0xFF00FF80).toAccentColor()),
+      theme: FluentThemeData(accentColor: kAccentColor.toAccentColor()),
       home: Center(child: child),
     );
 

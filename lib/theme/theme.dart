@@ -5,7 +5,7 @@ import 'package:h3xboard/theme/shape_metrics.dart';
 
 FluentThemeData buildAppTheme() {
   final FluentThemeData theme = FluentThemeData(
-    accentColor: const Color(0xFF00FF80).toAccentColor(),
+    accentColor: kAccentColor.toAccentColor(),
     typography: Typography.fromBrightness(
       brightness: Brightness.light,
     ).apply(fontFamily: GoogleFonts.lexend().fontFamily),
