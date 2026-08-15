@@ -15,6 +15,10 @@ enum RulerUnit { cm, inch }
 
 enum QrCodeStyle { smooth, square, dots }
 
+// The die's palette. An enum rather than two free colours so face and pips can
+// never be set to the same thing.
+enum DiceStyle { ivory, red, blue, slate }
+
 // Off, or which "1 square = X" mapping the ruler is locked to. Only [cmPerSquare]
 // is valid when the unit is cm; only the two inch mappings are valid for inch.
 enum RulerGridMatch { none, cmPerSquare, quarterInchPerSquare, fifthInchPerSquare }
@@ -71,18 +75,20 @@ bool boardWidgetIsGridMatched(BoardWidgetConfig config) => switch (config) {
       _ => false,
     };
 
-/// Returns [config] with any stopwatch/timer running state reset to its default,
-/// so two configs can be compared while ignoring their runtime anchor (see
-/// [isWidgetRuntimeOnlyChange]).
+/// Returns [config] with any stopwatch/timer running state or dice roll reset to
+/// its default, so two configs can be compared while ignoring their runtime
+/// anchor (see [isWidgetRuntimeOnlyChange]).
 BoardWidgetConfig clearWidgetRuntimeState(BoardWidgetConfig config) => switch (config) {
       StopwatchConfig c => c.copyWith(elapsedMs: 0, startedAtEpochMs: null),
       TimerConfig c => c.copyWith(elapsedMs: 0, startedAtEpochMs: null),
+      DiceConfig c => c.copyWith(face: 1, rollSeed: 0, rolledAtEpochMs: null),
+      NumberDiceConfig c => c.copyWith(value: 0, rollSeed: 0, rolledAtEpochMs: null),
       _ => config,
     };
 
 /// Whether two configs differ only in ephemeral runtime state (the stopwatch/
-/// timer running anchor). Such changes must reach the external mirror but stay
-/// out of undo history and autosave.
+/// timer running anchor, or a dice roll). Such changes must reach the external
+/// mirror and are persisted, but stay out of undo history.
 bool isWidgetRuntimeOnlyChange(BoardWidgetConfig oldConfig, BoardWidgetConfig newConfig) =>
     oldConfig.runtimeType == newConfig.runtimeType &&
     oldConfig != newConfig &&
@@ -176,6 +182,28 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
   const factory BoardWidgetConfig.emoji({
     @Default('😀') String emoji,
   }) = EmojiConfig;
+
+  // A roll travels as config, not as frames. [rolledAtEpochMs] is the wall-clock
+  // anchor the tumble is animated from — the same trick the stopwatch uses for
+  // elapsed time — so one widgetUpserted carries a whole roll and the external
+  // display and every web viewer land on [face] at the same moment without
+  // anyone pushing an animation. [rollSeed] varies the tumble and must advance on
+  // every roll; see nextRollSeed in dice_roll.dart.
+  const factory BoardWidgetConfig.dice({
+    @Default(1) int face,
+    @Default(0) int rollSeed,
+    int? rolledAtEpochMs,
+    @Default(DiceStyle.ivory) DiceStyle style,
+  }) = DiceConfig;
+
+  // The flat variant, over an arbitrary range. Same anchor, same guarantee.
+  const factory BoardWidgetConfig.numberDice({
+    @Default(1) int min,
+    @Default(6) int max,
+    @Default(1) int value,
+    @Default(0) int rollSeed,
+    int? rolledAtEpochMs,
+  }) = NumberDiceConfig;
 
   factory BoardWidgetConfig.fromJson(Map<String, dynamic> json) => _$BoardWidgetConfigFromJson(json);
 
