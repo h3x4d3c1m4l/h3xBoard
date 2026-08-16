@@ -210,6 +210,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
 
     return ThemableContentDialog(
       constraints: const BoxConstraints(maxWidth: 560, maxHeight: 680),
+      scrollableContent: false,
       title: Text(widget.title),
       content: DropTarget(
         enable: !_busy,

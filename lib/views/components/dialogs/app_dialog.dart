@@ -2,32 +2,57 @@ import 'dart:ui' show ImageFilter, lerpDouble;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/theme/app_theme.dart';
+import 'package:h3xboard/views/components/dialogs/dialog_insets.dart';
 
 /// Opens a dialog the way this app opens dialogs: fluent's own entrance motion,
 /// over a backdrop that blurs in behind it.
 ///
-/// Every dialog in the app goes through here rather than fluent's [showDialog],
-/// so the backdrop treatment is stated once. Fluent dims with a flat scrim
-/// alone, which over a whiteboard full of drawings and widgets leaves the page
-/// competing with the dialog; blurring it pushes the page back instead. The
-/// blur ramps up with the dialog's own fade/scale rather than snapping on, so
-/// opening a dialog reads as one movement.
+/// Every dialog in the app goes through here, so the backdrop treatment is
+/// stated once. Fluent dims with a flat scrim alone, which over a whiteboard
+/// full of drawings and widgets leaves the page competing with the dialog;
+/// blurring it pushes the page back instead. The blur ramps up with the dialog's
+/// own fade/scale rather than snapping on, so opening a dialog reads as one
+/// movement.
 ///
-/// Parameters mirror fluent's [showDialog] and are passed straight through.
-/// Pass `useRootNavigator: false` to keep the dialog inside a nested router's
-/// navigator (the boards overview does this).
+/// The route is pushed here rather than through fluent's [showDialog] for one
+/// reason: `FluentDialogRoute` wraps every dialog in a [SafeArea] that cannot be
+/// turned off (it documents a `useSafeArea` argument it never accepts). Stacked
+/// under [buildDialogInsets]'s own gap that spent the notch twice, leaving ~83px
+/// of dead space above a dialog while the keyboard ate the bottom. Everything
+/// else fluent's route does is reproduced below.
+///
+/// Parameters mirror fluent's [showDialog]. Pass `useRootNavigator: false` to
+/// keep the dialog inside a nested router's navigator (the boards overview does
+/// this).
 Future<T?> showAppDialog<T extends Object?>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool barrierDismissible = false,
   bool useRootNavigator = true,
 }) {
+
+  assert(debugCheckHasFluentLocalizations(context), 'FluentLocalizations are required.');
   final blurAmount = context.appTheme.dialogs.barrierBlur;
-  return showDialog<T>(
-    context: context,
-    builder: builder,
+  final theme = FluentTheme.maybeOf(context);
+  final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
+  // The dialog is built under the navigator rather than under the caller, so any
+  // inherited theme between the two has to be carried across by hand.
+  final themes = InheritedTheme.capture(from: context, to: navigator.context);
+
+  return navigator.push<T>(RawDialogRoute<T>(
     barrierDismissible: barrierDismissible,
-    useRootNavigator: useRootNavigator,
+    barrierColor: const Color(0x8A000000),
+    barrierLabel: FluentLocalizations.of(context).modalBarrierDismissLabel,
+    transitionDuration: theme?.fastAnimationDuration ?? const Duration(milliseconds: 300),
+    pageBuilder: (routeContext, animation, secondaryAnimation) {
+      return Actions(
+        actions: {DismissIntent: _PopOnDismissAction(routeContext)},
+        child: FocusScope(
+          autofocus: true,
+          child: themes.wrap(Builder(builder: builder)),
+        ),
+      );
+    },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       return _BlurredDialogTransition(
         animation: animation,
@@ -35,7 +60,20 @@ Future<T?> showAppDialog<T extends Object?>({
         child: child,
       );
     },
-  );
+  ));
+}
+
+/// Closes the dialog on Escape, the way fluent's own dialog route does (its
+/// action is private, so this restates it).
+class _PopOnDismissAction extends DismissAction {
+
+  final BuildContext context;
+
+  _PopOnDismissAction(this.context);
+
+  @override
+  void invoke(covariant DismissIntent intent) => Navigator.of(context).pop();
+
 }
 
 /// Fluent's dialog transition (fade + subtle scale) with the screen behind it

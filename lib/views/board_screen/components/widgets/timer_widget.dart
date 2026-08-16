@@ -425,48 +425,55 @@ class TimerWidgetDescriptor extends BoardWidgetDescriptor {
 
     int parse(TextEditingController c) => int.tryParse(c.text.trim()) ?? 0;
 
-    showAppDialog<void>(
-      context: context,
-      builder: (ctx) => ThemableContentDialog(
-        title: Text(loc.timerSettingsMenu_setDurationDialogTitle),
-        constraints: const BoxConstraints(maxWidth: 360),
-        content: Row(
-          children: [
-            Expanded(
-              child: _DurationField(
-                controller: minutesController,
-                label: loc.timerSettingsMenu_minutes,
+    // Owned by the dialog, not by a State, so they are disposed when the
+    // route completes rather than in a dispose() override.
+    unawaited(
+      showAppDialog<void>(
+        context: context,
+        builder: (ctx) => ThemableContentDialog(
+          title: Text(loc.timerSettingsMenu_setDurationDialogTitle),
+          constraints: const BoxConstraints(maxWidth: 360),
+          content: Row(
+            children: [
+              Expanded(
+                child: _DurationField(
+                  controller: minutesController,
+                  label: loc.timerSettingsMenu_minutes,
+                ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _DurationField(
+                  controller: secondsController,
+                  label: loc.timerSettingsMenu_seconds,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(loc.timerSettingsMenu_cancel),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _DurationField(
-                controller: secondsController,
-                label: loc.timerSettingsMenu_seconds,
-              ),
+            FilledButton(
+              onPressed: () {
+                final total = parse(minutesController) * 60 + parse(secondsController);
+                // Changing the duration resets any running countdown to the new time.
+                onChange(config.copyWith(
+                  durationSeconds: total.clamp(1, 24 * 3600),
+                  elapsedMs: 0,
+                  startedAtEpochMs: null,
+                ));
+                Navigator.of(ctx).pop();
+              },
+              child: Text(loc.timerSettingsMenu_save),
             ),
           ],
         ),
-        actions: [
-          Button(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(loc.timerSettingsMenu_cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              final total = parse(minutesController) * 60 + parse(secondsController);
-              // Changing the duration resets any running countdown to the new time.
-              onChange(config.copyWith(
-                durationSeconds: total.clamp(1, 24 * 3600),
-                elapsedMs: 0,
-                startedAtEpochMs: null,
-              ));
-              Navigator.of(ctx).pop();
-            },
-            child: Text(loc.timerSettingsMenu_save),
-          ),
-        ],
-      ),
+      ).whenComplete(() {
+        minutesController.dispose();
+        secondsController.dispose();
+      }),
     );
   }
 

@@ -405,7 +405,7 @@ class _EmojiGridState extends State<_EmojiGrid> {
                   children: [
                     ScrollEdgeHint(
                       extent: 24,
-                      backgroundColor: Colors.white,
+                      backgroundColor: context.appTheme.dialogs.panelSurfaceColor,
                       controller: _scrollController,
                       child: CustomScrollView(
                         controller: _scrollController,

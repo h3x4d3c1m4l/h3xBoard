@@ -57,6 +57,20 @@ Rules of thumb:
 - Subfolders (`buttons/`, `dialogs/`, `toolbars/`, ...) are created inside a `components/` folder when there is **more than one** of a kind, or when there is a good reason to group.
 - Imports point inward-to-outward: a screen-scoped widget may import from `lib/views/components/`, never the reverse.
 
+### Workarounds get their own widget
+
+Where a widget *lives* is the section above; this is about what earns being one. When something needs a trick to work — a framework quirk to route around, a clip that has to be undone, a measurement that drives a rebuild — **that trick gets its own widget, and everything else uses it as a plain drop-in.** A workaround spread across its call sites is a contract each of them can break silently, and none of them can check.
+
+`lib/views/components/dialogs/dialog_scroll_area.dart` is the worked example. It carries two unrelated tricks and leaks neither:
+
+- **A vertical viewport clips to its own box**, which shaves the left and right border off every control inside it — a `ContinuousRectangleBorder` strokes half its width *outside* the path it draws. The first fix had each caller shave a few pixels off its own padding and hand them back as inner padding: three call sites doing arithmetic that all had to agree. It is now `clipBehavior: Clip.none` plus a `RelaxedHorizontalClipper` that keeps the vertical bounds and relaxes the sideways ones. Layout is untouched, so callers pass nothing and can't get it wrong.
+- **The scroll end gaps are spent on the scrollable's own extent**, and a `SingleChildScrollView` sizes itself to that extent — so applying them unconditionally grows every dialog that *doesn't* scroll. The widget watches `ScrollMetricsNotification` and measures the extent minus the gaps it has already added, so the answer can't feed back on itself.
+
+Two things that come with the deal:
+
+- **Name the trick.** `RelaxedHorizontalClipper` says what it does; a bare inlined `CustomClipper` would not.
+- **Write down the framework behaviour you are leaning on**, because that is what makes a workaround reviewable instead of load-bearing folklore. Here: `RenderStack` flags overflow only from *positioned* children, which is why a relaxed clip survives `ScrollEdgeHint`'s `Stack`.
+
 ### Moving files
 
 `build.yaml` scopes each code generator with `generate_for` globs that name **concrete paths** (e.g. `lib/routing/app_router.dart`, `lib/config/env.dart`). Moving or renaming such a file silently disables its generator — the build still "succeeds" and the stale generated output on disk keeps working until someone runs `build_runner clean`. **When you move a file, grep `build.yaml` for its old path and update the glob.**

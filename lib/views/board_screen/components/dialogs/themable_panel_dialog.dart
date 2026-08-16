@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/theme/app_theme.dart';
+import 'package:h3xboard/views/components/dialogs/dialog_insets.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart' show DecorationClipper;
 
 /// A plain, content-focused dialog for larger panels (Add Widget, Board
@@ -68,20 +69,30 @@ class ThemablePanelDialog extends StatelessWidget {
       ],
     );
 
-    return Align(
-      alignment: AlignmentDirectional.center,
-      child: Container(
-        constraints: constraints,
-        decoration: decoration,
-        child: decoration == null
-            ? body
-            : ClipPath(
-                clipper: DecorationClipper(
-                  decoration: decoration,
-                  textDirection: Directionality.maybeOf(context),
+    // `avoidKeyboard: false` keeps the deliberate carve-out: shifting or
+    // shrinking a 760px panel by the keyboard height doesn't help, and shrinking
+    // it would push the header/search/label above an Expanded grid into a real
+    // overflow. The safe-area half of the inset still applies — panels used to
+    // get that from the SafeArea fluent's dialog route wrapped around them,
+    // which `showAppDialog` no longer goes through.
+    return buildDialogInsets(
+      context,
+      avoidKeyboard: false,
+      child: Align(
+        alignment: AlignmentDirectional.center,
+        child: Container(
+          constraints: constraints,
+          decoration: decoration,
+          child: decoration == null
+              ? body
+              : ClipPath(
+                  clipper: DecorationClipper(
+                    decoration: decoration,
+                    textDirection: Directionality.maybeOf(context),
+                  ),
+                  child: body,
                 ),
-                child: body,
-              ),
+        ),
       ),
     );
   }

@@ -236,6 +236,15 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
 
 /// Wraps [child] with tap/drag handling that reports the local position of the
 /// pointer (clamped to the child) through [onInteract].
+///
+/// The vertical callbacks are what keep this working inside a scrollable. A pan
+/// recognizer only claims the pointer at `kPanSlop` (36px) while a [Scrollable]'s
+/// vertical drag recognizer claims it at `kTouchSlop` (18px), so once the colour
+/// picker is tall enough to scroll, a downward drag on the field would scroll the
+/// dialog instead of picking a colour. Adding a vertical recognizer here puts one
+/// in the arena at the same 18px, and this one is hit-tested deeper, so it wins.
+/// (Adding *both* a vertical and a horizontal drag alongside pan is what
+/// [GestureDetector] rejects — one of them is fine.)
 class _GestureSurface extends StatelessWidget {
 
   final Widget child;
@@ -249,6 +258,8 @@ class _GestureSurface extends StatelessWidget {
       onTapDown: (d) => onInteract(d.localPosition),
       onPanStart: (d) => onInteract(d.localPosition),
       onPanUpdate: (d) => onInteract(d.localPosition),
+      onVerticalDragStart: (d) => onInteract(d.localPosition),
+      onVerticalDragUpdate: (d) => onInteract(d.localPosition),
       child: child,
     );
   }

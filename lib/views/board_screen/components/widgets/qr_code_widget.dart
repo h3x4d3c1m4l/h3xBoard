@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
@@ -140,39 +142,43 @@ class QrCodeWidgetDescriptor extends BoardWidgetDescriptor {
     final loc = context.localizations;
     final controller = TextEditingController(text: config.data);
 
-    showAppDialog<void>(
-      context: context,
-      builder: (ctx) => ThemableContentDialog(
-        title: Text(loc.qrCodeSettingsMenu_editDataDialogTitle),
-        constraints: const BoxConstraints(maxWidth: 520),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ContinuousTextBox(
-              controller: controller,
-              autofocus: true,
-              maxLines: null,
-              minLines: 3,
-              placeholder: loc.qrCodeSettingsMenu_editDataPlaceholder,
-              style: const TextStyle(fontSize: 14, height: 1.5),
+    // Owned by the dialog, not by a State, so they are disposed when the
+    // route completes rather than in a dispose() override.
+    unawaited(
+      showAppDialog<void>(
+        context: context,
+        builder: (ctx) => ThemableContentDialog(
+          title: Text(loc.qrCodeSettingsMenu_editDataDialogTitle),
+          constraints: const BoxConstraints(maxWidth: 520),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ContinuousTextBox(
+                controller: controller,
+                autofocus: true,
+                maxLines: null,
+                minLines: 3,
+                placeholder: loc.qrCodeSettingsMenu_editDataPlaceholder,
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
+            ],
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(loc.qrCodeSettingsMenu_cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                onChange(config.copyWith(data: controller.text.trim()));
+                Navigator.of(ctx).pop();
+              },
+              child: Text(loc.qrCodeSettingsMenu_save),
             ),
           ],
         ),
-        actions: [
-          Button(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(loc.qrCodeSettingsMenu_cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              onChange(config.copyWith(data: controller.text.trim()));
-              Navigator.of(ctx).pop();
-            },
-            child: Text(loc.qrCodeSettingsMenu_save),
-          ),
-        ],
-      ),
+      ).whenComplete(controller.dispose),
     );
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -291,64 +293,68 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
     final loc = context.localizations;
     final controller = TextEditingController(text: config.text);
 
-    showAppDialog<void>(
-      context: context,
-      builder: (ctx) => ThemableContentDialog(
-        title: Text(loc.memoNoteSettingsMenu_editTextDialogTitle),
-        constraints: const BoxConstraints(maxWidth: 520),
-        // Wrapped in a min-sized Column so the multi-line box sizes to its content
-        // instead of stretching to fill the dialog's flexible content slot.
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ContinuousTextBox(
-              controller: controller,
-              autofocus: true,
-              maxLines: null,
-              minLines: 8,
-              placeholder: loc.memoNoteSettingsMenu_editTextPlaceholder,
-              style: const TextStyle(fontSize: 14, height: 1.5),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  LucideIcons.info,
-                  size: 14,
-                  color: FluentTheme.of(ctx).resources.textFillColorSecondary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  loc.memoNoteSettingsMenu_markdownHint,
-                  style: TextStyle(
-                    fontSize: 13,
+    // Owned by the dialog, not by a State, so they are disposed when the
+    // route completes rather than in a dispose() override.
+    unawaited(
+      showAppDialog<void>(
+        context: context,
+        builder: (ctx) => ThemableContentDialog(
+          title: Text(loc.memoNoteSettingsMenu_editTextDialogTitle),
+          constraints: const BoxConstraints(maxWidth: 520),
+          // Wrapped in a min-sized Column so the multi-line box sizes to its content
+          // instead of stretching to fill the dialog's flexible content slot.
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ContinuousTextBox(
+                controller: controller,
+                autofocus: true,
+                maxLines: null,
+                minLines: 8,
+                placeholder: loc.memoNoteSettingsMenu_editTextPlaceholder,
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(
+                    LucideIcons.info,
+                    size: 14,
                     color: FluentTheme.of(ctx).resources.textFillColorSecondary,
                   ),
-                ),
-                HyperlinkButton(
-                  // Opens on top of the edit dialog so the in-progress text isn't lost.
-                  onPressed: () => _showMarkdownCheatsheetDialog(ctx),
-                  child: Text(loc.memoNoteSettingsMenu_markdownHintLink),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Text(
+                    loc.memoNoteSettingsMenu_markdownHint,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: FluentTheme.of(ctx).resources.textFillColorSecondary,
+                    ),
+                  ),
+                  HyperlinkButton(
+                    // Opens on top of the edit dialog so the in-progress text isn't lost.
+                    onPressed: () => _showMarkdownCheatsheetDialog(ctx),
+                    child: Text(loc.memoNoteSettingsMenu_markdownHintLink),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(loc.memoNoteSettingsMenu_cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                onChange(config.copyWith(text: controller.text));
+                Navigator.of(ctx).pop();
+              },
+              child: Text(loc.memoNoteSettingsMenu_save),
             ),
           ],
         ),
-        actions: [
-          Button(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(loc.memoNoteSettingsMenu_cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              onChange(config.copyWith(text: controller.text));
-              Navigator.of(ctx).pop();
-            },
-            child: Text(loc.memoNoteSettingsMenu_save),
-          ),
-        ],
-      ),
+      ).whenComplete(controller.dispose),
     );
   }
 

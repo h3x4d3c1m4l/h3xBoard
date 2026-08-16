@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
@@ -233,46 +234,53 @@ class NumberDiceWidgetDescriptor extends BoardWidgetDescriptor {
     int parse(TextEditingController controller, int fallback) =>
         int.tryParse(controller.text.trim()) ?? fallback;
 
-    showAppDialog<void>(
-      context: context,
-      builder: (ctx) => ThemableContentDialog(
-        title: Text(loc.numberDiceSettingsMenu_setRangeDialogTitle),
-        constraints: const BoxConstraints(maxWidth: 360),
-        content: Row(
-          children: [
-            Expanded(child: _RangeField(controller: minController, label: loc.numberDiceSettingsMenu_min)),
-            const SizedBox(width: 12),
-            Expanded(child: _RangeField(controller: maxController, label: loc.numberDiceSettingsMenu_max)),
+    // Owned by the dialog, not by a State, so they are disposed when the
+    // route completes rather than in a dispose() override.
+    unawaited(
+      showAppDialog<void>(
+        context: context,
+        builder: (ctx) => ThemableContentDialog(
+          title: Text(loc.numberDiceSettingsMenu_setRangeDialogTitle),
+          constraints: const BoxConstraints(maxWidth: 360),
+          content: Row(
+            children: [
+              Expanded(child: _RangeField(controller: minController, label: loc.numberDiceSettingsMenu_min)),
+              const SizedBox(width: 12),
+              Expanded(child: _RangeField(controller: maxController, label: loc.numberDiceSettingsMenu_max)),
+            ],
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(loc.numberDiceSettingsMenu_cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                // A text box hands back whatever was typed, so the invariant is
+                // established here rather than assumed downstream: bounds ordered,
+                // clamped, and the showing value pulled inside the new range.
+                final a = parse(minController, config.min).clamp(-kNumberDiceLimit, kNumberDiceLimit);
+                final b = parse(maxController, config.max).clamp(-kNumberDiceLimit, kNumberDiceLimit);
+                final min = math.min(a, b);
+                final max = math.max(a, b);
+                onChange(config.copyWith(
+                  min: min,
+                  max: max,
+                  value: config.value.clamp(min, max),
+                  // Changing the range is an edit, not a roll: drop any roll still
+                  // in the air rather than letting it land on a stale value.
+                  rolledAtEpochMs: null,
+                ));
+                Navigator.of(ctx).pop();
+              },
+              child: Text(loc.numberDiceSettingsMenu_save),
+            ),
           ],
         ),
-        actions: [
-          Button(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(loc.numberDiceSettingsMenu_cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              // A text box hands back whatever was typed, so the invariant is
-              // established here rather than assumed downstream: bounds ordered,
-              // clamped, and the showing value pulled inside the new range.
-              final a = parse(minController, config.min).clamp(-kNumberDiceLimit, kNumberDiceLimit);
-              final b = parse(maxController, config.max).clamp(-kNumberDiceLimit, kNumberDiceLimit);
-              final min = math.min(a, b);
-              final max = math.max(a, b);
-              onChange(config.copyWith(
-                min: min,
-                max: max,
-                value: config.value.clamp(min, max),
-                // Changing the range is an edit, not a roll: drop any roll still
-                // in the air rather than letting it land on a stale value.
-                rolledAtEpochMs: null,
-              ));
-              Navigator.of(ctx).pop();
-            },
-            child: Text(loc.numberDiceSettingsMenu_save),
-          ),
-        ],
-      ),
+      ).whenComplete(() {
+        minController.dispose();
+        maxController.dispose();
+      }),
     );
   }
 

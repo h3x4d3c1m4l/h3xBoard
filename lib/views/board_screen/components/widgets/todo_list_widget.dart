@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
@@ -250,48 +252,55 @@ class TodoListWidgetDescriptor extends BoardWidgetDescriptor {
     final titleController = TextEditingController(text: config.title);
     final itemsController = TextEditingController(text: config.items.map((i) => i.text).join('\n'));
 
-    showAppDialog<void>(
-      context: context,
-      builder: (ctx) => ThemableContentDialog(
-        title: Text(loc.todoListSettingsMenu_editDialogTitle),
-        constraints: const BoxConstraints(maxWidth: 520),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ContinuousTextBox(
-              controller: titleController,
-              placeholder: loc.todoListSettingsMenu_titlePlaceholder,
-              style: const TextStyle(fontSize: 14),
+    // Owned by the dialog, not by a State, so they are disposed when the
+    // route completes rather than in a dispose() override.
+    unawaited(
+      showAppDialog<void>(
+        context: context,
+        builder: (ctx) => ThemableContentDialog(
+          title: Text(loc.todoListSettingsMenu_editDialogTitle),
+          constraints: const BoxConstraints(maxWidth: 520),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ContinuousTextBox(
+                controller: titleController,
+                placeholder: loc.todoListSettingsMenu_titlePlaceholder,
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              ContinuousTextBox(
+                controller: itemsController,
+                autofocus: true,
+                maxLines: null,
+                minLines: 8,
+                placeholder: loc.todoListSettingsMenu_itemsPlaceholder,
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
+            ],
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(loc.todoListSettingsMenu_cancel),
             ),
-            const SizedBox(height: 12),
-            ContinuousTextBox(
-              controller: itemsController,
-              autofocus: true,
-              maxLines: null,
-              minLines: 8,
-              placeholder: loc.todoListSettingsMenu_itemsPlaceholder,
-              style: const TextStyle(fontSize: 14, height: 1.5),
+            FilledButton(
+              onPressed: () {
+                onChange(config.copyWith(
+                  title: titleController.text.trim(),
+                  items: _parseItems(itemsController.text, config.items),
+                ));
+                Navigator.of(ctx).pop();
+              },
+              child: Text(loc.todoListSettingsMenu_save),
             ),
           ],
         ),
-        actions: [
-          Button(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(loc.todoListSettingsMenu_cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              onChange(config.copyWith(
-                title: titleController.text.trim(),
-                items: _parseItems(itemsController.text, config.items),
-              ));
-              Navigator.of(ctx).pop();
-            },
-            child: Text(loc.todoListSettingsMenu_save),
-          ),
-        ],
-      ),
+      ).whenComplete(() {
+        titleController.dispose();
+        itemsController.dispose();
+      }),
     );
   }
 

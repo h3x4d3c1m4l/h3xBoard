@@ -1,6 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/components/animated_icon_pattern.dart';
+import 'package:h3xboard/views/components/dialogs/dialog_insets.dart';
+import 'package:h3xboard/views/components/dialogs/dialog_scroll_area.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// The semantic tone of a [ThemableContentDialog], driving its tint and border
@@ -64,6 +66,7 @@ class ThemableContentDialog extends StatelessWidget {
     this.actionsBackgroundColor,
     this.showBackgroundPattern = true,
     this.constraints = kDefaultContentDialogConstraints,
+    this.scrollableContent = true,
   });
 
   /// The title of the dialog. Usually, a [Text] widget.
@@ -100,6 +103,21 @@ class ThemableContentDialog extends StatelessWidget {
   /// The constraints of the dialog. It defaults to
   /// `BoxConstraints(maxWidth: 368, maxHeight: 756)`.
   final BoxConstraints constraints;
+
+  /// Whether [content] is wrapped in a [DialogScrollArea], so it scrolls once it
+  /// outgrows the room the dialog has. Defaults to `true`.
+  ///
+  /// Fluent's [ContentDialog] gives `content` a bounded box and no scroll view,
+  /// which is a clipped, overflowing dialog the moment the keyboard takes half
+  /// the screen. Scrolling by default means a dialog only has to say what it
+  /// contains, not how tall it is allowed to be — and content that already fits
+  /// is untouched, because the scroll view sizes to it (see [DialogScrollArea]).
+  ///
+  /// Pass `false` for content that scrolls itself, or that puts a
+  /// [Flexible]/[Expanded] at the top of a vertical [Column] — a scroll view
+  /// hands its child an unbounded height, which nests two scrollables in the
+  /// first case and asserts in the second.
+  final bool scrollableContent;
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +182,15 @@ class ThemableContentDialog extends StatelessWidget {
                       padding: style.bodyPadding ?? EdgeInsetsDirectional.zero,
                       child: DefaultTextStyle.merge(
                         style: style.bodyStyle,
-                        child: content!,
+                        child: scrollableContent
+                            ? DialogScrollArea(
+                                // Whatever `decoration` ended up painting is the
+                                // surface the fade sits on — the accent tint
+                                // normally, the amber/red wash in severity modes.
+                                fadeColor: _surfaceColorOf(decoration) ?? theme.menuColor,
+                                child: content!,
+                              )
+                            : content!,
                       ),
                     ),
                   ),
@@ -203,7 +229,7 @@ class ThemableContentDialog extends StatelessWidget {
           )
         : themedBody;
 
-    return buildKeyboardAwareDialog(
+    return buildDialogInsets(
       context,
       child: Align(
         alignment: AlignmentDirectional.center,
@@ -251,6 +277,13 @@ class ThemableContentDialog extends StatelessWidget {
     }
     return base;
   }
+
+  /// The flat fill [decoration] paints, or `null` when it paints none.
+  Color? _surfaceColorOf(Decoration? decoration) => switch (decoration) {
+    ShapeDecoration(:final color) => color,
+    BoxDecoration(:final color) => color,
+    _ => null,
+  };
 
   /// A [FilledButton] style that paints the primary action in [color] instead
   /// of the theme accent, darkening on hover/press and choosing a black or
@@ -302,36 +335,6 @@ class ThemableContentDialog extends StatelessWidget {
     );
   }
 
-}
-
-/// Wraps a centered dialog so it rises above the on-screen keyboard instead of
-/// being covered by it, mirroring Material's [Dialog].
-///
-/// The keyboard height ([MediaQueryData.viewInsets] bottom) becomes bottom
-/// padding under the dialog, animated in sync with the keyboard as it slides in;
-/// [MediaQuery.removeViewInsets] stops that inset from double-applying inside the
-/// dialog. A base vertical gap (like Material's `Dialog.insetPadding`) keeps the
-/// dialog from sitting flush against the keyboard.
-///
-/// Only [ThemableContentDialog] (the small confirmation/text dialogs) routes
-/// through here — the large content panels (Settings, Add Widget) are left
-/// keyboard-unaware, since shifting/shrinking them for the keyboard doesn't help.
-Widget buildKeyboardAwareDialog(BuildContext context, {required Widget child}) {
-  return AnimatedPadding(
-    // Match Material's Dialog.insetAnimationDuration / insetAnimationCurve so the
-    // dialog tracks the keyboard's own slide-in timing.
-    padding: MediaQuery.viewInsetsOf(context) + const EdgeInsets.symmetric(vertical: 24),
-    duration: const Duration(milliseconds: 100),
-    curve: Curves.decelerate,
-    child: MediaQuery.removeViewInsets(
-      removeLeft: true,
-      removeTop: true,
-      removeRight: true,
-      removeBottom: true,
-      context: context,
-      child: child,
-    ),
-  );
 }
 
 /// Clips its child to the shape produced by a [Decoration].

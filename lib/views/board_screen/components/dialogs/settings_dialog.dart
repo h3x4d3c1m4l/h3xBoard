@@ -10,12 +10,13 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/app_settings_enums.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/components/continuous_combo_box.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/dialog_scroll_area.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mobx/mobx.dart';
-import 'package:scroll_edge_hint/scroll_edge_hint.dart';
 
 /// Opens the app-wide Settings dialog. Used by the global Ctrl/Cmd+S shortcut
 /// (and any future menu entry) so every entry point shares one code path.
@@ -154,120 +155,108 @@ class _SettingsDialogState extends State<SettingsDialog> {
               _buildHeader(loc, theme),
               const SizedBox(height: 20),
               Flexible(
-                child: ScrollEdgeHint.builder(
-                  backgroundColor: Colors.white,
-                  extent: 24,
-                  builder: (context, controller) => Scrollbar(
-                    controller: controller,
-                    style: const ScrollbarThemeData(
-                      padding: EdgeInsetsDirectional.only(end: 1, top: 4, bottom: 4),
-                    ),
-                    child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                      child: SingleChildScrollView(
-                        controller: controller,
-                        padding: const EdgeInsets.only(right: 14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _SettingsRow(
-                              label: loc.settingsDialog_language,
-                              control: _buildLanguageCombo(loc),
-                            ),
-                            _SectionLabel(
-                              icon: LucideIcons.palette,
-                              text: loc.settingsDialog_section_colorBar,
-                            ),
-                            _SettingsRow(
-                              label: loc.settingsDialog_position,
-                              control: _buildPositionCombo(
-                                loc,
-                                value: _colorBarPosition,
-                                onChanged: (p) => setState(() => _colorBarPosition = p),
-                              ),
-                            ),
-                            _SettingsRow(
-                              label: loc.settingsDialog_insideBoard,
-                              control: ToggleSwitch(
-                                checked: _colorBarInside,
-                                onChanged: (v) => setState(() => _colorBarInside = v),
-                              ),
-                            ),
-                            _SectionLabel(
-                              icon: LucideIcons.pencil,
-                              text: loc.settingsDialog_section_toolBar,
-                            ),
-                            _SettingsRow(
-                              label: loc.settingsDialog_position,
-                              control: _buildPositionCombo(
-                                loc,
-                                value: _toolBarPosition,
-                                onChanged: (p) => setState(() => _toolBarPosition = p),
-                              ),
-                            ),
-                            _SettingsRow(
-                              label: loc.settingsDialog_insideBoard,
-                              control: ToggleSwitch(
-                                checked: _toolBarInside,
-                                onChanged: (v) => setState(() => _toolBarInside = v),
-                              ),
-                            ),
-                            // Order is only meaningful when both bars stack on the
-                            // same edge (same position and same inside/outside).
-                            if (_colorBarPosition == _toolBarPosition && _colorBarInside == _toolBarInside) ...[
-                              _SectionLabel(
-                                icon: LucideIcons.arrowDownUp,
-                                text: loc.settingsDialog_section_barOrder,
-                              ),
-                              _SettingsRow(
-                                label: loc.settingsDialog_order,
-                                control: _buildOrderCombo(loc),
-                              ),
-                            ],
-                            Observer(
-                              builder: (context) {
-                                final connected = _mirror.isConnected;
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _SectionLabel(
-                                      icon: LucideIcons.monitor,
-                                      text: loc.settingsDialog_section_externalDisplay,
-                                      trailing: _ConnectionBadge(
-                                        connected: connected,
-                                        connectedLabel: loc.settingsDialog_externalDisplay_connected,
-                                        notConnectedLabel: loc.settingsDialog_externalDisplay_notConnected,
-                                      ),
-                                    ),
-                                    if (!connected)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 2),
-                                        child: Text(
-                                          loc.settingsDialog_externalDisplay_notConnectedHint,
-                                          style: theme.typography.caption?.copyWith(
-                                            color: theme.resources.textFillColorSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                    _SettingsRow(
-                                      label: loc.settingsDialog_resolution,
-                                      control: _buildResolutionCombo(loc, enabled: connected),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                            if (_error != null) ...[
-                              const SizedBox(height: 8),
-                              InfoBar(
-                                title: Text(_error!),
-                                severity: InfoBarSeverity.error,
-                              ),
-                            ],
-                          ],
+                child: DialogScrollArea(
+                  fadeColor: context.appTheme.dialogs.panelSurfaceColor,
+                  // Gutter so content clears the scrollbar sitting at the edge.
+                  padding: const EdgeInsets.only(right: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SettingsRow(
+                        label: loc.settingsDialog_language,
+                        control: _buildLanguageCombo(loc),
+                      ),
+                      _SectionLabel(
+                        icon: LucideIcons.palette,
+                        text: loc.settingsDialog_section_colorBar,
+                      ),
+                      _SettingsRow(
+                        label: loc.settingsDialog_position,
+                        control: _buildPositionCombo(
+                          loc,
+                          value: _colorBarPosition,
+                          onChanged: (p) => setState(() => _colorBarPosition = p),
                         ),
                       ),
-                    ),
+                      _SettingsRow(
+                        label: loc.settingsDialog_insideBoard,
+                        control: ToggleSwitch(
+                          checked: _colorBarInside,
+                          onChanged: (v) => setState(() => _colorBarInside = v),
+                        ),
+                      ),
+                      _SectionLabel(
+                        icon: LucideIcons.pencil,
+                        text: loc.settingsDialog_section_toolBar,
+                      ),
+                      _SettingsRow(
+                        label: loc.settingsDialog_position,
+                        control: _buildPositionCombo(
+                          loc,
+                          value: _toolBarPosition,
+                          onChanged: (p) => setState(() => _toolBarPosition = p),
+                        ),
+                      ),
+                      _SettingsRow(
+                        label: loc.settingsDialog_insideBoard,
+                        control: ToggleSwitch(
+                          checked: _toolBarInside,
+                          onChanged: (v) => setState(() => _toolBarInside = v),
+                        ),
+                      ),
+                      // Order is only meaningful when both bars stack on the
+                      // same edge (same position and same inside/outside).
+                      if (_colorBarPosition == _toolBarPosition && _colorBarInside == _toolBarInside) ...[
+                        _SectionLabel(
+                          icon: LucideIcons.arrowDownUp,
+                          text: loc.settingsDialog_section_barOrder,
+                        ),
+                        _SettingsRow(
+                          label: loc.settingsDialog_order,
+                          control: _buildOrderCombo(loc),
+                        ),
+                      ],
+                      Observer(
+                        builder: (context) {
+                          final connected = _mirror.isConnected;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SectionLabel(
+                                icon: LucideIcons.monitor,
+                                text: loc.settingsDialog_section_externalDisplay,
+                                trailing: _ConnectionBadge(
+                                  connected: connected,
+                                  connectedLabel: loc.settingsDialog_externalDisplay_connected,
+                                  notConnectedLabel: loc.settingsDialog_externalDisplay_notConnected,
+                                ),
+                              ),
+                              if (!connected)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    loc.settingsDialog_externalDisplay_notConnectedHint,
+                                    style: theme.typography.caption?.copyWith(
+                                      color: theme.resources.textFillColorSecondary,
+                                    ),
+                                  ),
+                                ),
+                              _SettingsRow(
+                                label: loc.settingsDialog_resolution,
+                                control: _buildResolutionCombo(loc, enabled: connected),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 8),
+                        InfoBar(
+                          title: Text(_error!),
+                          severity: InfoBarSeverity.error,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

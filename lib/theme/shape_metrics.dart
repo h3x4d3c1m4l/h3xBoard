@@ -57,6 +57,19 @@ const double kAccountTileSize = 32;
 /// is.
 const double kAccountTileCornerRadius = kAccountTileSize / 2;
 
+/// A little room past the end of a scrollable, so its last row can come to rest
+/// clear of the edge instead of stopping flush against it.
+///
+/// Scroll-specific rather than a general gap: it is spent on the scrollable's
+/// own extent, so it only reads as padding once there is something to scroll to.
+const double kScrollEndPadding = 12;
+
+/// The same at the head of a scrollable — deliberately much smaller than
+/// [kScrollEndPadding], because this one is on screen at rest. The tail gap only
+/// shows once you have scrolled all the way down, so it can afford to be
+/// generous; this sits under the first row from the moment the dialog opens.
+const double kScrollStartPadding = 4;
+
 /// Corner radius of the whiteboard canvas's continuous-rectangle border.
 const double kBoardCornerRadius = 24;
 

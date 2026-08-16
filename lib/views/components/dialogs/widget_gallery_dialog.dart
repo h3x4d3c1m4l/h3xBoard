@@ -62,6 +62,10 @@ class _WidgetGalleryDialogState extends State<WidgetGalleryDialog> {
     return ThemableContentDialog(
       constraints: const BoxConstraints(maxWidth: 640, maxHeight: 760),
       showBackgroundPattern: false,
+      // The samples scroll themselves below, under a top-level Flexible — which
+      // needs a bounded height, and the shared scroll area hands out an
+      // unbounded one.
+      scrollableContent: false,
       title: const Text('fluent_ui gallery'),
       content: Column(
         mainAxisSize: MainAxisSize.min,

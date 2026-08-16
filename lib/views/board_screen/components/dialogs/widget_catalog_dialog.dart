@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
@@ -87,13 +88,13 @@ class _WidgetCatalogDialogState extends State<WidgetCatalogDialog> {
                     ? Center(child: Text(loc.widgetCatalog_noResults))
                     // Fade the grid at its scrollable top/bottom edges to hint
                     // that there's more content. backgroundColor matches the
-                    // dialog's white surface so rows dissolve into the edge.
+                    // panel dialog's surface so rows dissolve into the edge.
                     : ScrollEdgeHint.builder(
                         extent: 24,
-                        backgroundColor: Colors.white,
+                        backgroundColor: context.appTheme.dialogs.panelSurfaceColor,
                         builder: (context, controller) => GridView.builder(
                           controller: controller,
-                          padding: const EdgeInsets.only(right: 4, bottom: 12),
+                          padding: const EdgeInsets.only(right: 4, bottom: kScrollEndPadding),
                           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                             maxCrossAxisExtent: 220,
                             childAspectRatio: 1.15,

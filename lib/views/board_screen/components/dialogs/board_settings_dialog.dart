@@ -6,6 +6,7 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
+import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/background_lines.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
@@ -13,11 +14,11 @@ import 'package:h3xboard/views/board_screen/components/dialogs/color_picker_dial
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/dialog_scroll_area.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:scroll_edge_hint/scroll_edge_hint.dart';
 
 // The board-color presets, mirroring the previous settings flyout: two plain
 // colors and two chalkboard tints.
@@ -200,44 +201,26 @@ class _BoardSettingsDialogState extends State<BoardSettingsDialog> {
               ),
               const SizedBox(height: 20),
               Flexible(
-                // Edge fades make it obvious there are more options to scroll to;
-                // backgroundColor matches the white panel dialog surface.
-                child: ScrollEdgeHint.builder(
-                  backgroundColor: Colors.white,
-                  extent: 24,
-                  builder: (context, controller) => Scrollbar(
-                    controller: controller,
-                    // Nudge the thumb closer to the dialog edge.
-                    style: const ScrollbarThemeData(
-                      padding: EdgeInsetsDirectional.only(end: 1, top: 4, bottom: 4),
-                    ),
-                    // Suppress the platform/default scrollbar (notably on web) so it
-                    // doesn't double up with this fluent one.
-                    child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                      child: SingleChildScrollView(
-                        controller: controller,
-                        // Gutter so content clears the scrollbar sitting at the edge.
-                        padding: const EdgeInsets.only(right: 14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _PreviewPanel(
-                            board: _draft,
-                            fileService: widget.fileService,
-                            boardPixelRatio: widget.boardPixelRatio,
-                            label: loc.boardSettingsDialog_livePreview,
-                          ),
-                            const SizedBox(height: 24),
-                            _buildBoardColorSection(loc),
-                            const SizedBox(height: 24),
-                            _buildBackgroundImageSection(loc),
-                            const SizedBox(height: 24),
-                            _buildBoardLinesSection(loc),
-                          ],
-                        ),
+                child: DialogScrollArea(
+                  fadeColor: context.appTheme.dialogs.panelSurfaceColor,
+                  // Gutter so content clears the scrollbar sitting at the edge.
+                  padding: const EdgeInsets.only(right: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _PreviewPanel(
+                        board: _draft,
+                        fileService: widget.fileService,
+                        boardPixelRatio: widget.boardPixelRatio,
+                        label: loc.boardSettingsDialog_livePreview,
                       ),
-                    ),
+                      const SizedBox(height: 24),
+                      _buildBoardColorSection(loc),
+                      const SizedBox(height: 24),
+                      _buildBackgroundImageSection(loc),
+                      const SizedBox(height: 24),
+                      _buildBoardLinesSection(loc),
+                    ],
                   ),
                 ),
               ),

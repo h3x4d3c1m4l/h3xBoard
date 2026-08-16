@@ -12,7 +12,7 @@ import 'package:h3xboard/views/board_screen/components/dialogs/color_picker_dial
 import 'package:h3xboard/views/board_screen/components/toolbars/toggle_button_toolbar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
-import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/dialog_insets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:rounded_background_text/rounded_background_text.dart';
 
@@ -245,7 +245,7 @@ class _TextBoxEditorState extends State<_TextBoxEditor> {
       // Escape must reach us before the route's own dismiss handler, which would
       // pop the editor as a save.
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): widget.onCancel},
-      child: buildKeyboardAwareDialog(
+      child: buildDialogInsets(
         context,
         child: Center(
           child: Padding(
