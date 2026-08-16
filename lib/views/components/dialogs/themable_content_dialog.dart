@@ -199,14 +199,33 @@ class ThemableContentDialog extends StatelessWidget {
           ),
         ),
         if (actions != null)
-          Container(
-            // Intentionally ignores style.actionsDecoration; a flat fill keeps
-            // the actions area in sync with the outer dialog shape.
-            color: actionsColor,
-            padding: style.actionsPadding,
-            child: ButtonTheme.merge(
-              data: actionThemeData,
-              child: _buildActions(style),
+          // The action row joins the focused field's tap region, so pressing it
+          // doesn't read as a tap *outside* the field.
+          //
+          // Without this, pressing Cancel/Save while the keyboard is up spends
+          // the press on dismissing the keyboard instead of acting: the tap-
+          // outside handler unfocuses on the pointer-*down*, [buildDialogInsets]
+          // then drops the keyboard's share of the padding, and the button
+          // slides out from under a finger that hasn't lifted yet — measured at
+          // 284px in 100ms on an iPad in landscape. [KeyboardDismisser] is what
+          // makes this reach a finger: it replaces Flutter's action so touch is
+          // no longer exempt, which is wanted everywhere *except* on chrome that
+          // belongs to the dialog itself.
+          //
+          // This is the same group the field's prefix, suffix, selection handles
+          // and copy/paste toolbar already share — an action row belongs in it
+          // for the same reason. The keyboard still goes, it just leaves with
+          // the dialog rather than before it.
+          TextFieldTapRegion(
+            child: Container(
+              // Intentionally ignores style.actionsDecoration; a flat fill keeps
+              // the actions area in sync with the outer dialog shape.
+              color: actionsColor,
+              padding: style.actionsPadding,
+              child: ButtonTheme.merge(
+                data: actionThemeData,
+                child: _buildActions(style),
+              ),
             ),
           ),
       ],
