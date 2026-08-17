@@ -9,6 +9,7 @@ import 'package:h3xboard/views/board_screen/components/backgrounds/background_li
 import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/full_screen_widget_view.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/components/laser_pointer_overlay.dart';
 
@@ -31,6 +32,10 @@ class ReadOnlyBoard extends StatelessWidget {
   /// null = no overlay.
   final ValueListenable<LaserPointer?>? laser;
 
+  /// The widget the presenter is showing full screen, blown up over a blurred
+  /// copy of this board. null = they aren't showing one.
+  final BoardWidget? fullScreenWidget;
+
   const ReadOnlyBoard({
     super.key,
     required this.board,
@@ -38,6 +43,7 @@ class ReadOnlyBoard extends StatelessWidget {
     required this.drawingController,
     this.inProgress,
     this.laser,
+    this.fullScreenWidget,
   });
 
   @override
@@ -91,8 +97,11 @@ class ReadOnlyBoard extends StatelessWidget {
                       // Read-only mirror: widgets never edit their own config here.
                       child: descriptorFor(bw.config).buildWidget(bw.config, (_) {}),
                     ),
+                  // Always mounted: it owns the fade-out, which has to outlive
+                  // the presenter leaving the mode.
+                  Positioned.fill(child: MirroredFullScreenWidget(boardWidget: fullScreenWidget)),
                   // Topmost: the presenter points *at* the board, including at
-                  // the widgets on it.
+                  // the widgets on it — and at one shown full screen over it.
                   if (laser != null) Positioned.fill(child: LaserPointerOverlay(pointer: laser)),
                 ],
               ),

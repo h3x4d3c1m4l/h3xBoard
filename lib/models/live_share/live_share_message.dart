@@ -51,6 +51,7 @@ sealed class LiveShareMessage with _$LiveShareMessage {
     Map<String, dynamic>? inProgress,
     @Default(<String>[]) List<String> fileIds,
     LaserPointer? laser,
+    String? fullScreenWidgetId,
   }) = LiveShareSnapshot;
 
   /// The active sub-board's appearance changed (background, line pattern, …)
@@ -112,6 +113,18 @@ sealed class LiveShareMessage with _$LiveShareMessage {
     @Default(0) int seq,
     LaserPointer? pointer,
   }) = LiveShareLaser;
+
+  /// The presenter blew one widget up to fill the screen, or left that mode
+  /// ([widgetId] null). Receivers blur the board and show that widget over it.
+  ///
+  /// A mode, not board content: the widget itself keeps arriving through the
+  /// ordinary widget deltas, so a stopwatch shown full screen keeps ticking on
+  /// every mirror without this frame being resent.
+  const factory LiveShareMessage.fullScreen({
+    @Default(1) int v,
+    @Default(0) int seq,
+    String? widgetId,
+  }) = LiveShareFullScreen;
 
   /// No board is open (the presenter left the board screen). External display
   /// shows its idle placeholder, web viewers show "waiting".

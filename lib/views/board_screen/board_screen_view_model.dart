@@ -69,6 +69,9 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   bool _isFullscreen = false;
 
   @readonly
+  String? _fullScreenWidgetId;
+
+  @readonly
   bool _laserArmed = false;
 
   @computed
@@ -110,6 +113,7 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
     _boardWidgets = ObservableList.of(content.widgets);
     _subBoardDrawings = ObservableMap.of(content.drawings);
     _arrangingWidgetId = null;
+    _fullScreenWidgetId = null;
     _activeSubBoardId = boards.any((b) => b.id == content.activeSubBoardId)
         ? content.activeSubBoardId
         : boards.first.id;
@@ -293,6 +297,9 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   void setActiveSubBoardId(String id) {
     _activeSubBoardId = id;
     _arrangingWidgetId = null;
+    // A widget shown full screen need not be visible on the board switched to,
+    // and undo/redo can switch boards under it.
+    _fullScreenWidgetId = null;
   }
 
   @action
@@ -315,6 +322,15 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
 
   @action
   void setArrangingWidget(String? id) => _arrangingWidgetId = id;
+
+  /// Shows [id] full screen, or leaves that mode when null. Arrange mode is
+  /// dropped on the way in: its handles sit on the board behind the blur, where
+  /// they are neither visible nor reachable.
+  @action
+  void setFullScreenWidget(String? id) {
+    _fullScreenWidgetId = id;
+    if (id != null) _arrangingWidgetId = null;
+  }
 
   @action
   void updateBoardWidgetConfig(String id, BoardWidgetConfig config) {
@@ -339,6 +355,9 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
   void removeBoardWidget(String id) {
     _boardWidgets.removeWhere((w) => w.id == id);
     if (_arrangingWidgetId == id) _arrangingWidgetId = null;
+    // Undo can delete the widget that is on screen full screen; leaving the id
+    // set would keep every mirror blurred behind a widget that no longer exists.
+    if (_fullScreenWidgetId == id) _fullScreenWidgetId = null;
   }
 
   @action

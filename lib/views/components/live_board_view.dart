@@ -135,6 +135,7 @@ class _LiveBoardViewState extends State<LiveBoardView> with SingleTickerProvider
               drawingController: _receiver.drawingController,
               inProgress: _receiver.inProgress,
               laser: _receiver.laser,
+              fullScreenWidget: _receiver.fullScreenWidget,
             ),
           ),
         // Crossfade-through-black overlay. Positioned.fill so it actually

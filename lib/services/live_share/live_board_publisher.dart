@@ -39,6 +39,7 @@ class LiveBoardPublisher {
   final DrawingController _drawingController;
   final Board Function() _board;
   final List<BoardWidget> Function() _widgets;
+  final String? Function() _fullScreenWidgetId;
   final bool Function() _isLoading;
   final ValueListenable<LaserPointer?> _laser;
 
@@ -59,6 +60,7 @@ class LiveBoardPublisher {
   Set<String> _lastFileIds = const {};
   bool _hadInProgress = false;
   LaserPointer? _lastLaser;
+  String? _lastFullScreenWidgetId;
 
   // Coalesces the flurry of drawing and pointer notifications during a stroke
   // into at most one publish per frame.
@@ -72,6 +74,7 @@ class LiveBoardPublisher {
     required this._drawingController,
     required this._board,
     required this._widgets,
+    required this._fullScreenWidgetId,
     required this._isLoading,
     required this._laser,
   }) {
@@ -116,6 +119,14 @@ class LiveBoardPublisher {
     if (widgetsDelta != null) {
       _lastWidgets = widgets;
       _publishDelta(widgetsDelta);
+    }
+
+    // After the widget deltas: entering full screen on a freshly added widget
+    // must not reach receivers before the widget it names.
+    final fullScreenWidgetId = _fullScreenWidgetId();
+    if (fullScreenWidgetId != _lastFullScreenWidgetId) {
+      _lastFullScreenWidgetId = fullScreenWidgetId;
+      _publishDelta(LiveShareMessage.fullScreen(seq: _nextSeq(), widgetId: fullScreenWidgetId));
     }
   }
 
@@ -266,6 +277,7 @@ class LiveBoardPublisher {
     final strokes = _committedStrokes();
     final inProgress = _drawingController.drawingContent ?? _drawingController.eraserContent;
     final fileIds = _fileIdsOf(board, widgets);
+    final fullScreenWidgetId = _fullScreenWidgetId();
 
     _publishedAnything = true;
     _lastBoard = board;
@@ -274,6 +286,7 @@ class LiveBoardPublisher {
     _lastFileIds = fileIds;
     _hadInProgress = inProgress != null;
     _lastLaser = _laser.value;
+    _lastFullScreenWidgetId = fullScreenWidgetId;
     _deltasSinceSnapshot = 0;
 
     _hub.publish(LiveShareMessage.snapshot(
@@ -286,6 +299,7 @@ class LiveBoardPublisher {
       // Carried so a viewer joining mid-sentence sees the dot straight away
       // rather than staying blind until the presenter next moves it.
       laser: _laser.value,
+      fullScreenWidgetId: fullScreenWidgetId,
     ));
   }
 

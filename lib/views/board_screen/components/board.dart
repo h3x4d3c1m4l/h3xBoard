@@ -19,9 +19,11 @@ import 'package:h3xboard/views/board_screen/components/backgrounds/background_li
 import 'package:h3xboard/views/board_screen/components/backgrounds/board_background_image.dart';
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/full_screen_widget_view.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_header_bar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_selection_overlay.dart';
+import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
@@ -158,6 +160,12 @@ class _BoardState extends State<Board> {
   }
 
   bool _onKeyEvent(KeyEvent event) {
+    // A widget shown full screen puts a modal route over the board: its
+    // shortcuts would act on things the user can no longer see, and — since
+    // this handler runs ahead of the focus tree — swallowing Escape here would
+    // stop the route from closing on it.
+    if (widget.viewModel.fullScreenWidgetId != null) return false;
+
     // Hold-to-point. The key-up is handled even while a text field has focus:
     // if focus moved mid-hold, swallowing the release would strand the laser
     // armed with nothing left holding it.
@@ -358,6 +366,28 @@ class _BoardState extends State<Board> {
     widget.viewModel.setArrangingWidget(widget.viewModel.arrangingWidgetId == id ? null : id);
   }
 
+  // Blows one widget up over the whole window — and, through the view model, over
+  // every live-share mirror of this board.
+  //
+  // The route is what owns the mode: it brings the barrier (tap to dismiss),
+  // Escape, and the blur that every dialog gets. The view model observable exists
+  // alongside it so the publisher can mirror the mode, which is why it is cleared
+  // from `whenComplete` — that runs however the route was left.
+  void _showWidgetFullScreen(String id) {
+    final viewModel = widget.viewModel..setFullScreenWidget(id);
+    unawaited(
+      showAppDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (_) => _FullScreenWidgetRoute(
+          viewModel: viewModel,
+          id: id,
+          onConfigChanged: (config) => widget.onWidgetConfigChanged(id, config),
+        ),
+      ).whenComplete(() => viewModel.setFullScreenWidget(null)),
+    );
+  }
+
   List<MenuFlyoutItemBase> _buildSettingsItems(BuildContext context, BoardWidget bw, {bool includeTitle = false}) {
     final descriptor = descriptorFor(bw.config);
     final typeItems = descriptor.settingsMenuItems(
@@ -392,6 +422,11 @@ class _BoardState extends State<Board> {
       ],
       ...typeItems,
       if (typeItems.isNotEmpty) const MenuFlyoutSeparator(),
+      MenuFlyoutItem(
+        leading: const Icon(LucideIcons.maximize),
+        text: Text(context.localizations.boardWidget_showFullScreen),
+        onPressed: () => _showWidgetFullScreen(bw.id),
+      ),
       // Widgets with a header reach Arrange from its pencil/Done toggle. Ones
       // without a header have no other way in, so resize and rotate would be
       // unreachable for them.
@@ -1052,6 +1087,50 @@ class _BoardState extends State<Board> {
     if (kIsWeb) BrowserContextMenu.enableContextMenu();
     super.dispose();
   }
+}
+
+/// The contents of the full-screen route: the named widget, kept live against
+/// the board it came from.
+///
+/// It reads the widget out of the view model on every rebuild rather than
+/// capturing it, so what fills the screen is the same widget the board has —
+/// a timer started here reaches the board, undo/redo reaches back, and a
+/// stopwatch's ticks keep flowing to the mirrors through the ordinary path.
+class _FullScreenWidgetRoute extends StatelessWidget {
+
+  final BoardScreenViewModel viewModel;
+  final String id;
+  final ValueChanged<BoardWidgetConfig> onConfigChanged;
+
+  const _FullScreenWidgetRoute({
+    required this.viewModel,
+    required this.id,
+    required this.onConfigChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Observer(
+      builder: (context) {
+        final matching = viewModel.boardWidgets.where((w) => w.id == id);
+        if (matching.isEmpty) {
+          // Nothing left to show it of — close rather than leave a blurred
+          // screen with nothing on it. Popping during build isn't allowed, so
+          // it waits for the frame this one is part of to finish.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) Navigator.of(context).pop();
+          });
+          return const SizedBox.shrink();
+        }
+        return FullScreenWidgetView(
+          config: matching.first.config,
+          onConfigChanged: onConfigChanged,
+          onClose: () => Navigator.of(context).pop(),
+        );
+      },
+    );
+  }
+
 }
 
 /// Feedback while image files are dragged over the board: the whole canvas is

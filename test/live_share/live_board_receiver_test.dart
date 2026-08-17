@@ -45,6 +45,7 @@ LiveShareMessage _snapshot({
   List<Map<String, dynamic>> strokes = const [],
   Map<String, dynamic>? inProgress,
   LaserPointer? laser,
+  String? fullScreenWidgetId,
 }) => LiveShareMessage.snapshot(
   seq: seq,
   board: _board(id: boardId),
@@ -52,6 +53,7 @@ LiveShareMessage _snapshot({
   strokes: strokes,
   inProgress: inProgress,
   laser: laser,
+  fullScreenWidgetId: fullScreenWidgetId,
 );
 
 void main() {
@@ -134,14 +136,47 @@ void main() {
       expect(receiver.laser.value, isNull);
     });
 
+    test('fullScreen frames resolve to the widget, and back to none', () {
+      receiver
+        ..apply(_snapshot(widgets: [_widget('w1'), _widget('w2')]))
+        ..apply(const LiveShareMessage.fullScreen(seq: 2, widgetId: 'w2'));
+      expect(receiver.fullScreenWidget?.id, 'w2');
+
+      receiver.apply(const LiveShareMessage.fullScreen(seq: 3));
+      expect(receiver.fullScreenWidget, isNull);
+    });
+
+    test('a snapshot carries the mode, so joining mid-presentation is not behind', () {
+      receiver.apply(_snapshot(widgets: [_widget('w1')], fullScreenWidgetId: 'w1'));
+
+      expect(receiver.fullScreenWidget?.id, 'w1');
+    });
+
+    test('the full-screen widget follows its own updates', () {
+      receiver
+        ..apply(_snapshot(widgets: [_widget('w1')], fullScreenWidgetId: 'w1'))
+        ..apply(LiveShareMessage.widgetUpserted(seq: 2, widget: _widget('w1', x: 99)));
+
+      expect(receiver.fullScreenWidget?.x, 99);
+    });
+
+    test('the mode cannot outlive the widget it names', () {
+      receiver
+        ..apply(_snapshot(widgets: [_widget('w1')], fullScreenWidgetId: 'w1'))
+        ..apply(const LiveShareMessage.widgetsSet(seq: 2, widgets: []));
+
+      expect(receiver.fullScreenWidget, isNull);
+    });
+
     test('clear returns to idle', () {
       receiver
-        ..apply(_snapshot(widgets: [_widget('w1')], strokes: [_strokeJson()]))
+        ..apply(_snapshot(widgets: [_widget('w1')], strokes: [_strokeJson()], fullScreenWidgetId: 'w1'))
         ..apply(const LiveShareMessage.clear(seq: 2));
 
       expect(receiver.board, isNull);
       expect(receiver.widgets, isEmpty);
       expect(receiver.drawingController.getJsonList(), isEmpty);
+      expect(receiver.fullScreenWidget, isNull);
     });
 
     test('a sequence gap freezes deltas, fires onGapDetected once, and heals on snapshot', () {

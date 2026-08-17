@@ -38,6 +38,7 @@ void main() {
         ],
         inProgress: {'type': 'Eraser'},
         fileIds: ['file-1'],
+        fullScreenWidgetId: 'w2',
       );
 
       final decoded = LiveShareMessage.fromJson(jsonDecode(jsonEncode(message.toJson())) as Map<String, dynamic>);
@@ -49,6 +50,16 @@ void main() {
       expect(snapshot.strokes.single['type'], 'SimpleLine');
       expect(snapshot.inProgress, {'type': 'Eraser'});
       expect(snapshot.fileIds, ['file-1']);
+      expect(snapshot.fullScreenWidgetId, 'w2');
+    });
+
+    test('fullScreen survives a wire round-trip, both entering and leaving', () {
+      LiveShareMessage roundTrip(LiveShareMessage message) =>
+          LiveShareMessage.fromJson(jsonDecode(jsonEncode(message.toJson())) as Map<String, dynamic>);
+
+      expect(roundTrip(const LiveShareMessage.fullScreen(seq: 9, widgetId: 'w1')).seq, 9);
+      expect((roundTrip(const LiveShareMessage.fullScreen(seq: 9, widgetId: 'w1')) as LiveShareFullScreen).widgetId, 'w1');
+      expect((roundTrip(const LiveShareMessage.fullScreen(seq: 10)) as LiveShareFullScreen).widgetId, isNull);
     });
 
     test('uses the wire type names the server dispatches on', () {
@@ -68,6 +79,7 @@ void main() {
       expect(typeOf(const LiveShareMessage.drawingSet(strokes: [])), 'drawingSet');
       expect(typeOf(const LiveShareMessage.clear()), 'clear');
       expect(typeOf(const LiveShareMessage.laser()), 'laser');
+      expect(typeOf(const LiveShareMessage.fullScreen()), 'fullScreen');
       expect(typeOf(const LiveShareMessage.ping()), 'ping');
       expect(typeOf(const LiveShareMessage.resyncRequest()), 'resyncRequest');
     });

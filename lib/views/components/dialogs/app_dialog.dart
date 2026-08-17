@@ -4,6 +4,12 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/components/dialogs/dialog_insets.dart';
 
+/// The scrim a modal surface lays over the page, under its blur. Exposed
+/// because not every use of this treatment is a route with a [ModalBarrier] to
+/// paint it — the mirrored full-screen widget on a live-share receiver paints
+/// its own.
+const Color kAppBarrierColor = Color(0x8A000000);
+
 /// Opens a dialog the way this app opens dialogs: fluent's own entrance motion,
 /// over a backdrop that blurs in behind it.
 ///
@@ -41,7 +47,7 @@ Future<T?> showAppDialog<T extends Object?>({
 
   return navigator.push<T>(RawDialogRoute<T>(
     barrierDismissible: barrierDismissible,
-    barrierColor: const Color(0x8A000000),
+    barrierColor: kAppBarrierColor,
     barrierLabel: FluentLocalizations.of(context).modalBarrierDismissLabel,
     transitionDuration: theme?.fastAnimationDuration ?? const Duration(milliseconds: 300),
     pageBuilder: (routeContext, animation, secondaryAnimation) {
@@ -54,7 +60,7 @@ Future<T?> showAppDialog<T extends Object?>({
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
-      return _BlurredDialogTransition(
+      return BlurredBackdropTransition(
         animation: animation,
         blurAmount: blurAmount,
         child: child,
@@ -84,7 +90,11 @@ class _PopOnDismissAction extends DismissAction {
 /// *outside* the fade: a [BackdropFilter] under an [Opacity] would filter a
 /// backdrop that is itself being composited, which reads as the page sliding
 /// under glass instead of the glass thickening over it.
-class _BlurredDialogTransition extends StatelessWidget {
+///
+/// Public because a live-share receiver mirrors the presenter's full-screen
+/// widget with the same treatment, and it has no route to get it from — it
+/// drives this off its own controller instead.
+class BlurredBackdropTransition extends StatelessWidget {
 
   /// The route's entrance animation; runs backwards on dismissal, which takes
   /// the blur back out with it.
@@ -95,7 +105,8 @@ class _BlurredDialogTransition extends StatelessWidget {
 
   final Widget child;
 
-  const _BlurredDialogTransition({
+  const BlurredBackdropTransition({
+    super.key,
     required this.animation,
     required this.blurAmount,
     required this.child,

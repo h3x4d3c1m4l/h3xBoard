@@ -40,6 +40,7 @@ class LiveBoardReceiver extends ChangeNotifier {
 
   Board? _board;
   List<BoardWidget> _widgets = const [];
+  String? _fullScreenWidgetId;
 
   int _lastSeq = 0;
   bool _needsResync = false;
@@ -52,6 +53,19 @@ class LiveBoardReceiver extends ChangeNotifier {
 
   /// The mirrored widgets, in render order.
   List<BoardWidget> get widgets => _widgets;
+
+  /// The widget the presenter is showing full screen, or null when they aren't
+  /// (or when the named widget isn't among [widgets] — deleted, or moved to a
+  /// sub-board this mirror isn't showing). Resolved here so the mode can never
+  /// outlive the widget it points at.
+  BoardWidget? get fullScreenWidget {
+    final id = _fullScreenWidgetId;
+    if (id == null) return null;
+    for (final widget in _widgets) {
+      if (widget.id == id) return widget;
+    }
+    return null;
+  }
 
   /// Whether a sequence gap is waiting to be healed by the next snapshot.
   bool get needsResync => _needsResync;
@@ -94,6 +108,11 @@ class LiveBoardReceiver extends ChangeNotifier {
         }
       case LiveShareLaser m:
         if (_acceptDelta(m.seq)) laser.value = m.pointer;
+      case LiveShareFullScreen m:
+        if (_acceptDelta(m.seq)) {
+          _fullScreenWidgetId = m.widgetId;
+          notifyListeners();
+        }
       case LiveShareClear m:
         if (_acceptDelta(m.seq)) _applyIdle();
       // Transport-level frames (hello, session lifecycle, viewer count) are
@@ -109,6 +128,7 @@ class LiveBoardReceiver extends ChangeNotifier {
     _needsResync = false;
     _board = m.board;
     _widgets = m.widgets;
+    _fullScreenWidgetId = m.fullScreenWidgetId;
     drawingController.clear();
     final strokes = restoreDrawingContents(m.strokes);
     if (strokes.isNotEmpty) drawingController.addContents(strokes);
@@ -121,6 +141,7 @@ class LiveBoardReceiver extends ChangeNotifier {
   void _applyIdle() {
     _board = null;
     _widgets = const [];
+    _fullScreenWidgetId = null;
     drawingController.clear();
     inProgress.value = null;
     laser.value = null;

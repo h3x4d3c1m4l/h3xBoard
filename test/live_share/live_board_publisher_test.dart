@@ -50,6 +50,7 @@ void main() {
   late DrawingController drawingController;
   late Observable<Board> board;
   late Observable<List<BoardWidget>> widgets;
+  late Observable<String?> fullScreenWidgetId;
   late Observable<bool> isLoading;
   late ValueNotifier<LaserPointer?> laser;
   LiveBoardPublisher? publisher;
@@ -61,6 +62,7 @@ void main() {
     drawingController = DrawingController()..setPaintContent(SimpleLine());
     board = Observable(_board());
     widgets = Observable(const []);
+    fullScreenWidgetId = Observable(null);
     isLoading = Observable(false);
     laser = ValueNotifier(null);
   });
@@ -77,6 +79,7 @@ void main() {
     drawingController: drawingController,
     board: () => board.value,
     widgets: () => widgets.value,
+    fullScreenWidgetId: () => fullScreenWidgetId.value,
     isLoading: () => isLoading.value,
     laser: laser,
   );
@@ -149,6 +152,43 @@ void main() {
       runInAction(() => board.value = _board(id: 'board_2'));
 
       expect((sink.drain().single as LiveShareSnapshot).board.id, 'board_2');
+    });
+
+    test('showing a widget full screen becomes a fullScreen delta', () {
+      runInAction(() => widgets.value = [_widget('w1')]);
+      createPublisher();
+      sink.drain();
+
+      runInAction(() => fullScreenWidgetId.value = 'w1');
+      expect((sink.drain().single as LiveShareFullScreen).widgetId, 'w1');
+
+      runInAction(() => fullScreenWidgetId.value = null);
+      expect((sink.drain().single as LiveShareFullScreen).widgetId, isNull);
+    });
+
+    test('a widget added and shown full screen at once is sent before the mode naming it', () {
+      createPublisher();
+      sink.drain();
+
+      runInAction(() {
+        widgets.value = [_widget('w1')];
+        fullScreenWidgetId.value = 'w1';
+      });
+
+      final messages = sink.drain();
+      expect(messages, hasLength(2));
+      expect((messages[0] as LiveShareWidgetUpserted).widget.id, 'w1');
+      expect((messages[1] as LiveShareFullScreen).widgetId, 'w1');
+    });
+
+    test('a snapshot carries the full-screen mode', () {
+      runInAction(() {
+        widgets.value = [_widget('w1')];
+        fullScreenWidgetId.value = 'w1';
+      });
+      createPublisher();
+
+      expect((sink.drain().single as LiveShareSnapshot).fullScreenWidgetId, 'w1');
     });
 
     test('a referenced-file change forces a snapshot (viewer file allowlist)', () {

@@ -136,6 +136,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       drawingController: drawingController,
       board: () => viewModel.board,
       widgets: () => viewModel.visibleBoardWidgets,
+      fullScreenWidgetId: () => viewModel.fullScreenWidgetId,
       isLoading: () => viewModel.isLoading,
       laser: laser,
     );
