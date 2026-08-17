@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/views/board_screen/components/tabular_text.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_surface.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -121,14 +122,13 @@ class _StopwatchWidgetState extends State<StopwatchWidget> {
           children: [
             FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(
+              child: TabularText(
                 timeText,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 48,
                   fontWeight: FontWeight.w300,
                   letterSpacing: 3,
-                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
             ),

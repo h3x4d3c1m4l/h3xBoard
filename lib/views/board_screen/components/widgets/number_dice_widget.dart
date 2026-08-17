@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/views/board_screen/components/tabular_text.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/dice_roll.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
@@ -126,13 +127,12 @@ class _NumberDiceWidgetState extends State<NumberDiceWidget> with SingleTickerPr
                   child: Padding(
                     padding: EdgeInsets.all(side * 0.16),
                     child: FittedBox(
-                      child: Text(
+                      child: TabularText(
                         '$shown',
                         style: const TextStyle(
                           color: _numberColor,
                           fontSize: 96,
                           fontWeight: FontWeight.w700,
-                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
                     ),

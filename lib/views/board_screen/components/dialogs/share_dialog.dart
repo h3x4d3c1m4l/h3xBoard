@@ -8,6 +8,7 @@ import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/services/live_share/live_share_session_service.dart';
 import 'package:h3xboard/services/server_controller.dart';
+import 'package:h3xboard/views/board_screen/components/tabular_text.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -129,13 +130,10 @@ class _ShareDialogState extends State<ShareDialog> {
         spacing: 12,
         children: [
           Text(context.localizations.shareDialog_codeLabel, textAlign: TextAlign.center),
-          Text(
+          TabularText(
             _formatCode(code),
             textAlign: TextAlign.center,
-            style: theme.typography.titleLarge?.copyWith(
-              letterSpacing: 4,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+            style: theme.typography.titleLarge?.copyWith(letterSpacing: 4),
           ),
           // Scanning the QR takes viewers straight to the board; without a
           // link it still carries the code for a manual join.

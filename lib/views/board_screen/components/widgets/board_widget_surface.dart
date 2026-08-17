@@ -66,7 +66,8 @@ class BoardWidgetSurface extends StatelessWidget {
     // Never more than half the shortest side. Past that a continuous rectangle
     // has no straight edge left to run and collapses into a lozenge, and the
     // widgets differ enough in proportion that one number cannot suit all of
-    // them: the clock is 300x100, the playground 940x764. Clamping here means
+    // them: the clock is 100 tall by 220-340 wide, the playground 940x764.
+    // Clamping here means
     // the token can be set for how the big cards should look, and the small ones
     // quietly stop at their own pill instead of going misshapen.
     final limit = size.shortestSide.isFinite ? size.shortestSide / 2 : radius;

@@ -135,10 +135,10 @@ void main() {
     });
 
     testWidgets('a short card stops at its own pill rather than going misshapen', (tester) async {
-      // The clock is 300x100. Past half the shortest side a continuous rectangle
+      // The clock is 100 tall. Past half the shortest side a continuous rectangle
       // has no straight edge left to run, and the corners meet in the middle of
       // the card — so the token is a ceiling to aim at, not a promise.
-      expect(await radiusAt(tester, const Size(300, 100)), 50);
+      expect(await radiusAt(tester, const Size(340, 100)), 50);
       expect(await radiusAt(tester, const Size(160, 88)), 44);
     });
 
@@ -146,7 +146,7 @@ void main() {
       // The point of the clamp: this token gets nudged upward whenever the cards
       // want to look softer, and nobody should have to check every widget's
       // proportions each time.
-      expect(await radiusAt(tester, const Size(300, 100)), lessThanOrEqualTo(50));
+      expect(await radiusAt(tester, const Size(340, 100)), lessThanOrEqualTo(50));
     });
   });
 }

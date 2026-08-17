@@ -5,6 +5,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
+import 'package:h3xboard/views/board_screen/components/tabular_text.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_surface.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
@@ -201,14 +202,13 @@ class _TimerWidgetState extends State<TimerWidget> with SingleTickerProviderStat
       children: [
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text(
+          child: TabularText(
             timeText,
             style: TextStyle(
               color: finished ? const Color(0xFFF87171) : Colors.white,
               fontSize: 48,
               fontWeight: FontWeight.w300,
               letterSpacing: 3,
-              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ),
