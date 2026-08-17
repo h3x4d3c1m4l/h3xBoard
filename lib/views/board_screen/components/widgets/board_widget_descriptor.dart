@@ -17,6 +17,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/text_box_widget.d
 import 'package:h3xboard/views/board_screen/components/widgets/timer_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/todo_list_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/traffic_light_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/unsupported_widget.dart';
 
 // Abstract descriptor for a board widget type. Each widget file provides a
 // concrete singleton implementation that encapsulates construction, natural
@@ -96,6 +97,9 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   EmojiConfig: EmojiWidgetDescriptor.instance,
   DiceConfig: DiceWidgetDescriptor.instance,
   NumberDiceConfig: NumberDiceWidgetDescriptor.instance,
+  // Mirror-only: descriptorFor() is a hard lookup, so the stand-in the live-share
+  // decode mints needs an entry here like any other type.
+  UnsupportedConfig: UnsupportedWidgetDescriptor.instance,
 };
 
 // All registered descriptors, exposed for building the "add widget" menu.

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/board_asset_resolver.dart';
@@ -18,6 +19,10 @@ class ViewerScreenController extends ScreenControllerBase<ViewerScreenViewModel>
   /// Resolves image/background bytes through the anonymous share-code file
   /// endpoint; non-null exactly when [client] is.
   ViewCodeBoardAssetResolver? assetResolver;
+
+  /// Whether the board on screen holds widgets this build can't draw. A
+  /// listenable rather than view-model state, alongside the client's own.
+  final ValueNotifier<bool> hasUnsupportedWidgets = ValueNotifier(false);
 
   ViewerScreenController({
     required String? initialCode,
@@ -58,10 +63,14 @@ class ViewerScreenController extends ScreenControllerBase<ViewerScreenViewModel>
   /// The receiver spotted a sequence gap — ask for a fresh snapshot.
   void onGapDetected() => client?.requestResync();
 
+  /// The mirror started or stopped holding widgets this build can't draw.
+  void onUnsupportedContentChanged(bool value) => hasUnsupportedWidgets.value = value;
+
   @override
   void dispose() {
     client?.dispose();
     assetResolver?.dispose();
+    hasUnsupportedWidgets.dispose();
     super.dispose();
   }
 

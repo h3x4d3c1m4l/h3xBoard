@@ -30,11 +30,17 @@ class LiveBoardView extends StatefulWidget {
   /// a resync so the presenter sends a fresh snapshot.
   final VoidCallback? onGapDetected;
 
+  /// Fired when the board starts or stops holding widgets this build can't
+  /// draw. Reported upward rather than drawn here so the host can place the
+  /// notice among its own overlays instead of stacking two banners.
+  final ValueChanged<bool>? onUnsupportedContentChanged;
+
   const LiveBoardView({
     super.key,
     required this.messages,
     required this.placeholder,
     this.onGapDetected,
+    this.onUnsupportedContentChanged,
   });
 
   @override
@@ -53,6 +59,10 @@ class _LiveBoardViewState extends State<LiveBoardView> with SingleTickerProvider
   // Messages held back while the screen fades to black, applied in order at
   // the darkest point. non-null = a fade-out is underway.
   List<LiveShareMessage>? _heldBack;
+
+  // Last value handed to onUnsupportedContentChanged, so it fires on the edge
+  // rather than on every frame of a stroke.
+  bool _unsupportedReported = false;
 
   @override
   void initState() {
@@ -75,7 +85,13 @@ class _LiveBoardViewState extends State<LiveBoardView> with SingleTickerProvider
 
   void _onGap() => widget.onGapDetected?.call();
 
-  void _onReceiverChanged() => setState(() {});
+  void _onReceiverChanged() {
+    setState(() {});
+    final unsupported = _receiver.hasUnsupportedWidgets;
+    if (unsupported == _unsupportedReported) return;
+    _unsupportedReported = unsupported;
+    widget.onUnsupportedContentChanged?.call(unsupported);
+  }
 
   void _onMessage(LiveShareMessage message) {
     final heldBack = _heldBack;

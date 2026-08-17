@@ -32,6 +32,7 @@ void main() {
     TimerConfig,
     TodoListConfig,
     PianoConfig,
+    UnsupportedConfig,
   };
 
   /// Instruments and objects with an identity of their own. Listed rather than

@@ -206,6 +206,13 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
     int? rolledAtEpochMs,
   }) = NumberDiceConfig;
 
+  // Stand-in for a widget type this build has never heard of, minted only while
+  // decoding live-share frames (see live_share_message.dart) so a mirror can show
+  // the rest of a board a newer presenter is sharing. Deliberately not a
+  // `fallbackUnion`: stored boards must keep failing on an unknown type, or an
+  // older build would load one with blanks and autosave over the real widgets.
+  const factory BoardWidgetConfig.unsupported() = UnsupportedConfig;
+
   factory BoardWidgetConfig.fromJson(Map<String, dynamic> json) => _$BoardWidgetConfigFromJson(json);
 
 }

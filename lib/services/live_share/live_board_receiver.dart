@@ -70,6 +70,11 @@ class LiveBoardReceiver extends ChangeNotifier {
   /// Whether a sequence gap is waiting to be healed by the next snapshot.
   bool get needsResync => _needsResync;
 
+  /// Whether the mirror holds widgets this build can't draw — the presenter is
+  /// on a newer version. The rest of the board still renders; the host decides
+  /// whether to say so.
+  bool get hasUnsupportedWidgets => _widgets.any((w) => w.config is UnsupportedConfig);
+
   void apply(LiveShareMessage message) {
     switch (message) {
       case LiveShareSnapshot m:

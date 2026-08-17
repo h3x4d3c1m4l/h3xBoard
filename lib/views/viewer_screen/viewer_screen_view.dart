@@ -44,6 +44,7 @@ class ViewerScreenView extends ScreenViewBase<ViewerScreenViewModel, ViewerScree
                 message: localizations.viewerScreen_waiting_message,
               ),
               onGapDetected: controller.onGapDetected,
+              onUnsupportedContentChanged: controller.onUnsupportedContentChanged,
             ),
           ),
         ),
@@ -75,7 +76,23 @@ class ViewerScreenView extends ScreenViewBase<ViewerScreenViewModel, ViewerScree
                   message: localizations.viewerScreen_full_message,
                   controller: controller,
                 ),
-              LiveViewState.live || LiveViewState.waiting => const SizedBox.shrink(),
+              // Nothing on screen can be trusted while frames are unreadable, so
+              // this takes the panel rather than a banner. It clears itself if the
+              // presenter moves to a board this build does understand.
+              LiveViewState.unsupported => _TerminalPanel(
+                  icon: LucideIcons.triangleAlert,
+                  title: localizations.viewerScreen_unsupported_title,
+                  message: localizations.viewerScreen_unsupported_message,
+                  controller: controller,
+                ),
+              // A board that renders with pieces missing says so from here, where
+              // it can't collide with the banners the states above own.
+              LiveViewState.live || LiveViewState.waiting => ValueListenableBuilder<bool>(
+                  valueListenable: controller.hasUnsupportedWidgets,
+                  builder: (context, hasUnsupported, _) => hasUnsupported
+                      ? _StatusBanner(message: localizations.viewerScreen_unsupportedWidgets)
+                      : const SizedBox.shrink(),
+                ),
             },
           ),
         ),

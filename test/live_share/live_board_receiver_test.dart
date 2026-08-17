@@ -220,5 +220,19 @@ void main() {
 
       expect(receiver.board, isNull);
     });
+
+    test('reports widgets it cannot draw, and stops once they are gone', () {
+      const standIn = BoardWidget(id: 'w2', config: BoardWidgetConfig.unsupported(), x: 0, y: 0);
+
+      receiver.apply(_snapshot(seq: 1, widgets: [_widget('w1')]));
+      expect(receiver.hasUnsupportedWidgets, isFalse);
+
+      receiver.apply(const LiveShareMessage.widgetUpserted(seq: 2, widget: standIn));
+      expect(receiver.hasUnsupportedWidgets, isTrue);
+      expect(receiver.widgets, hasLength(2), reason: 'the rest of the board still renders');
+
+      receiver.apply(LiveShareMessage.widgetsSet(seq: 3, widgets: [_widget('w1')]));
+      expect(receiver.hasUnsupportedWidgets, isFalse);
+    });
   });
 }

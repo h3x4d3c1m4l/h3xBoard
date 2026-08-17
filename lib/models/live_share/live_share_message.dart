@@ -32,7 +32,9 @@ enum LiveShareEndReason { stopped, expired }
 /// protocol change that must be mirrored in h3xBoardServer.
 ///
 /// Unrecognised frame types decode as [LiveShareUnknown] instead of throwing,
-/// so an older client just skips messages a newer peer added.
+/// so an older client just skips messages a newer peer added. Widget lists get
+/// the same tolerance one level down, through [_widgetsFromJson] — without it a
+/// single widget type a mirror doesn't know takes the whole frame with it.
 @Freezed(unionKey: 'type', fallbackUnion: 'unknown')
 sealed class LiveShareMessage with _$LiveShareMessage {
 
@@ -46,7 +48,7 @@ sealed class LiveShareMessage with _$LiveShareMessage {
     @Default(1) int v,
     @Default(0) int seq,
     required Board board,
-    required List<BoardWidget> widgets,
+    @JsonKey(fromJson: _widgetsFromJson) required List<BoardWidget> widgets,
     required List<Map<String, dynamic>> strokes,
     Map<String, dynamic>? inProgress,
     @Default(<String>[]) List<String> fileIds,
@@ -68,7 +70,7 @@ sealed class LiveShareMessage with _$LiveShareMessage {
   const factory LiveShareMessage.widgetUpserted({
     @Default(1) int v,
     @Default(0) int seq,
-    required BoardWidget widget,
+    @JsonKey(fromJson: _widgetFromJson) required BoardWidget widget,
   }) = LiveShareWidgetUpserted;
 
   /// The visible widget list changed in a way a single upsert can't express
@@ -76,7 +78,7 @@ sealed class LiveShareMessage with _$LiveShareMessage {
   const factory LiveShareMessage.widgetsSet({
     @Default(1) int v,
     @Default(0) int seq,
-    required List<BoardWidget> widgets,
+    @JsonKey(fromJson: _widgetsFromJson) required List<BoardWidget> widgets,
   }) = LiveShareWidgetsSet;
 
   /// The in-progress (not yet committed) stroke, replacing the previous
@@ -193,3 +195,47 @@ sealed class LiveShareMessage with _$LiveShareMessage {
   factory LiveShareMessage.fromJson(Map<String, dynamic> json) => _$LiveShareMessageFromJson(json);
 
 }
+
+/// Decodes a mirrored widget list entry by entry, so a widget type this build
+/// doesn't know costs only that widget instead of the whole frame — everything
+/// else on the board still renders while the mirror is a version behind.
+///
+/// Lenient because nothing on this path writes back; the storage path
+/// (`parseBoardContent`) stays strict on purpose.
+List<BoardWidget> _widgetsFromJson(Object? json) => [
+      if (json is List)
+        for (final entry in json) ?_widgetOrNull(entry),
+    ];
+
+/// The single-widget delta. An entry too broken to place has no id to upsert
+/// under, so it fails the frame rather than landing somewhere arbitrary.
+BoardWidget _widgetFromJson(Object? json) {
+  final widget = _widgetOrNull(json);
+  if (widget == null) throw const FormatException('unreadable board widget');
+  return widget;
+}
+
+/// [entry] as a widget, or null when not even its placement can be read. Only
+/// `config` is a union, so an unknown type still leaves the fields that decide
+/// where the stand-in goes.
+BoardWidget? _widgetOrNull(Object? entry) {
+  if (entry is! Map<String, dynamic>) return null;
+  try {
+    return BoardWidget.fromJson(entry);
+  } catch (_) {
+    final id = entry['id'];
+    final x = entry['x'];
+    final y = entry['y'];
+    if (id is! String || x is! num || y is! num) return null;
+    return BoardWidget(
+      id: id,
+      config: const UnsupportedConfig(),
+      x: x.toDouble(),
+      y: y.toDouble(),
+      rotation: _asDouble(entry['rotation'], 0),
+      scale: _asDouble(entry['scale'], 1),
+    );
+  }
+}
+
+double _asDouble(Object? value, double fallback) => value is num ? value.toDouble() : fallback;

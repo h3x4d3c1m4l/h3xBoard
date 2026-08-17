@@ -26,6 +26,11 @@ enum LiveViewState {
   /// The connection dropped on our side; retrying in the background.
   reconnecting,
 
+  /// Connected, but the frames arriving can't be read by this build — the
+  /// presenter is on a newer version. Not terminal: the socket stays open and
+  /// the next decodable snapshot clears it.
+  unsupported,
+
   /// Terminal: the presenter stopped sharing or the session expired.
   ended,
 
@@ -65,6 +70,7 @@ class LiveViewClient {
   DateTime? _lastResyncRequest;
   bool _disposed = false;
   bool _reconnecting = false;
+  bool _undecodable = false;
 
   LiveViewClient({required this.serverUrl, required this.code});
 
@@ -106,8 +112,8 @@ class LiveViewClient {
     final LiveShareMessage message;
     try {
       message = LiveShareMessage.fromJson(jsonDecode(raw as String) as Map<String, dynamic>);
-    } catch (_) {
-      // A malformed frame is dropped; the next snapshot re-syncs everything.
+    } catch (e) {
+      _onUndecodableFrame(e);
       return;
     }
     switch (message) {
@@ -130,9 +136,11 @@ class LiveViewClient {
         // Viewer counts are presenter-facing; viewers don't show them.
         break;
       case LiveShareSnapshot _:
+        _undecodable = false;
         state.value = LiveViewState.live;
         _messages.add(message);
       case LiveShareClear _:
+        _undecodable = false;
         state.value = LiveViewState.waiting;
         _messages.add(message);
       default:
@@ -140,10 +148,25 @@ class LiveViewClient {
     }
   }
 
+  /// A frame this build can't read at all. The transport is reliable and the
+  /// server relays presenter frames verbatim, so in practice this is version
+  /// skew — a board shape newer than this page — not corruption, and it is
+  /// worth showing rather than dropping in silence. A snapshot that does decode
+  /// (the presenter switching boards, or the page being reloaded) clears it.
+  void _onUndecodableFrame(Object error) {
+    debugPrint('LiveViewClient: dropped a frame this build cannot decode: $error');
+    _undecodable = true;
+    if (!_isTerminal) state.value = LiveViewState.unsupported;
+  }
+
   /// Asks the presenter (via the server) for a fresh snapshot after the
   /// receiver detected a sequence gap. Rate-limited — the safety-snapshot
   /// cadence covers a lost request.
   void requestResync() {
+    // A resync answers packet loss with a fresh snapshot. When the frames
+    // themselves are unreadable that snapshot fails identically, so asking on
+    // every delta would churn the presenter for nothing.
+    if (_undecodable) return;
     final now = DateTime.now();
     final last = _lastResyncRequest;
     if (last != null && now.difference(last) < _resyncCooldown) return;

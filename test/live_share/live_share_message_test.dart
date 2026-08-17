@@ -19,6 +19,27 @@ Board _board({String id = 'board_1'}) => Board(
   lineColor: const Color(0xFF808080),
 );
 
+/// A snapshot as a newer app version sends it: the middle widget carries a
+/// config type this build has never heard of. Widget configs are a union
+/// discriminated on `runtimeType`, so this is what a board from the future looks
+/// like arriving at a mirror.
+Map<String, dynamic> _snapshotFromTheFuture() {
+  final message = LiveShareMessage.snapshot(
+    seq: 3,
+    board: _board(),
+    widgets: const [
+      BoardWidget(id: 'w1', config: BoardWidgetConfig.digitalClock(), x: 100, y: 200),
+      BoardWidget(id: 'w2', config: BoardWidgetConfig.digitalClock(), x: 300, y: 400, rotation: 0.5, scale: 2),
+      BoardWidget(id: 'w3', config: BoardWidgetConfig.digitalClock(), x: 500, y: 600),
+    ],
+    strokes: const [],
+  );
+  final json = jsonDecode(jsonEncode(message.toJson())) as Map<String, dynamic>;
+  final widget = (json['widgets']! as List<dynamic>)[1]! as Map<String, dynamic>;
+  (widget['config']! as Map<String, dynamic>)['runtimeType'] = 'hologram';
+  return json;
+}
+
 void main() {
   group('LiveShareMessage', () {
     test('snapshot survives a wire round-trip (jsonEncode/jsonDecode)', () {
@@ -131,6 +152,79 @@ void main() {
       final decoded = LiveShareMessage.fromJson({'v': 1, 'seq': 4, 'type': 'somethingNew', 'data': 42});
       expect(decoded, isA<LiveShareUnknown>());
       expect((decoded as LiveShareUnknown).seq, 4);
+    });
+
+    test('a widget type from a newer version costs that widget, not the frame', () {
+      final decoded = LiveShareMessage.fromJson(_snapshotFromTheFuture()) as LiveShareSnapshot;
+
+      expect(decoded.widgets.map((w) => w.id), ['w1', 'w2', 'w3']);
+      expect(decoded.widgets.first.config, const BoardWidgetConfig.digitalClock());
+      expect(decoded.widgets.last.config, const BoardWidgetConfig.digitalClock());
+    });
+
+    test('the stand-in keeps the placement, so it lands where the real widget was', () {
+      final decoded = LiveShareMessage.fromJson(_snapshotFromTheFuture()) as LiveShareSnapshot;
+
+      final standIn = decoded.widgets[1];
+      expect(standIn.config, const BoardWidgetConfig.unsupported());
+      expect(standIn.x, 300);
+      expect(standIn.y, 400);
+      expect(standIn.rotation, 0.5);
+      expect(standIn.scale, 2);
+    });
+
+    test('widgetsSet gets the same tolerance, and drops what it cannot place', () {
+      final decoded = LiveShareMessage.fromJson({
+        'type': 'widgetsSet',
+        'seq': 2,
+        'widgets': [
+          {
+            'id': 'w1',
+            'config': {'runtimeType': 'digitalClock'},
+            'x': 1.0,
+            'y': 2.0,
+          },
+          // No id to place it by, and not a map at all.
+          {
+            'config': {'runtimeType': 'hologram'},
+          },
+          'a widget, allegedly',
+        ],
+      }) as LiveShareWidgetsSet;
+
+      expect(decoded.widgets.map((w) => w.id), ['w1']);
+    });
+
+    test('widgetUpserted of a type from a newer version still upserts', () {
+      final decoded = LiveShareMessage.fromJson({
+        'type': 'widgetUpserted',
+        'seq': 4,
+        'widget': {
+          'id': 'w9',
+          'config': {'runtimeType': 'hologram', 'glow': true},
+          'x': 12.0,
+          'y': 34.0,
+        },
+      }) as LiveShareWidgetUpserted;
+
+      expect(decoded.widget.id, 'w9');
+      expect(decoded.widget.config, const BoardWidgetConfig.unsupported());
+      expect(decoded.widget.x, 12);
+    });
+
+    test('tolerance stops at the widget list — a frame broken elsewhere still fails', () {
+      // Which is what the transport reports as unsupported content, rather than
+      // dropping in silence.
+      expect(
+        () => LiveShareMessage.fromJson({
+          'type': 'snapshot',
+          'seq': 1,
+          'board': 'not a board',
+          'widgets': <dynamic>[],
+          'strokes': <dynamic>[],
+        }),
+        throwsA(anything),
+      );
     });
   });
 }
