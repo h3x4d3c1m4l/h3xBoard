@@ -3,7 +3,7 @@ description: "Opensource whiteboard app."
 
 publish_to: 'none'
 
-version: 0.7.0+1
+version: 0.8.0+1
 
 environment:
   # Deliberately 3.12, not the 3.13 the pinned Flutter ships. The lower bound is
