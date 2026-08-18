@@ -8,7 +8,10 @@ import 'package:h3xboard/views/components/dialogs/dialog_insets.dart';
 /// because not every use of this treatment is a route with a [ModalBarrier] to
 /// paint it — the mirrored full-screen widget on a live-share receiver paints
 /// its own.
-const Color kAppBarrierColor = Color(0x8A000000);
+/// Kept at 70% rather than darker because dialogs stack (board settings → colour
+/// picker, image editor → file picker): two barriers compose as `1-(1-a)²`, so
+/// this already reads as 91% on the inner one.
+const Color kAppBarrierColor = Color(0xB3000000);
 
 /// Opens a dialog the way this app opens dialogs: fluent's own entrance motion,
 /// over a backdrop that blurs in behind it.
@@ -36,6 +39,31 @@ Future<T?> showAppDialog<T extends Object?>({
   bool barrierDismissible = false,
   bool useRootNavigator = true,
 }) {
+  return Navigator.of(context, rootNavigator: useRootNavigator).push<T>(
+    buildAppDialogRoute<T>(
+      context: context,
+      builder: builder,
+      barrierDismissible: barrierDismissible,
+      useRootNavigator: useRootNavigator,
+    ),
+  );
+}
+
+/// The route [showAppDialog] pushes, for a caller that needs the route object
+/// itself — the full-screen widget listens to its animation to know when the
+/// flight has landed, and drives its own motion from it.
+///
+/// [fadeContent] off leaves the backdrop blurring in but stops the content
+/// fading and scaling with it: a surface that flies in from a real place on the
+/// page must not fade while it does, or it blinks at both ends of the flight.
+RawDialogRoute<T> buildAppDialogRoute<T extends Object?>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = false,
+  bool useRootNavigator = true,
+  Duration? transitionDuration,
+  bool fadeContent = true,
+}) {
 
   assert(debugCheckHasFluentLocalizations(context), 'FluentLocalizations are required.');
   final blurAmount = context.appTheme.dialogs.barrierBlur;
@@ -45,11 +73,12 @@ Future<T?> showAppDialog<T extends Object?>({
   // inherited theme between the two has to be carried across by hand.
   final themes = InheritedTheme.capture(from: context, to: navigator.context);
 
-  return navigator.push<T>(RawDialogRoute<T>(
+  return RawDialogRoute<T>(
     barrierDismissible: barrierDismissible,
     barrierColor: kAppBarrierColor,
     barrierLabel: FluentLocalizations.of(context).modalBarrierDismissLabel,
-    transitionDuration: theme?.fastAnimationDuration ?? const Duration(milliseconds: 300),
+    transitionDuration:
+        transitionDuration ?? theme?.fastAnimationDuration ?? const Duration(milliseconds: 300),
     pageBuilder: (routeContext, animation, secondaryAnimation) {
       return Actions(
         actions: {DismissIntent: _PopOnDismissAction(routeContext)},
@@ -60,13 +89,16 @@ Future<T?> showAppDialog<T extends Object?>({
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
+      if (!fadeContent) {
+        return BlurredBackdrop(animation: animation, blurAmount: blurAmount, child: child);
+      }
       return BlurredBackdropTransition(
         animation: animation,
         blurAmount: blurAmount,
         child: child,
       );
     },
-  ));
+  );
 }
 
 /// Closes the dialog on Escape, the way fluent's own dialog route does (its
@@ -82,22 +114,59 @@ class _PopOnDismissAction extends DismissAction {
 
 }
 
-/// Fluent's dialog transition (fade + subtle scale) with the screen behind it
-/// blurring in over the same animation.
+/// The screen behind a modal surface blurring in over its entrance animation.
 ///
-/// The fade and scale are spelled out here rather than delegating to fluent's
-/// default transition builder — that one is private, and the blur has to sit
-/// *outside* the fade: a [BackdropFilter] under an [Opacity] would filter a
-/// backdrop that is itself being composited, which reads as the page sliding
-/// under glass instead of the glass thickening over it.
-///
-/// Public because a live-share receiver mirrors the presenter's full-screen
-/// widget with the same treatment, and it has no route to get it from — it
-/// drives this off its own controller instead.
-class BlurredBackdropTransition extends StatelessWidget {
+/// Separate from the fade and scale it is usually paired with for two reasons.
+/// The blur has to sit *outside* the fade — a [BackdropFilter] under an
+/// [Opacity] would filter a backdrop that is itself being composited, which
+/// reads as the page sliding under glass instead of the glass thickening over
+/// it. And a surface whose content arrives from somewhere real (a board widget
+/// flying up into full screen) wants the blur without the fade: fading it in
+/// from nothing would undo the point of flying it from where it already was.
+class BlurredBackdrop extends StatelessWidget {
 
   /// The route's entrance animation; runs backwards on dismissal, which takes
   /// the blur back out with it.
+  final Animation<double> animation;
+
+  /// The blur sigma at the end of the entrance (see [AppDialogStyles.barrierBlur]).
+  final double blurAmount;
+
+  final Widget child;
+
+  const BlurredBackdrop({
+    super.key,
+    required this.animation,
+    required this.blurAmount,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      // The content doesn't depend on the animation — hand it to the builder so
+      // only the filter is rebuilt per frame.
+      child: child,
+      builder: (context, child) {
+        final progress = Curves.easeOut.transform(animation.value.clamp(0.0, 1.0));
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blurAmount * progress, sigmaY: blurAmount * progress),
+          child: child,
+        );
+      },
+    );
+  }
+
+}
+
+/// Fluent's dialog transition (fade + subtle scale) over a [BlurredBackdrop].
+///
+/// The fade and scale are spelled out here rather than delegating to fluent's
+/// default transition builder — that one is private.
+class BlurredBackdropTransition extends StatelessWidget {
+
+  /// The route's entrance animation; runs backwards on dismissal.
   final Animation<double> animation;
 
   /// The blur sigma at the end of the entrance (see [AppDialogStyles.barrierBlur]).
@@ -114,26 +183,24 @@ class BlurredBackdropTransition extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
+    return BlurredBackdrop(
       animation: animation,
-      // The dialog itself doesn't depend on the animation — hand it to the
-      // builder so only the filter/opacity/scale are rebuilt per frame.
-      child: child,
-      builder: (context, child) {
-        final t = animation.value.clamp(0.0, 1.0);
-        // Fluent curves the *scale* rather than the animation driving it, which
-        // is why the dialog settles a hair under 1.0 instead of at it. Matched
-        // exactly so dialogs keep the size they have always had.
-        final scale = Curves.easeOut.transform(lerpDouble(1, 0.85, t)!);
-        final progress = Curves.easeOut.transform(t);
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurAmount * progress, sigmaY: blurAmount * progress),
-          child: Opacity(
-            opacity: progress,
+      blurAmount: blurAmount,
+      child: AnimatedBuilder(
+        animation: animation,
+        child: child,
+        builder: (context, child) {
+          final t = animation.value.clamp(0.0, 1.0);
+          // Fluent curves the *scale* rather than the animation driving it, which
+          // is why the dialog settles a hair under 1.0 instead of at it. Matched
+          // exactly so dialogs keep the size they have always had.
+          final scale = Curves.easeOut.transform(lerpDouble(1, 0.85, t)!);
+          return Opacity(
+            opacity: Curves.easeOut.transform(t),
             child: Transform.scale(scale: scale, child: child),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

@@ -440,6 +440,10 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
   /// failure so the next tick (or close) retries.
   Future<void> _captureScreenshotIfDirty() async {
     if (!_screenshotDirty || _screenshotBusy) return;
+    // The capture boundary includes widget bodies, and one of them is deliberately
+    // unpainted while it is shown full screen. Leave the board dirty and let the
+    // next tick take the thumbnail rather than uploading one with a hole in it.
+    if (viewModel.fullScreenWidgetId != null) return;
     _screenshotBusy = true;
     _screenshotDirty = false;
     try {

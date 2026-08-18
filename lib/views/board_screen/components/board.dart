@@ -98,6 +98,12 @@ class _BoardState extends State<Board> {
   Offset? _pointerPosition;
   double? _eraseStrokeWidth;
 
+  // The widget the full-screen route is flying, kept off the board for as long
+  // as its blown-up copy is on screen. Separate from the view model's
+  // fullScreenWidgetId, which the publisher mirrors and which is cleared a whole
+  // exit transition earlier — see _showWidgetFullScreen.
+  String? _flownWidgetId;
+
   // Widget manipulation state. All coordinates are in the 1920×1080 canvas
   // space, which equals localFocalPoint of the full-canvas GestureDetector.
   String? _activeWidgetId;
@@ -335,6 +341,10 @@ class _BoardState extends State<Board> {
   // usable with its handles out — a text label being typed into in place.
   Widget _buildWidgetBody(BoardWidget bw) {
     final content = _buildWidgetContent(bw);
+    // Kept laid out but unpainted while the full-screen route flies this widget
+    // up off the board: dropping it from the Stack instead would tear its body
+    // down mid-flight (a dice roll, a decoded image) and start it over on return.
+    if (bw.id == _flownWidgetId) return IgnorePointer(child: Opacity(opacity: 0, child: content));
     if (bw.id != widget.viewModel.arrangingWidgetId) return content;
     if (!descriptorFor(bw.config).isInertWhileArranging) return content;
     return IgnorePointer(child: Opacity(opacity: 0.6, child: content));
@@ -366,26 +376,68 @@ class _BoardState extends State<Board> {
     widget.viewModel.setArrangingWidget(widget.viewModel.arrangingWidgetId == id ? null : id);
   }
 
+  // Where the widget [id] sits on screen right now, for the full-screen route to
+  // fly it from. The capture boundary is `Positioned.fill` inside the 1920×1080
+  // SizedBox, so its own local space *is* canvas space — mapping it to the
+  // navigator gives the widget's rect in the route's coordinates.
+  //
+  // Resolved per frame rather than captured when the route opens: a memo or
+  // to-do shown full screen brings up the soft keyboard, which resizes the page
+  // and moves the board under it. Null on every failure, which lands the widget
+  // at its full-screen place instead of flying.
+  ({Rect rect, double rotation})? _flightOriginFor(String id) {
+    if (!mounted) return null;
+    final matching = widget.viewModel.boardWidgets.where((w) => w.id == id);
+    if (matching.isEmpty) return null;
+    final box = widget.captureKey.currentContext?.findRenderObject() as RenderBox?;
+    final navigator = Navigator.of(context, rootNavigator: true).context.findRenderObject();
+    if (box == null || !box.attached || navigator == null) return null;
+    final bw = matching.first;
+    return (
+      rect: MatrixUtils.transformRect(box.getTransformTo(navigator), ManipulableBoardWidget.rectFor(bw)),
+      rotation: bw.rotation,
+    );
+  }
+
   // Blows one widget up over the whole window — and, through the view model, over
   // every live-share mirror of this board.
   //
   // The route is what owns the mode: it brings the barrier (tap to dismiss),
-  // Escape, and the blur that every dialog gets. The view model observable exists
-  // alongside it so the publisher can mirror the mode, which is why it is cleared
-  // from `whenComplete` — that runs however the route was left.
+  // Escape, and the blur that every dialog gets.
+  //
+  // Two signals, deliberately with different lifetimes. The view model observable
+  // is what the publisher mirrors, so it is cleared from `whenComplete` — that
+  // runs however the route was left, and the moment the exit begins is the moment
+  // the mirrors should start their own flight back. `_flownWidgetId` is this
+  // board's own, and has to outlive it: the popped future completes when the exit
+  // *starts*, so clearing the hidden copy there would drop the widget back onto
+  // the board while its blown-up copy is still flying home.
   void _showWidgetFullScreen(String id) {
     final viewModel = widget.viewModel..setFullScreenWidget(id);
-    unawaited(
-      showAppDialog<void>(
-        context: context,
-        barrierDismissible: true,
-        builder: (_) => _FullScreenWidgetRoute(
-          viewModel: viewModel,
-          id: id,
-          onConfigChanged: (config) => widget.onWidgetConfigChanged(id, config),
-        ),
-      ).whenComplete(() => viewModel.setFullScreenWidget(null)),
+    setState(() => _flownWidgetId = id);
+    final route = buildAppDialogRoute<void>(
+      context: context,
+      barrierDismissible: true,
+      transitionDuration: kFullScreenFlightDuration,
+      // The widget flies in from its place on the board; fading it in on top of
+      // that would blink it out at both ends of the trip.
+      fadeContent: false,
+      builder: (_) => _FullScreenWidgetRoute(
+        viewModel: viewModel,
+        id: id,
+        onConfigChanged: (config) => widget.onWidgetConfigChanged(id, config),
+        originOf: () => _flightOriginFor(id),
+      ),
     );
+    unawaited(
+      Navigator.of(context, rootNavigator: true)
+          .push(route)
+          .whenComplete(() => viewModel.setFullScreenWidget(null)),
+    );
+    route.animation?.addStatusListener((status) {
+      if (status != AnimationStatus.dismissed || !mounted || _flownWidgetId != id) return;
+      setState(() => _flownWidgetId = null);
+    });
   }
 
   List<MenuFlyoutItemBase> _buildSettingsItems(BuildContext context, BoardWidget bw, {bool includeTitle = false}) {
@@ -1101,11 +1153,13 @@ class _FullScreenWidgetRoute extends StatelessWidget {
   final BoardScreenViewModel viewModel;
   final String id;
   final ValueChanged<BoardWidgetConfig> onConfigChanged;
+  final FullScreenOrigin originOf;
 
   const _FullScreenWidgetRoute({
     required this.viewModel,
     required this.id,
     required this.onConfigChanged,
+    required this.originOf,
   });
 
   @override
@@ -1118,7 +1172,10 @@ class _FullScreenWidgetRoute extends StatelessWidget {
           // screen with nothing on it. Popping during build isn't allowed, so
           // it waits for the frame this one is part of to finish.
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) Navigator.of(context).pop();
+            // Only if this route is still the one on top: a delete arriving while
+            // it is already flying home would otherwise pop the board underneath.
+            if (!context.mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
+            Navigator.of(context).pop();
           });
           return const SizedBox.shrink();
         }
@@ -1126,6 +1183,8 @@ class _FullScreenWidgetRoute extends StatelessWidget {
           config: matching.first.config,
           onConfigChanged: onConfigChanged,
           onClose: () => Navigator.of(context).pop(),
+          animation: ModalRoute.of(context)!.animation!,
+          originOf: originOf,
         );
       },
     );
