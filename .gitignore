@@ -67,3 +67,6 @@ assets/emoji/
 
 # Docker build context (web build is copied in by CI / local build)
 docker/html/
+
+# Widget Preview related
+.widget_preview/

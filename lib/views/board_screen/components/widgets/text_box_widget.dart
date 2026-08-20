@@ -11,10 +11,10 @@ import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/color_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/toggle_button_toolbar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/rounded_text_highlight.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/dialog_insets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:rounded_background_text/rounded_background_text.dart';
 
 /// The alignments a label can be set to, in the order their buttons appear.
 /// Only visible on a label with more than one line — a single line is exactly as
@@ -43,10 +43,10 @@ String alignmentLabel(AppLocalizations localizations, TextAlign align) => switch
 /// them in agreement:
 ///
 ///  * the text is measured at a fixed [contentWidth] and the inner box is pinned
-///    to the measured width, so [RoundedBackgroundText] lays out at exactly the
+///    to the measured width, so [RoundedTextHighlight] lays out at exactly the
 ///    width we measured and therefore wraps identically;
-///  * [RoundedBackgroundText] reports only the *text* size and paints its
-///    background outside that box, so we add the same insets it uses as real
+///  * [RoundedTextHighlight] sizes itself to the *text* and paints its highlight
+///    outside that box, so we add [RoundedTextHighlight.paddingFor] as real
 ///    padding — otherwise the highlight would be clipped at the edges.
 class TextBoxWidget extends StatelessWidget {
 
@@ -56,15 +56,6 @@ class TextBoxWidget extends StatelessWidget {
   /// Size used while the text is empty, so the widget stays grabbable and the
   /// catalog preview has something to scale.
   static const Size placeholderSize = Size(420, 130);
-
-  /// The background insets [RoundedBackgroundTextPainter] paints outside the
-  /// text box, as factors of the line height. Mirrors `_firstLinePadding` /
-  /// `_lastLinePadding` in the package: 0.3 on the sides and top, 0.175/2 at the
-  /// bottom. Overshooting here would only add invisible margin; undershooting
-  /// clips the highlight, so these are deliberately exact.
-  static const double _sidePaddingFactor = 0.3;
-  static const double _topPaddingFactor = 0.3;
-  static const double _bottomPaddingFactor = 0.175 / 2;
 
   final TextBoxConfig config;
 
@@ -88,25 +79,18 @@ class TextBoxWidget extends StatelessWidget {
   /// [TextBoxWidgetDescriptor.naturalSize] both go through this, so what is
   /// measured is exactly what is rendered.
   static ({Size textSize, EdgeInsets padding}) measure(TextBoxConfig config) {
-    final painter = TextPainter(
-      text: TextSpan(text: config.text, style: styleFor(config.fontSize, config.textColor)),
+    final painter = RoundedTextHighlight.layoutPainter(
+      text: config.text,
+      style: styleFor(config.fontSize, config.textColor),
       textAlign: config.textAlign,
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: contentWidth);
+      maxWidth: contentWidth,
+    );
 
     final metrics = painter.computeLineMetrics();
     // Every line shares one style here, so a single line height drives the insets.
     final lineHeight = metrics.isEmpty ? config.fontSize : metrics.first.height;
 
-    return (
-      textSize: painter.size,
-      padding: EdgeInsets.only(
-        left: lineHeight * _sidePaddingFactor,
-        right: lineHeight * _sidePaddingFactor,
-        top: lineHeight * _topPaddingFactor,
-        bottom: lineHeight * _bottomPaddingFactor,
-      ),
-    );
+    return (textSize: painter.size, padding: RoundedTextHighlight.paddingFor(lineHeight));
   }
 
   static Size sizeFor(TextBoxConfig config) {
@@ -133,20 +117,15 @@ class TextBoxWidget extends StatelessWidget {
 
     return Padding(
       padding: padding,
-      // Pinned to the measured width so the package wraps exactly as measured.
+      // Pinned to the measured width so the highlight wraps exactly as measured.
       child: SizedBox(
         width: textSize.width,
         height: textSize.height,
-        child: RoundedBackgroundText(
-          config.text,
+        child: RoundedTextHighlight(
+          text: config.text,
           style: styleFor(config.fontSize, config.textColor),
           textAlign: config.textAlign,
           backgroundColor: config.backgroundColor,
-          // The package caps both radii at 20; this is as close to the app's
-          // squircles as it can get (its corners are circular arcs, not
-          // continuous curves).
-          innerRadius: 20,
-          outerRadius: 20,
         ),
       ),
     );

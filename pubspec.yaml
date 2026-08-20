@@ -50,7 +50,6 @@ dependencies:
   cookie_jar: 4.0.9
   flutter_secure_storage: 11.0.0
   pretty_qr_code: 3.6.0
-  rounded_background_text: 0.6.0
   sentry_flutter: 9.27.0
   theme_tailor_annotation: 3.1.3
 

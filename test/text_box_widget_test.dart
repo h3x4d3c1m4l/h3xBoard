@@ -39,7 +39,7 @@ void main() {
 
       final size = TextBoxWidget.sizeFor(config);
 
-      // RoundedBackgroundText reports only the text box and paints its background
+      // RoundedTextHighlight sizes itself to the text box and paints its highlight
       // outside it, so the padding must be real space in our size or the
       // highlight gets clipped at the edges.
       expect(size.width, textSize.width + padding.horizontal);
