@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
@@ -40,6 +41,7 @@ class BoardAudioEngine {
     try {
       final soloud = SoLoud.instance;
       if (!soloud.isInitialized) {
+        await _configureAudioSession();
         await soloud.init();
       }
       return true;
@@ -47,6 +49,45 @@ class BoardAudioEngine {
       debugPrint('BoardAudioEngine.init failed: $error\n$stackTrace');
       _initFuture = null;
       return false;
+    }
+  }
+
+  /// Claims the platform's audio session before the engine opens a device.
+  ///
+  /// flutter_soloud deliberately leaves this to the app: its miniaudio backend
+  /// initializes CoreAudio with `sessionCategory = none` and
+  /// `noAudioSessionActivate = true`, and says so — "the app is responsible for
+  /// calling `[AVAudioSession setActive:YES]`". Skip it and iOS keeps its
+  /// default `SoloAmbient` category, which the ring/silent switch mutes. Voices
+  /// play, handles stay valid, the UI shows a sound running — and nothing comes
+  /// out of the iPad. `playback` is the category that says this app's audio is
+  /// the point, so silent mode no longer applies to it.
+  ///
+  /// Called **before** `SoLoud.init()`: the audio unit should start under the
+  /// category it is going to run with, rather than having one swapped in under
+  /// it. Failure is not fatal — audio_session ships no Windows or Linux
+  /// implementation, so `instance` throws there, and the engine must still come
+  /// up on the platforms whose default session was already fine.
+  Future<void> _configureAudioSession() async {
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(
+        const AudioSessionConfiguration(
+          avAudioSessionCategory: AVAudioSessionCategory.playback,
+          avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.none,
+          androidAudioAttributes: AndroidAudioAttributes(
+            usage: AndroidAudioUsage.media,
+            contentType: AndroidAudioContentType.music,
+          ),
+          // Ducking rather than pausing: a board sound is short and incidental,
+          // so music playing alongside it should dip, not stop.
+          androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
+          androidWillPauseWhenDucked: false,
+        ),
+      );
+      await session.setActive(true);
+    } on Object catch (error, stackTrace) {
+      debugPrint('BoardAudioEngine.configureAudioSession failed: $error\n$stackTrace');
     }
   }
 
