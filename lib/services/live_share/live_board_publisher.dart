@@ -8,6 +8,7 @@ import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/models/live_share/live_share_message.dart';
+import 'package:h3xboard/services/board_asset_resolver.dart';
 import 'package:h3xboard/services/live_share/live_share_hub.dart';
 import 'package:mobx/mobx.dart';
 
@@ -48,6 +49,11 @@ class LiveBoardPublisher {
   /// Changes to it publish their own delta (see [AudioOutputController]).
   final bool Function() _audioToViewers;
 
+  /// Handed to the hub so mirrors can fetch the bytes of the files this board
+  /// references — the signed-in user's own uploads.
+  final BoardAssetResolver _assets;
+
+  late final LiveSharePresenter _presenter;
   late final ReactionDisposer _stateReactionDisposer;
   Timer? _safetyTimer;
 
@@ -83,8 +89,10 @@ class LiveBoardPublisher {
     required this._isLoading,
     required this._laser,
     required this._audioToViewers,
+    required this._assets,
   }) {
-    _hub.registerPresenter(publishSnapshot);
+    _presenter = LiveSharePresenter(publishSnapshot: publishSnapshot, assets: _assets);
+    _hub.registerPresenter(_presenter);
     // Re-evaluate on any observable change: the getters read the view model's
     // board/widget observables, so autorun tracks them as dependencies.
     _stateReactionDisposer = autorun((_) => _onStateTick());
@@ -339,7 +347,7 @@ class LiveBoardPublisher {
       ..painter?.removeListener(_onSurfaceRepaint);
     _laser.removeListener(_onLaserChanged);
     _hub
-      ..unregisterPresenter(publishSnapshot)
+      ..unregisterPresenter(_presenter)
       ..publish(LiveShareMessage.clear(seq: _nextSeq()));
   }
 

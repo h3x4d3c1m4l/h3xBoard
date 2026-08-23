@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/live_share/live_share_message.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
-import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/services/live_share/live_share_hub.dart';
 
 /// Feeds live-share messages to the physically attached external display via
@@ -12,9 +11,9 @@ import 'package:h3xboard/services/live_share/live_share_hub.dart';
 ///
 /// The external isolate has no network or session of its own. Alongside each
 /// snapshot this sink therefore fetches the files the display needs to *draw*
-/// through the authenticated file service and pushes the bytes over the bus.
-/// Each id is pushed once per display connection — a fresh isolate is spawned
-/// per connect.
+/// through the presenter's own asset resolver and pushes the bytes over the
+/// bus. Each id is pushed once per display connection — a fresh isolate is
+/// spawned per connect.
 ///
 /// "Needs to draw" is narrower than the snapshot's `fileIds`, and the two must
 /// not be conflated. That list is the server's allowlist for anonymous viewer
@@ -29,18 +28,19 @@ import 'package:h3xboard/services/live_share/live_share_hub.dart';
 class ExternalDisplaySink implements LiveShareSink {
 
   final ExternalDisplayMirror _mirror;
-  final H3xBoardFileService _files;
   final LiveShareHub _hub;
 
   final Set<String> _pushedAssetIds = {};
 
   ExternalDisplaySink({
     required this._mirror,
-    required this._files,
     required this._hub,
   }) {
     _mirror.onReady = _onDisplayReady;
   }
+
+  @override
+  bool get isDeviceLocal => true;
 
   void _onDisplayReady() {
     _pushedAssetIds.clear();
@@ -68,10 +68,16 @@ class ExternalDisplaySink implements LiveShareSink {
   }
 
   Future<void> _pushAssets(List<String> fileIds) async {
+    // Read once, up front: the presenter that sent this snapshot owns these
+    // files, and a presenter swapping mid-fetch must not pull the rest of them
+    // from somewhere else. Absent one, the snapshot has no owner to fetch from
+    // — the display keeps its placeholders until the next presenter's.
+    final assets = _hub.presenterAssets;
+    if (assets == null) return;
     for (final fileId in fileIds) {
       if (!_pushedAssetIds.add(fileId)) continue;
       try {
-        _mirror.sendAsset(fileId, await _files.downloadCached(fileId));
+        _mirror.sendAsset(fileId, await assets.load(fileId));
       } catch (_) {
         // Tell the display the fetch failed (it shows the error placeholder)
         // and forget the id so the next snapshot referencing it retries.

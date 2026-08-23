@@ -6,7 +6,9 @@ import 'package:get_it/get_it.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/audio/board_audio_engine.dart';
 import 'package:h3xboard/services/board_asset_resolver.dart';
+import 'package:h3xboard/services/live_share/live_share_hub.dart';
 import 'package:h3xboard/services/live_share/live_view_client.dart';
+import 'package:h3xboard/services/live_share/live_view_relay.dart';
 import 'package:h3xboard/services/server_controller.dart';
 import 'package:h3xboard/services/session_controller.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
@@ -20,6 +22,11 @@ class ViewerScreenController extends ScreenControllerBase<ViewerScreenViewModel>
   /// Resolves image/background bytes through the anonymous share-code file
   /// endpoint; non-null exactly when [client] is.
   ViewCodeBoardAssetResolver? assetResolver;
+
+  /// Mirrors the watched board onto a display attached to this device, so
+  /// watching on a tablet lights up the TV hooked up to it as well. Non-null
+  /// exactly when [client] is; a no-op while nothing is attached.
+  LiveViewRelay? _relay;
 
   /// Whether the board on screen holds widgets this build can't draw. A
   /// listenable rather than view-model state, alongside the client's own.
@@ -45,9 +52,20 @@ class ViewerScreenController extends ScreenControllerBase<ViewerScreenViewModel>
     final code = LiveViewClient.normalizeCode(initialCode ?? '');
     if (code.isEmpty) return;
     final serverUrl = GetIt.I<ServerController>().serverUrl;
-    client = LiveViewClient(serverUrl: serverUrl, code: code);
-    assetResolver = ViewCodeBoardAssetResolver(serverUrl: serverUrl, code: code);
-    unawaited(client!.start());
+    final client = this.client = LiveViewClient(serverUrl: serverUrl, code: code);
+    final assetResolver = this.assetResolver = ViewCodeBoardAssetResolver(serverUrl: serverUrl, code: code);
+    // Registered before the socket opens, so the very first snapshot is
+    // relayed rather than missed.
+    _relay = LiveViewRelay(
+      hub: GetIt.I<LiveShareHub>(),
+      messages: client.messages,
+      state: client.state,
+      requestResync: client.requestResync,
+      // A watched board's files belong to the presenter, so a display attached
+      // here has to be fed from the anonymous share-code endpoint too.
+      assets: assetResolver,
+    );
+    unawaited(client.start());
   }
 
   /// Opens the viewer for [code] by re-navigating this route with the code as
@@ -94,6 +112,8 @@ class ViewerScreenController extends ScreenControllerBase<ViewerScreenViewModel>
 
   @override
   void dispose() {
+    // Before the client: the relay listens to state notifiers the client owns.
+    _relay?.dispose();
     client?.dispose();
     assetResolver?.dispose();
     hasUnsupportedWidgets.dispose();

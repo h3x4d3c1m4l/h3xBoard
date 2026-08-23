@@ -371,6 +371,10 @@ class _RecordingSink implements LiveShareSink {
 
   List<LiveShareAudioOutput> get audioFrames => messages.whereType<LiveShareAudioOutput>().toList();
 
+  // Stands in for the backend relay: audio routing is a viewer-facing concern.
+  @override
+  bool get isDeviceLocal => false;
+
   @override
   void send(LiveShareMessage message) => messages.add(message);
 

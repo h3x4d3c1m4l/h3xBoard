@@ -88,7 +88,7 @@ Future<void> setupServices() async {
   // the backend relay for web viewers (dormant until a session starts).
   final externalDisplayMirror = ExternalDisplayMirror();
   final liveShareHub = LiveShareHub();
-  liveShareHub.addSink(ExternalDisplaySink(mirror: externalDisplayMirror, files: files, hub: liveShareHub));
+  liveShareHub.addSink(ExternalDisplaySink(mirror: externalDisplayMirror, hub: liveShareHub));
   final serverShareSink = ServerShareSink(api: api);
   liveShareHub.addSink(serverShareSink);
 

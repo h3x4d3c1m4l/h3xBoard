@@ -30,6 +30,9 @@ class ServerShareSink implements LiveShareSink {
 
   ServerShareSink({required this._api});
 
+  @override
+  bool get isDeviceLocal => false;
+
   /// Whether a share session is live. While false every message is dropped
   /// (the sink stays registered on the hub permanently).
   bool get active => _active;

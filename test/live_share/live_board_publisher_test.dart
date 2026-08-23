@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_drawing_board/flutter_drawing_board.dart';
 import 'package:flutter_drawing_board/paint_contents.dart';
@@ -6,6 +8,7 @@ import 'package:h3xboard/models/board.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/models/live_share/live_share_message.dart';
+import 'package:h3xboard/services/board_asset_resolver.dart';
 import 'package:h3xboard/services/live_share/live_board_publisher.dart';
 import 'package:h3xboard/services/live_share/live_share_hub.dart';
 import 'package:mobx/mobx.dart';
@@ -24,9 +27,22 @@ Board _board({String id = 'board_1', double lineSpacing = 64, String? background
 BoardWidget _widget(String id, {double x = 0, BoardWidgetConfig config = const BoardWidgetConfig.digitalClock()}) =>
     BoardWidget(id: id, config: config, x: x, y: 0);
 
+class _StubAssets implements BoardAssetResolver {
+
+  @override
+  Future<Uint8List> load(String fileId) async => Uint8List(0);
+
+  @override
+  Future<Stream<List<int>>>? openStream(String fileId) => null;
+
+}
+
 class _RecordingSink implements LiveShareSink {
 
   final List<LiveShareMessage> messages = [];
+
+  @override
+  bool get isDeviceLocal => true;
 
   @override
   void send(LiveShareMessage message) => messages.add(message);
@@ -86,6 +102,7 @@ void main() {
     isLoading: () => isLoading.value,
     laser: laser,
     audioToViewers: () => audioToViewers.value,
+    assets: _StubAssets(),
   );
 
   void drawStroke({double to = 10}) {

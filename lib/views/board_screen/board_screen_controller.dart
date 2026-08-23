@@ -19,6 +19,7 @@ import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/audio/audio_output_controller.dart';
+import 'package:h3xboard/services/board_asset_resolver.dart';
 import 'package:h3xboard/services/drawing/arrow_line.dart';
 import 'package:h3xboard/services/drawing_serialization.dart';
 import 'package:h3xboard/services/fullscreen_service.dart';
@@ -144,6 +145,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       isLoading: () => viewModel.isLoading,
       laser: laser,
       audioToViewers: () => GetIt.I<AudioOutputController>().toViewers,
+      assets: AuthedBoardAssetResolver(GetIt.I<H3xBoardFileService>()),
     );
     _mirroringReactionDisposer = reaction(
       (_) => isBoardMirrored,
