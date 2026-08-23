@@ -38,6 +38,14 @@ class LiveBoardReceiver extends ChangeNotifier {
   /// everything else. null = the laser is put away.
   final ValueNotifier<LaserPointer?> laser = ValueNotifier<LaserPointer?>(null);
 
+  /// Whether the presenter has routed widget audio to viewers.
+  ///
+  /// Half of the permission a viewer needs to make a sound; the other half is
+  /// the viewer's own switch (see [ViewerBoardAudioPolicy]). A notifier rather
+  /// than plain state so the sound control can reflect it without the whole
+  /// board rebuilding.
+  final ValueNotifier<bool> audioToViewers = ValueNotifier<bool>(false);
+
   Board? _board;
   List<BoardWidget> _widgets = const [];
   String? _fullScreenWidgetId;
@@ -113,6 +121,8 @@ class LiveBoardReceiver extends ChangeNotifier {
         }
       case LiveShareLaser m:
         if (_acceptDelta(m.seq)) laser.value = m.pointer;
+      case LiveShareAudioOutput m:
+        if (_acceptDelta(m.seq)) audioToViewers.value = m.toViewers;
       case LiveShareFullScreen m:
         if (_acceptDelta(m.seq)) {
           _fullScreenWidgetId = m.widgetId;
@@ -140,6 +150,7 @@ class LiveBoardReceiver extends ChangeNotifier {
     final inProgressJson = m.inProgress;
     inProgress.value = inProgressJson == null ? null : _restoreStroke(inProgressJson);
     laser.value = m.laser;
+    audioToViewers.value = m.audioToViewers;
     notifyListeners();
   }
 
@@ -150,6 +161,10 @@ class LiveBoardReceiver extends ChangeNotifier {
     drawingController.clear();
     inProgress.value = null;
     laser.value = null;
+    // Withdraw the permission to play as well. A sound running on a classroom screen when the presenter stops
+    // sharing would otherwise keep going. Nothing would be left on screen to explain it, and nothing to stop it
+    // with: the widget that owned it is gone with the board.
+    audioToViewers.value = false;
     notifyListeners();
   }
 
@@ -193,6 +208,7 @@ class LiveBoardReceiver extends ChangeNotifier {
   void dispose() {
     inProgress.dispose();
     laser.dispose();
+    audioToViewers.dispose();
     drawingController.dispose();
     super.dispose();
   }

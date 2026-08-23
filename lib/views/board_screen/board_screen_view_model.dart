@@ -244,6 +244,38 @@ abstract class BoardScreenViewModelBase extends ScreenViewModelBase with Store {
     }
   }
 
+  /// Re-derives every widget caption from the current name of the file it points
+  /// at, given a `fileId → fileName` map. Returns whether anything changed.
+  ///
+  /// A caption is a snapshot taken when the file was picked, so renaming a file
+  /// leaves every widget already pointing at it showing the old name. This is
+  /// what closes that gap, on load.
+  ///
+  /// Deliberately **not** an edit: it takes no history entry and marks nothing
+  /// dirty. Opening a board must not make it look modified, and there is nothing
+  /// to persist — the next load re-derives it just the same. An ordinary edit
+  /// later saves the corrected caption along with everything else.
+  ///
+  /// Ids missing from [fileNamesById] are left alone. A file the server didn't
+  /// resolve is gone rather than renamed. Blanking the caption would lose the
+  /// only clue about what the widget used to point at.
+  @action
+  bool refreshWidgetCaptions(Map<String, String> fileNamesById) {
+    var changed = false;
+    for (var i = 0; i < _boardWidgets.length; i++) {
+      final bw = _boardWidgets[i];
+      final fileId = boardWidgetCaptionFileId(bw.config);
+      if (fileId == null) continue;
+      final fileName = fileNamesById[fileId];
+      if (fileName == null) continue;
+      final config = boardWidgetWithCaption(bw.config, fileName);
+      if (config == bw.config) continue;
+      _boardWidgets[i] = bw.copyWith(config: config);
+      changed = true;
+    }
+    return changed;
+  }
+
   @action
   void setFullscreen(bool value) {
     _isFullscreen = value;

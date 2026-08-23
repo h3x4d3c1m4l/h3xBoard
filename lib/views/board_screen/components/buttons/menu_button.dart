@@ -5,6 +5,7 @@ import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/file_manager/file_manager_dialog.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -59,6 +60,14 @@ class _MenuButtonState extends State<MenuButton> {
             onPressed: () {
               Navigator.of(context).pop();
               unawaited(widget.controller.onShowBoardSettings());
+            },
+          ),
+          MenuFlyoutItem(
+            leading: const Icon(LucideIcons.folderOpen),
+            text: Text(context.localizations.fileManager_title),
+            onPressed: () {
+              Navigator.of(context).pop();
+              unawaited(showFileManagerDialog(rootContext));
             },
           ),
           MenuFlyoutItem(

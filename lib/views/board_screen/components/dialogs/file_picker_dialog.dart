@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'dart:async';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
@@ -9,25 +9,10 @@ import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/file_summary.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_kind.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
+import 'package:h3xboard/views/components/dropped_upload.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-
-/// Virtual folders that file uploads are organised into. Decoupled from any single
-/// board so an image uploaded once can be reused across boards and widgets.
-const String backgroundsFolder = 'backgrounds';
-const String imagesFolder = 'images';
-
-/// What the native "open file" dialog offers. Every platform reads a different
-/// field of an [XTypeGroup] — extensions on Windows/Linux/macOS, MIME types on
-/// Android and the web, uniform type identifiers on iOS/macOS — so all three
-/// are filled in, and they have to agree with the extensions
-/// [imageContentTypeForName] recognises.
-const _imageTypeGroup = XTypeGroup(
-  label: 'Images',
-  extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'],
-  mimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'],
-  uniformTypeIdentifiers: ['public.image'],
-);
 
 /// The outcome of a [FilePickerDialog]. A `null` [fileId] means the user chose to
 /// clear/remove the current selection (only offered when `allowRemove` is set);
@@ -38,14 +23,18 @@ class FilePickerResult {
   /// The selected file's id, or `null` to clear the current selection.
   final String? fileId;
 
-  const FilePickerResult(this.fileId);
+  /// The chosen file's metadata, so a caller can name a widget after it without
+  /// a second round trip to look the name up from the id. Null when clearing.
+  final FileSummary? file;
+
+  const FilePickerResult(this.fileId, {this.file});
 
 }
 
-/// A reusable image file browser. Starts in [initialFolder] but lets the user
-/// navigate the whole virtual folder tree (so e.g. an image uploaded as a board
-/// background can be picked for an image widget and vice versa). Uploads land in
-/// the folder currently being browsed.
+/// A reusable file browser. Starts in [initialFolder] but lets the user navigate
+/// the whole virtual folder tree. An image uploaded as a board background can
+/// therefore be picked for an image widget, and vice versa. Uploads land in the
+/// folder currently being browsed.
 ///
 /// Browsing metadata goes over the WebSocket API; the bytes go over REST (see
 /// [H3xBoardFileService]).
@@ -57,6 +46,10 @@ class FilePickerDialog extends StatefulWidget {
   /// The folder shown first. The user can still navigate up to the root and into
   /// sibling folders from here.
   final String initialFolder;
+
+  /// What is being browsed for. Decides the type filter, the native open dialog,
+  /// how a file is rendered in the grid, and the empty/drop wording.
+  final FilePickerKind kind;
 
   /// The id of the currently selected file, highlighted in the grid.
   final String? currentFileId;
@@ -73,6 +66,7 @@ class FilePickerDialog extends StatefulWidget {
     required this.apiClient,
     required this.fileService,
     required this.initialFolder,
+    this.kind = FilePickerKind.images,
     required this.currentFileId,
     required this.title,
     this.allowRemove = false,
@@ -112,12 +106,12 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
     });
     try {
       final result = await widget.apiClient.browseFiles(path);
-      final images = result.files.where((f) => f.contentType.startsWith('image/')).toList();
+      final matching = result.files.where((f) => f.contentType.startsWith(widget.kind.contentTypePrefix)).toList();
       final folders = [...result.folders]..sort();
       if (!mounted) return;
       setState(() {
         _folders = folders;
-        _files = images;
+        _files = matching;
       });
     } catch (_) {
       if (!mounted) return;
@@ -128,7 +122,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
   void _openFolder(String name) => _loadFolder(_path.isEmpty ? name : '$_path/$name');
 
   Future<void> _uploadNew() async {
-    final file = await openFile(acceptedTypeGroups: const [_imageTypeGroup]);
+    final file = await openFile(acceptedTypeGroups: [widget.kind.typeGroup]);
     if (file == null) return;
 
     setState(() {
@@ -139,16 +133,21 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
       final summary = await widget.fileService.upload(
         bytes: await file.readAsBytes(),
         fileName: file.name,
-        contentType: imageContentTypeForName(file.name) ?? 'application/octet-stream',
+        contentType: widget.kind.contentTypeForName(file.name) ?? 'application/octet-stream',
         path: _path,
       );
       if (!mounted) return;
-      Navigator.of(context).pop(FilePickerResult(summary.id));
+      Navigator.of(context).pop(FilePickerResult(summary.id, file: summary));
     } on H3xBoardApiException catch (e) {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _errorMessage = e.message;
+        _errorMessage = uploadErrorText(
+          context.localizations,
+          tooLarge: e.isPayloadTooLarge,
+          quotaExceeded: e.isQuotaExceeded,
+          serverMessage: e.message,
+        );
       });
     } catch (_) {
       if (!mounted) return;
@@ -159,7 +158,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
     }
   }
 
-  void _select(String fileId) => Navigator.of(context).pop(FilePickerResult(fileId));
+  void _select(FileSummary file) => Navigator.of(context).pop(FilePickerResult(file.id, file: file));
 
   // Files dragged in from the desktop land in the folder currently being browsed
   // — the same destination the "Upload here…" button uses.
@@ -171,7 +170,8 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
       _errorMessage = null;
     });
 
-    final result = await uploadDroppedImages(
+    final result = await uploadDroppedFiles(
+      contentTypeFor: widget.kind.droppedContentTypeFor,
       fileService: widget.fileService,
       files: details.files,
       path: _path,
@@ -182,7 +182,8 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
     // dialog closes. Several at once stay in the grid so the user can see them
     // all and choose, since only one can be returned.
     if (result.uploaded.length == 1 && !result.hasProblems) {
-      Navigator.of(context).pop(FilePickerResult(result.uploaded.single.id));
+      final uploaded = result.uploaded.single;
+      Navigator.of(context).pop(FilePickerResult(uploaded.id, file: uploaded));
       return;
     }
 
@@ -199,7 +200,14 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
 
   String? _dropErrorMessage(DroppedUploadResult result) {
     final loc = context.localizations;
-    if (result.failed > 0) return result.serverMessage ?? loc.filePicker_uploadError;
+    if (result.failed > 0) {
+      return uploadErrorText(
+        loc,
+        tooLarge: result.tooLarge,
+        quotaExceeded: result.quotaExceeded,
+        serverMessage: result.serverMessage,
+      );
+    }
     if (result.skipped > 0) return loc.filePicker_dropSkipped;
     return null;
   }
@@ -230,7 +238,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                   child: Stack(
                     children: [
                       Positioned.fill(child: _buildBody(loc)),
-                      if (_dragging) Positioned.fill(child: _DropHint(message: loc.filePicker_dropHere)),
+                      if (_dragging) Positioned.fill(child: _DropHint(message: widget.kind.dropHint(loc))),
                     ],
                   ),
                 ),
@@ -317,12 +325,12 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
           ),
         Expanded(
           child: (folders.isEmpty && files.isEmpty)
-              ? _CenteredMessage(icon: LucideIcons.imageOff, message: loc.filePicker_empty)
+              ? _CenteredMessage(icon: widget.kind.emptyIcon, message: widget.kind.emptyMessage(loc))
               : GridView.builder(
                   padding: const EdgeInsets.only(right: 4),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 160,
-                    childAspectRatio: 16 / 9,
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: widget.kind.maxTileExtent,
+                    childAspectRatio: widget.kind.tileAspectRatio,
                     crossAxisSpacing: 8,
                     mainAxisSpacing: 8,
                   ),
@@ -336,11 +344,11 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                       );
                     }
                     final file = files[index - folders.length];
-                    return _ImageThumb(
+                    return widget.kind.buildTile(
                       file: file,
                       fileService: widget.fileService,
                       isSelected: file.id == widget.currentFileId,
-                      onPressed: _busy ? null : () => _select(file.id),
+                      onPressed: _busy ? null : () => _select(file),
                     );
                   },
                 ),
@@ -372,7 +380,9 @@ class _FolderTile extends StatelessWidget {
             color: theme.resources.cardBackgroundFillColorDefault,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: states.isHovered ? theme.accentColor.withValues(alpha: 0.5) : theme.resources.controlStrokeColorDefault,
+              color: states.isHovered
+                  ? theme.accentColor.withValues(alpha: 0.5)
+                  : theme.resources.controlStrokeColorDefault,
               width: 1,
             ),
           ),
@@ -393,79 +403,6 @@ class _FolderTile extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-}
-
-/// One image tile in the picker grid.
-class _ImageThumb extends StatelessWidget {
-
-  final FileSummary file;
-  final H3xBoardFileService fileService;
-  final bool isSelected;
-  final VoidCallback? onPressed;
-
-  const _ImageThumb({
-    required this.file,
-    required this.fileService,
-    required this.isSelected,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    return HoverButton(
-      onPressed: onPressed,
-      builder: (context, states) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected
-                  ? theme.accentColor
-                  : (states.isHovered ? theme.accentColor.withValues(alpha: 0.5) : theme.resources.controlStrokeColorDefault),
-              width: isSelected ? 3 : 1,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: FutureBuilder<Uint8List>(
-            future: fileService.downloadCached(file.id),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) return const _ThumbError();
-              final bytes = snapshot.data;
-              if (bytes == null) {
-                return const Center(child: SizedBox(width: 18, height: 18, child: ProgressRing(strokeWidth: 2)));
-              }
-              return Image.memory(
-                bytes,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                // A corrupt/unsupported file must not leak a raw decode error
-                // into the grid; show the same placeholder as a failed fetch.
-                errorBuilder: (context, error, stackTrace) => const _ThumbError(),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-}
-
-/// Placeholder shown in a grid tile when its image can't be fetched or decoded.
-class _ThumbError extends StatelessWidget {
-
-  const _ThumbError();
-
-  @override
-  Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: Color(0x11000000),
-      child: Center(child: Icon(LucideIcons.imageOff, size: 20)),
     );
   }
 
@@ -529,115 +466,4 @@ class _CenteredMessage extends StatelessWidget {
     );
   }
 
-}
-
-/// The outcome of [uploadDroppedImages]. Callers render their own error UI, so
-/// the failures are reported as counts plus the server's message (when it gave
-/// one, e.g. "file too large") rather than as pre-formatted text.
-class DroppedUploadResult {
-
-  /// Metadata of the files that made it to the server, in drop order.
-  final List<FileSummary> uploaded;
-
-  /// Dropped entries that were never attempted: folders and non-image files.
-  final int skipped;
-
-  /// Uploads that were attempted but threw.
-  final int failed;
-
-  /// The first server-provided error message, or `null` when the failures (if
-  /// any) were not server-reported.
-  final String? serverMessage;
-
-  const DroppedUploadResult({
-    required this.uploaded,
-    required this.skipped,
-    required this.failed,
-    required this.serverMessage,
-  });
-
-  bool get hasProblems => skipped > 0 || failed > 0;
-
-}
-
-/// Uploads every image among [files] into the virtual folder [path], skipping
-/// folders and non-image files. Shared by the drop targets on [FilePickerDialog]
-/// and on the board, so both agree on what counts as an image and how the
-/// content type is derived.
-///
-/// Uploads run sequentially: dropping a dozen photos should not open a dozen
-/// concurrent multipart requests. One file failing does not abort the rest.
-Future<DroppedUploadResult> uploadDroppedImages({
-  required H3xBoardFileService fileService,
-  required List<DropItem> files,
-  required String path,
-}) async {
-  final uploaded = <FileSummary>[];
-  var skipped = 0;
-  var failed = 0;
-  String? serverMessage;
-
-  for (final file in files) {
-    // A dropped folder arrives as a DropItemDirectory; there is nothing to upload.
-    if (file is DropItemDirectory) {
-      skipped++;
-      continue;
-    }
-    final contentType = _imageContentTypeFor(file);
-    if (contentType == null) {
-      skipped++;
-      continue;
-    }
-    try {
-      final bytes = await file.readAsBytes();
-      uploaded.add(await fileService.upload(
-        bytes: bytes,
-        fileName: file.name,
-        contentType: contentType,
-        path: path,
-      ));
-    } on H3xBoardApiException catch (e) {
-      // Surfaces the server's own wording, e.g. the maxUploadBytes limit.
-      failed++;
-      serverMessage ??= e.message;
-    } catch (_) {
-      failed++;
-    }
-  }
-
-  return DroppedUploadResult(
-    uploaded: uploaded,
-    skipped: skipped,
-    failed: failed,
-    serverMessage: serverMessage,
-  );
-}
-
-/// The image MIME type to upload [file] as, or `null` when it is not an image.
-/// The browser fills in the dropped file's MIME type, so trust that first and
-/// fall back to the extension for the platforms (and edge cases) that don't.
-String? _imageContentTypeFor(DropItem file) {
-  final mimeType = file.mimeType;
-  if (mimeType != null && mimeType.startsWith('image/')) return mimeType;
-
-  return imageContentTypeForName(file.name);
-}
-
-/// Maps a file name to an image MIME type for the upload's content type, or
-/// `null` when the extension is not one we recognise as an image. Neither the
-/// native open dialog nor a desktop drop reliably surfaces a MIME type, so the
-/// extension is what both paths fall back to.
-String? imageContentTypeForName(String name) {
-  final dot = name.lastIndexOf('.');
-  if (dot < 0) return null;
-
-  return switch (name.substring(dot + 1).toLowerCase()) {
-    'png' => 'image/png',
-    'jpg' || 'jpeg' => 'image/jpeg',
-    'gif' => 'image/gif',
-    'webp' => 'image/webp',
-    'bmp' => 'image/bmp',
-    'svg' => 'image/svg+xml',
-    _ => null,
-  };
 }

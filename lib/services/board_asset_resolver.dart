@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:h3xboard/services/audio/audio_stream_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 
 /// Resolves the bytes of uploaded files a board references (image widgets,
 /// background images) by file id.
@@ -19,6 +20,17 @@ abstract class BoardAssetResolver {
   /// across rebuilds and safe to hand straight to a [FutureBuilder].
   Future<Uint8List> load(String fileId);
 
+  /// Opens [fileId] as a progressive byte stream, or returns null when this
+  /// resolver has no way to produce one.
+  ///
+  /// Only the audio player uses this, and only to start a long track before it
+  /// has fully arrived. Null is a perfectly ordinary answer: the
+  /// external-display store is handed whole files over the plugin bus and has
+  /// nothing to stream from. Every caller must therefore be able to fall back
+  /// to [load]. Deliberately **not** memoized: unlike [load] this is consumed
+  /// once, and holding a spent stream would hand the second caller a dead one.
+  Future<Stream<List<int>>>? openStream(String fileId) => null;
+
 }
 
 /// Resolves assets through the authenticated [H3xBoardFileService] — the
@@ -31,6 +43,9 @@ class AuthedBoardAssetResolver implements BoardAssetResolver {
 
   @override
   Future<Uint8List> load(String fileId) => _files.downloadCached(fileId);
+
+  @override
+  Future<Stream<List<int>>>? openStream(String fileId) => _files.openDownloadStream(fileId);
 
 }
 
@@ -85,6 +100,13 @@ class CachedBoardAssetStore implements BoardAssetResolver {
     }
   }
 
+  /// Always null: this store is *given* whole files over the plugin bus and has
+  /// no transport of its own to read progressively from. The external display
+  /// never plays audio anyway — it shares the host's output device — so nothing
+  /// asks. A caller that did ask would fall back to [load].
+  @override
+  Future<Stream<List<int>>>? openStream(String fileId) => null;
+
   /// Rejects loads waiting on [fileId] (the main isolate failed to fetch it)
   /// and forgets the entry so a later [put] can retry.
   void fail(String fileId) {
@@ -106,13 +128,34 @@ class ViewCodeBoardAssetResolver implements BoardAssetResolver {
   final String serverUrl;
   final String code;
 
-  final http.Client _client = http.Client();
+  final Client _client = Client();
   final Map<String, Future<Uint8List>> _cache = {};
+
+  // Separate from [_client] because only this one is guaranteed to read the
+  // body progressively — see createAudioStreamClient.
+  final Client _streamClient = createAudioStreamClient(Client());
 
   ViewCodeBoardAssetResolver({required this.serverUrl, required this.code});
 
   @override
   Future<Uint8List> load(String fileId) => _cache.putIfAbsent(fileId, () => _download(fileId));
+
+  @override
+  Future<Stream<List<int>>>? openStream(String fileId) async {
+    final request = Request('GET', Uri.parse('$serverUrl/api/v1/view/$code/files/$fileId'));
+    final response = await _streamClient.send(request);
+    if (response.statusCode != 200) {
+      // Nothing is going to read this body. An undrained response holds its
+      // fetch reader on web, or its socket on io, until the client is closed.
+      try {
+        await response.stream.drain<void>();
+      } on Object {
+        // The connection died on its own; either way the body is gone.
+      }
+      throw StateError('Asset $fileId stream failed (HTTP ${response.statusCode})');
+    }
+    return response.stream;
+  }
 
   Future<Uint8List> _download(String fileId) async {
     try {
@@ -129,6 +172,9 @@ class ViewCodeBoardAssetResolver implements BoardAssetResolver {
     }
   }
 
-  void dispose() => _client.close();
+  void dispose() {
+    _client.close();
+    _streamClient.close();
+  }
 
 }

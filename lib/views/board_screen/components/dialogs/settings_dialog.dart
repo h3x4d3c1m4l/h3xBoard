@@ -11,10 +11,10 @@ import 'package:h3xboard/models/app_settings_enums.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/theme/app_theme.dart';
-import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/components/continuous_combo_box.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/dialog_scroll_area.dart';
+import 'package:h3xboard/views/components/dialogs/themable_panel_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mobx/mobx.dart';
 

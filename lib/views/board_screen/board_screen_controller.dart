@@ -18,6 +18,7 @@ import 'package:h3xboard/models/drawing_tools.dart';
 import 'package:h3xboard/models/laser_pointer.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
+import 'package:h3xboard/services/audio/audio_output_controller.dart';
 import 'package:h3xboard/services/drawing/arrow_line.dart';
 import 'package:h3xboard/services/drawing_serialization.dart';
 import 'package:h3xboard/services/fullscreen_service.dart';
@@ -29,15 +30,18 @@ import 'package:h3xboard/services/live_share/live_share_hub.dart';
 import 'package:h3xboard/views/base/screen_controller_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/board_settings_dialog.dart';
-import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_kind.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/widget_catalog_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/audio_player_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/image_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/sound_pad_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/text_box_widget.dart';
 import 'package:h3xboard/views/board_screen/history/history_entry.dart';
 import 'package:h3xboard/views/board_screen/history/history_manager.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
+import 'package:h3xboard/views/components/dropped_upload.dart';
 import 'package:mobx/mobx.dart';
 
 // Matches 'Board N' titles to pick the next auto-number.
@@ -139,6 +143,7 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       fullScreenWidgetId: () => viewModel.fullScreenWidgetId,
       isLoading: () => viewModel.isLoading,
       laser: laser,
+      audioToViewers: () => GetIt.I<AudioOutputController>().toViewers,
     );
     _mirroringReactionDisposer = reaction(
       (_) => isBoardMirrored,
@@ -228,6 +233,31 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     final saved = viewModel.restoreSubBoardDrawing(viewModel.activeSubBoardId);
     if (saved.isNotEmpty) {
       drawingController.addContents(restoreDrawingContents(saved));
+    }
+    unawaited(_refreshWidgetCaptions());
+  }
+
+  /// Brings every widget caption back in line with the name its file has *now*.
+  ///
+  /// Captions are stored in the board, so a file renamed since the last edit
+  /// leaves them stale — see [BoardScreenViewModel.refreshWidgetCaptions].
+  ///
+  /// Deliberately not awaited by the load: the board paints with whatever it has
+  /// stored, and the corrected captions arrive a round trip later. Best-effort
+  /// too — a failure here leaves the stored captions in place, which is the same
+  /// thing that happens offline, and is never worth a dialog over.
+  Future<void> _refreshWidgetCaptions() async {
+    final fileIds = viewModel.boardWidgets
+        .map((bw) => boardWidgetCaptionFileId(bw.config))
+        .nonNulls
+        .toSet()
+        .toList();
+    if (fileIds.isEmpty) return;
+    try {
+      final files = await _wsClient.getFiles(fileIds);
+      viewModel.refreshWidgetCaptions({for (final f in files) f.id: f.fileName});
+    } on Object catch (error, stackTrace) {
+      debugPrint('Refreshing widget captions failed: $error\n$stackTrace');
     }
   }
 
@@ -741,20 +771,35 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
     return '${base}_$suffix';
   }
 
-  /// Handles image files dragged onto the board from the desktop. They are
-  /// uploaded to the shared [imagesFolder] — dropping is a shortcut, so it never
-  /// asks where to put them.
+  /// Handles files dragged onto the board from the desktop.
   ///
-  /// Dropping onto an existing image widget ([onto]) replaces its picture;
-  /// dropping anywhere else creates one new image widget per file at
+  /// Pictures become image widgets and sounds become sound pads, each uploaded
+  /// to the folder that matches. Dropping is a shortcut, so it never asks where
+  /// to put them. Dropping a handful of clips at once is the fastest way to
+  /// build a soundboard, which is most of why this dispatches by type at all.
+  ///
+  /// Dropping onto an existing widget ([onto]) replaces what it points at, but
+  /// only with a file of the kind that widget takes. Dropping an MP3 on a photo
+  /// frame is a mistake, not an instruction, so the file is skipped rather than
+  /// guessed at. Dropping anywhere else creates one widget per file at
   /// [canvasPosition], fanned out so they don't land exactly on top of each other.
-  Future<void> onImagesDropped(
+  Future<void> onFilesDropped(
     List<DropItem> files,
     Offset canvasPosition, {
     BoardWidget? onto,
   }) async {
     if (files.isEmpty) return;
     final context = contextAccessor.buildContext;
+
+    // Replacing one widget's content with several files is meaningless, so only
+    // the first of a multi-file drop is used in that case.
+    final dropped = onto == null ? files : files.take(1).toList();
+    final ontoConfig = onto?.config;
+    final kinds = switch (ontoConfig) {
+      ImageConfig() => const [FilePickerKind.images],
+      SoundPadConfig() || AudioPlayerConfig() => const [FilePickerKind.sounds],
+      _ => const [FilePickerKind.images, FilePickerKind.sounds],
+    };
 
     BuildContext? dialogContext;
     unawaited(showAppDialog<void>(
@@ -766,24 +811,22 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       },
     ));
 
-    final DroppedUploadResult result;
+    var result = const DroppedUploadResult(uploaded: [], skipped: 0, failed: 0, serverMessage: null);
     try {
-      result = await uploadDroppedImages(
-        fileService: _fileService,
-        // Replacing one widget's picture with several images is meaningless, so
-        // only the first of a multi-file drop is used in that case.
-        files: onto == null ? files : files.take(1).toList(),
-        path: imagesFolder,
-      );
-      // Each upload becomes an ImageConfig carrying the image's own frame, so a
-      // dropped photo keeps its aspect ratio exactly like a picked one.
-      final configs = <ImageConfig>[];
-      for (final file in result.uploaded) {
-        configs.add(await ImageWidgetDescriptor.configForFile(
-          _fileService,
-          file.id,
-          base: onto?.config is ImageConfig ? onto!.config as ImageConfig : const ImageConfig(),
-        ));
+      final configs = <BoardWidgetConfig>[];
+      // One pass per accepted kind, each keeping only the files it recognises,
+      // so a mixed drop of photos and clips sorts itself into the right folders.
+      for (final kind in kinds) {
+        final uploaded = await uploadDroppedFiles(
+          contentTypeFor: kind.droppedContentTypeFor,
+          fileService: _fileService,
+          files: dropped,
+          path: kind.defaultFolder,
+        );
+        result = mergeDropResults(result, uploaded);
+        for (final file in uploaded.uploaded) {
+          configs.add(await _configForDroppedFile(kind, file.id, file.fileName, onto: ontoConfig));
+        }
       }
 
       if (onto != null) {
@@ -800,14 +843,57 @@ class BoardScreenController extends ScreenControllerBase<BoardScreenViewModel> {
       }
     }
 
+    result = reconcileDropSkips(result, kindCount: kinds.length);
     if (result.hasProblems) await _showDropProblem(result);
+  }
+
+  /// The config a dropped file becomes.
+  ///
+  /// It carries whatever that widget type needs resolved up front: an image's
+  /// intrinsic frame, a sound's length and name. So a dropped file arrives
+  /// exactly as a picked one would.
+  Future<BoardWidgetConfig> _configForDroppedFile(
+    FilePickerKind kind,
+    String fileId,
+    String fileName, {
+    BoardWidgetConfig? onto,
+  }) async {
+    if (kind == FilePickerKind.images) {
+      return ImageWidgetDescriptor.configForFile(
+        _fileService,
+        fileId,
+        base: onto is ImageConfig ? onto : const ImageConfig(),
+      );
+    }
+    if (onto is AudioPlayerConfig) {
+      return AudioPlayerWidgetDescriptor.configForFile(
+        _fileService,
+        fileId,
+        base: onto,
+        fileName: fileName,
+        // The same mapping the upload used a moment ago, so a dropped track
+        // records the type it was actually stored as.
+        contentType: kind.contentTypeForName(fileName),
+      );
+    }
+    return SoundPadWidgetDescriptor.configForFile(
+      _fileService,
+      fileId,
+      base: onto is SoundPadConfig ? onto : const SoundPadConfig(),
+      fileName: fileName,
+    );
   }
 
   Future<void> _showDropProblem(DroppedUploadResult result) async {
     final context = contextAccessor.buildContext;
     if (!context.mounted) return;
     final message = result.failed > 0
-        ? (result.serverMessage ?? localizations.board_dropError)
+        ? uploadErrorText(
+            localizations,
+            tooLarge: result.tooLarge,
+            quotaExceeded: result.quotaExceeded,
+            serverMessage: result.serverMessage ?? localizations.board_dropError,
+          )
         : localizations.filePicker_dropSkipped;
     await showAppDialog<void>(
       context: context,

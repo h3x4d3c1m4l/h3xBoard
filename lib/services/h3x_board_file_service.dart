@@ -4,10 +4,12 @@ import 'dart:typed_data';
 import 'package:chopper/chopper.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/file_summary.dart';
+import 'package:h3xboard/services/audio/audio_stream_client.dart';
 import 'package:h3xboard/services/cookies/cookie_store.dart';
 import 'package:h3xboard/services/credentialed_http_client_web.dart'
     if (dart.library.io) 'package:h3xboard/services/credentialed_http_client_io.dart';
 import 'package:http/http.dart' show Client, MultipartFile;
+import 'package:http/http.dart' as http show Request;
 import 'package:http_parser/http_parser.dart';
 
 part 'h3x_board_file_service.chopper.dart';
@@ -65,15 +67,25 @@ class H3xBoardFileService {
   final Client _httpClient;
   _H3xBoardFileChopperService _service;
 
+  // Chopper captures the base URL but does not expose it, and a streamed
+  // download is a raw request rather than a call through the generated service.
+  // The URL is therefore kept here too, updated alongside the chopper client.
+  String _baseUrl;
+
+  // Streams the response body progressively where the platform allows it. On
+  // non-web this is [_httpClient] itself; on web it is a Fetch-based client,
+  // because BrowserClient cannot read a body incrementally.
+  late final Client _streamClient = createAudioStreamClient(_httpClient);
+
   // File bytes are immutable for a given id (every upload mints a fresh UUID),
   // so an in-flight/completed download can be reused across rebuilds.
   final Map<String, Future<Uint8List>> _downloadCache = {};
 
-  H3xBoardFileService._(this._service, this._httpClient);
+  H3xBoardFileService._(this._service, this._httpClient, this._baseUrl);
 
   static H3xBoardFileService create(String baseUrl, CookieStore cookieStore) {
     final httpClient = createCredentialedHttpClient(cookieStore);
-    return H3xBoardFileService._(_buildService(baseUrl, httpClient), httpClient);
+    return H3xBoardFileService._(_buildService(baseUrl, httpClient), httpClient, baseUrl);
   }
 
   static _H3xBoardFileChopperService _buildService(String baseUrl, Client httpClient) {
@@ -90,6 +102,7 @@ class H3xBoardFileService {
   /// the download cache since cached ids belong to the previous server.
   void updateBaseUrl(String baseUrl) {
     _service = _buildService(baseUrl, _httpClient);
+    _baseUrl = baseUrl;
     _downloadCache.clear();
   }
 
@@ -138,6 +151,33 @@ class H3xBoardFileService {
       _downloadCache.removeWhere((key, _) => key == id);
       rethrow;
     }
+  }
+
+  /// Opens the file with [id] as a progressive byte stream, for a player that
+  /// wants to start a long track before the whole of it has arrived.
+  ///
+  /// Deliberately not cached and not routed through [downloadCached]: a stream is
+  /// consumed once, and the point is to *avoid* materialising the whole file. A
+  /// caller that wants the bytes kept should use [downloadCached] instead.
+  ///
+  /// Bypasses the generated chopper service because that one buffers the body to
+  /// decode it; this issues the same request directly.
+  Future<Stream<List<int>>> openDownloadStream(String id) async {
+    // http.Request, not chopper's — chopper exports a Request of its own and it
+    // wins the name in this file.
+    final request = http.Request('GET', Uri.parse('$_baseUrl/api/v1/files/$id'));
+    final response = await _streamClient.send(request);
+    if (response.statusCode != 200) {
+      // Nothing is going to read this body. An undrained response holds its
+      // fetch reader on web, or its socket on io, until the client is closed.
+      try {
+        await response.stream.drain<void>();
+      } on Object {
+        // The connection died on its own; either way the body is gone.
+      }
+      throw H3xBoardApiException(code: response.statusCode, message: 'Download failed (${response.statusCode})');
+    }
+    return response.stream;
   }
 
   /// Uploads [bytes] as the screenshot for [boardId], replacing any existing one.

@@ -13,6 +13,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 /// )
 /// ```
 class ScrollShadow extends StatefulWidget {
+
   /// The scrollable widget to shadow. Its primary [ScrollController] (or the one
   /// on its [Scrollable]) drives the shadow visibility.
   final Widget child;
@@ -28,9 +29,11 @@ class ScrollShadow extends StatefulWidget {
 
   @override
   State<ScrollShadow> createState() => _ScrollShadowState();
+
 }
 
 class _ScrollShadowState extends State<ScrollShadow> {
+
   // 0..1 opacity for each edge shadow, derived from how far the nearest content
   // is scrolled past that edge (clamped to [size] so it fades in over the first
   // [size] pixels of overscrollable content, then holds full strength).
@@ -83,4 +86,5 @@ class _ScrollShadowState extends State<ScrollShadow> {
       ),
     );
   }
+
 }

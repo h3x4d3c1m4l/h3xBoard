@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/analog_clock_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/audio_player_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/clock_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/dice_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/emoji_widget.dart';
@@ -12,6 +13,7 @@ import 'package:h3xboard/views/board_screen/components/widgets/number_dice_widge
 import 'package:h3xboard/views/board_screen/components/widgets/piano_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/qr_code_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/ruler_widget.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/sound_pad_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/stopwatch_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/text_box_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/timer_widget.dart';
@@ -95,6 +97,8 @@ const Map<Type, BoardWidgetDescriptor> _registry = {
   ImageConfig: ImageWidgetDescriptor.instance,
   QrCodeConfig: QrCodeWidgetDescriptor.instance,
   EmojiConfig: EmojiWidgetDescriptor.instance,
+  SoundPadConfig: SoundPadWidgetDescriptor.instance,
+  AudioPlayerConfig: AudioPlayerWidgetDescriptor.instance,
   DiceConfig: DiceWidgetDescriptor.instance,
   NumberDiceConfig: NumberDiceWidgetDescriptor.instance,
   // Mirror-only: descriptorFor() is a hard lookup, so the stand-in the live-share

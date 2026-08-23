@@ -74,6 +74,46 @@ void main() {
       expect(snapshot.fullScreenWidgetId, 'w2');
     });
 
+    test('audioOutput survives a wire round-trip, in both directions', () {
+      for (final toViewers in [true, false]) {
+        final message = LiveShareMessage.audioOutput(seq: 3, toViewers: toViewers);
+
+        final decoded = LiveShareMessage.fromJson(jsonDecode(jsonEncode(message.toJson())) as Map<String, dynamic>);
+
+        expect(
+          decoded,
+          isA<LiveShareAudioOutput>()
+              .having((m) => m.toViewers, 'toViewers', toViewers)
+              .having((m) => m.seq, 'seq', 3),
+        );
+      }
+    });
+
+    test('a snapshot carries the audio routing, so a screen joining mid-session is not silent', () {
+      final message = LiveShareMessage.snapshot(
+        board: _board(),
+        widgets: const [],
+        strokes: const [],
+        audioToViewers: true,
+      );
+
+      final decoded = LiveShareMessage.fromJson(jsonDecode(jsonEncode(message.toJson())) as Map<String, dynamic>);
+
+      expect((decoded as LiveShareSnapshot).audioToViewers, isTrue);
+    });
+
+    test('a snapshot from a build that predates audio routing decodes as "not routed"', () {
+      // The field is additive, so an older presenter simply omits it. Defaulting
+      // to false is the safe read: a viewer that guessed true would play a
+      // lesson out of every laptop watching it.
+      final json = jsonDecode(
+        jsonEncode(LiveShareMessage.snapshot(board: _board(), widgets: const [], strokes: const []).toJson()),
+      ) as Map<String, dynamic>
+        ..remove('audioToViewers');
+
+      expect((LiveShareMessage.fromJson(json) as LiveShareSnapshot).audioToViewers, isFalse);
+    });
+
     test('fullScreen survives a wire round-trip, both entering and leaving', () {
       LiveShareMessage roundTrip(LiveShareMessage message) =>
           LiveShareMessage.fromJson(jsonDecode(jsonEncode(message.toJson())) as Map<String, dynamic>);
@@ -103,6 +143,7 @@ void main() {
       expect(typeOf(const LiveShareMessage.fullScreen()), 'fullScreen');
       expect(typeOf(const LiveShareMessage.ping()), 'ping');
       expect(typeOf(const LiveShareMessage.resyncRequest()), 'resyncRequest');
+      expect(typeOf(const LiveShareMessage.audioOutput(toViewers: true)), 'audioOutput');
     });
 
     test('laser survives a wire round-trip', () {

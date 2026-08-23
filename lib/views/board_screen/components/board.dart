@@ -20,6 +20,7 @@ import 'package:h3xboard/views/board_screen/components/backgrounds/board_backgro
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/full_screen_widget_view.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/hidden_widget_twin.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_header_bar.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/widget_selection_overlay.dart';
@@ -31,6 +32,7 @@ import 'package:h3xboard/views/components/laser_pointer_overlay.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class Board extends StatefulWidget {
+
   final DrawingController drawingController;
   final BoardScreenViewModel viewModel;
 
@@ -54,7 +56,7 @@ class Board extends StatefulWidget {
   /// Image files dragged onto the board from the desktop. [onto] is the image
   /// widget under the drop point, when there is one — its picture is replaced
   /// instead of a new widget being created.
-  final void Function(List<DropItem> files, Offset canvasPosition, {BoardWidget? onto}) onImagesDropped;
+  final void Function(List<DropItem> files, Offset canvasPosition, {BoardWidget? onto}) onFilesDropped;
 
   /// The presenter's laser dot. Read directly by the overlay painter, so
   /// pointing repaints one layer instead of rebuilding the board.
@@ -84,7 +86,7 @@ class Board extends StatefulWidget {
     required this.onMoveWidgetUp,
     required this.onMoveWidgetDown,
     required this.onMoveWidgetToBottom,
-    required this.onImagesDropped,
+    required this.onFilesDropped,
     required this.laser,
     required this.onLaserMoved,
     required this.onLaserArmedChanged,
@@ -92,9 +94,11 @@ class Board extends StatefulWidget {
 
   @override
   State<Board> createState() => _BoardState();
+
 }
 
 class _BoardState extends State<Board> {
+
   Offset? _pointerPosition;
   double? _eraseStrokeWidth;
 
@@ -340,11 +344,11 @@ class _BoardState extends State<Board> {
   // widget being arranged is dimmed and paused, unless it is one that stays
   // usable with its handles out — a text label being typed into in place.
   Widget _buildWidgetBody(BoardWidget bw) {
-    final content = _buildWidgetContent(bw);
     // Kept laid out but unpainted while the full-screen route flies this widget
-    // up off the board: dropping it from the Stack instead would tear its body
-    // down mid-flight (a dice roll, a decoded image) and start it over on return.
-    if (bw.id == _flownWidgetId) return IgnorePointer(child: Opacity(opacity: 0, child: content));
+    // up off the board, and inert while it is — see [HiddenWidgetTwin]. Wrapped
+    // unconditionally so entering and leaving the flight doesn't reparent the
+    // body it exists to preserve.
+    final content = HiddenWidgetTwin(isTwin: bw.id == _flownWidgetId, child: _buildWidgetContent(bw));
     if (bw.id != widget.viewModel.arrangingWidgetId) return content;
     if (!descriptorFor(bw.config).isInertWhileArranging) return content;
     return IgnorePointer(child: Opacity(opacity: 0.6, child: content));
@@ -691,7 +695,7 @@ class _BoardState extends State<Board> {
       _dragging = false;
       _dropTargetWidget = null;
     });
-    widget.onImagesDropped(details.files, position, onto: onto);
+    widget.onFilesDropped(details.files, position, onto: onto);
   }
 
   // Opens the widget context menu (settings, layers, visibility, delete) for the
@@ -1139,6 +1143,7 @@ class _BoardState extends State<Board> {
     if (kIsWeb) BrowserContextMenu.enableContextMenu();
     super.dispose();
   }
+
 }
 
 /// The contents of the full-screen route: the named widget, kept live against

@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
+import 'package:h3xboard/services/audio/board_audio_engine.dart';
 import 'package:h3xboard/services/board_asset_resolver.dart';
 import 'package:h3xboard/services/live_share/live_view_client.dart';
 import 'package:h3xboard/services/server_controller.dart';
@@ -23,6 +24,18 @@ class ViewerScreenController extends ScreenControllerBase<ViewerScreenViewModel>
   /// Whether the board on screen holds widgets this build can't draw. A
   /// listenable rather than view-model state, alongside the client's own.
   final ValueNotifier<bool> hasUnsupportedWidgets = ValueNotifier(false);
+
+  /// Whether this screen has been made the one that plays the board's sound.
+  ///
+  /// Off until someone says otherwise. That is the polite default: a lesson
+  /// should not start playing out of thirty laptops. It is also the workable
+  /// one. Browsers refuse to start audio until the page has seen a user
+  /// gesture, so the tap that switches this on is also what unlocks it.
+  final ValueNotifier<bool> isSoundEnabled = ValueNotifier(false);
+
+  /// Whether the presenter is currently routing sound to viewers at all, so the
+  /// control can say whether switching it on would do anything.
+  final ValueNotifier<bool> isPresenterRoutingAudio = ValueNotifier(false);
 
   ViewerScreenController({
     required String? initialCode,
@@ -66,11 +79,26 @@ class ViewerScreenController extends ScreenControllerBase<ViewerScreenViewModel>
   /// The mirror started or stopped holding widgets this build can't draw.
   void onUnsupportedContentChanged(bool value) => hasUnsupportedWidgets.value = value;
 
+  void onAudioRoutingChanged(bool value) => isPresenterRoutingAudio.value = value;
+
+  /// Arms or disarms this screen as the board's speaker.
+  ///
+  /// Starting the audio engine on the way in is what spends the user gesture
+  /// while the browser still counts it. Waiting until the first sound arrives
+  /// would put initialization on a timer callback. That is exactly the context
+  /// autoplay policy refuses.
+  void onSoundEnabledChanged(bool value) {
+    isSoundEnabled.value = value;
+    if (value) unawaited(BoardAudioEngine.instance.ensureInitialized());
+  }
+
   @override
   void dispose() {
     client?.dispose();
     assetResolver?.dispose();
     hasUnsupportedWidgets.dispose();
+    isSoundEnabled.dispose();
+    isPresenterRoutingAudio.dispose();
     super.dispose();
   }
 

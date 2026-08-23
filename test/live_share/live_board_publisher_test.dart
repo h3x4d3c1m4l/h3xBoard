@@ -53,6 +53,7 @@ void main() {
   late Observable<String?> fullScreenWidgetId;
   late Observable<bool> isLoading;
   late ValueNotifier<LaserPointer?> laser;
+  late ValueNotifier<bool> audioToViewers;
   LiveBoardPublisher? publisher;
 
   setUp(() {
@@ -65,6 +66,7 @@ void main() {
     fullScreenWidgetId = Observable(null);
     isLoading = Observable(false);
     laser = ValueNotifier(null);
+    audioToViewers = ValueNotifier<bool>(false);
   });
 
   tearDown(() {
@@ -72,6 +74,7 @@ void main() {
     publisher = null;
     drawingController.dispose();
     laser.dispose();
+    audioToViewers.dispose();
   });
 
   LiveBoardPublisher createPublisher() => publisher = LiveBoardPublisher(
@@ -82,6 +85,7 @@ void main() {
     fullScreenWidgetId: () => fullScreenWidgetId.value,
     isLoading: () => isLoading.value,
     laser: laser,
+    audioToViewers: () => audioToViewers.value,
   );
 
   void drawStroke({double to = 10}) {
@@ -200,6 +204,24 @@ void main() {
 
       runInAction(() => board.value = _board(backgroundFileId: 'file-2'));
       expect((sink.drain().single as LiveShareSnapshot).fileIds, containsAll(['file-1', 'file-2']));
+    });
+
+    test('a sound pad is in the allowlist, or its audio 404s for every viewer', () {
+      createPublisher();
+      sink.drain();
+
+      runInAction(() => widgets.value = [_widget('pad', config: const BoardWidgetConfig.soundPad(fileId: 'clap-1'))]);
+
+      expect((sink.drain().single as LiveShareSnapshot).fileIds, contains('clap-1'));
+    });
+
+    test('the audio routing rides along on the snapshot, for a screen joining late', () {
+      // A viewer arriving mid-session would otherwise stay silent until the
+      // presenter next touched the setting.
+      audioToViewers.value = true;
+      createPublisher();
+
+      expect((sink.drain().single as LiveShareSnapshot).audioToViewers, isTrue);
     });
 
     // The testWidgets bodies below dispose the publisher themselves: its

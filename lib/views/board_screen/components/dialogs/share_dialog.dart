@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
+import 'package:h3xboard/services/audio/audio_output_controller.dart';
 import 'package:h3xboard/services/live_share/live_share_session_service.dart';
 import 'package:h3xboard/services/server_controller.dart';
 import 'package:h3xboard/views/board_screen/components/tabular_text.dart';
@@ -177,6 +178,7 @@ class _ShareDialogState extends State<ShareDialog> {
               Text(context.localizations.shareDialog_viewerCount(_session.viewerCount)),
             ],
           ),
+          const _AudioOutputPicker(),
         ],
       ),
       actions: [
@@ -191,6 +193,68 @@ class _ShareDialogState extends State<ShareDialog> {
               : Text(context.localizations.shareDialog_stop),
         ),
       ],
+    );
+  }
+
+}
+
+/// Where widget sound comes out, offered next to the share code because that is
+/// where the room is being set up.
+///
+/// One exclusive choice for the whole board rather than a setting per pad: you
+/// decide once which speakers the room should use, not a dozen times.
+///
+/// It is stored per device, because it describes the room you are standing in.
+/// So a board authored here must not try to throw sound at a TV when opened at home.
+class _AudioOutputPicker extends StatelessWidget {
+
+  const _AudioOutputPicker();
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.localizations;
+    final theme = FluentTheme.of(context);
+    final output = GetIt.I<AudioOutputController>();
+
+    return Observer(
+      builder: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(loc.shareDialog_soundOutput, style: theme.typography.bodyStrong),
+          const SizedBox(height: 8),
+          RadioGroup<AudioOutput>(
+            groupValue: output.preferred,
+            onChanged: (value) {
+              if (value != null) unawaited(output.setPreferred(value));
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RadioButton<AudioOutput>(
+                  value: AudioOutput.thisDevice,
+                  content: Text(loc.shareDialog_soundThisDevice),
+                ),
+                const SizedBox(height: 4),
+                RadioButton<AudioOutput>(
+                  value: AudioOutput.sharedScreen,
+                  content: Text(loc.shareDialog_soundSharedScreen),
+                ),
+              ],
+            ),
+          ),
+          // The presenter can count viewers but cannot know whether any of them
+          // has its sound armed. So this only reports the half that *is* knowable:
+          // nothing is watching, therefore nothing can be playing.
+          if (output.isFallingBackToThisDevice)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 28),
+              child: Text(
+                loc.shareDialog_soundFallingBack,
+                style: theme.typography.caption?.copyWith(color: theme.resources.textFillColorSecondary),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

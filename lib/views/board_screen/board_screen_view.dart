@@ -17,6 +17,7 @@ import 'package:h3xboard/views/components/animated_icon_pattern.dart';
 import 'package:h3xboard/views/components/dialogs/themable_loading_dialog.dart';
 
 class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenController> {
+
   const BoardScreenView({required super.viewModel, required super.controller, required super.contextAccessor});
 
   // Keep the bottom safe-area inset reserved while a dialog's keyboard is up, so
@@ -113,7 +114,7 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
             onMoveWidgetUp: controller.onMoveWidgetUp,
             onMoveWidgetDown: controller.onMoveWidgetDown,
             onMoveWidgetToBottom: controller.onMoveWidgetToBottom,
-            onImagesDropped: controller.onImagesDropped,
+            onFilesDropped: controller.onFilesDropped,
             laser: controller.laser,
             onLaserMoved: controller.onLaserMoved,
             onLaserArmedChanged: controller.setLaserArmed,
@@ -175,4 +176,5 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
       ],
     );
   }
+
 }

@@ -46,6 +46,7 @@ LiveShareMessage _snapshot({
   Map<String, dynamic>? inProgress,
   LaserPointer? laser,
   String? fullScreenWidgetId,
+  bool audioToViewers = false,
 }) => LiveShareMessage.snapshot(
   seq: seq,
   board: _board(id: boardId),
@@ -54,6 +55,7 @@ LiveShareMessage _snapshot({
   inProgress: inProgress,
   laser: laser,
   fullScreenWidgetId: fullScreenWidgetId,
+  audioToViewers: audioToViewers,
 );
 
 void main() {
@@ -65,6 +67,41 @@ void main() {
   });
 
   group('LiveBoardReceiver', () {
+    group('audio routing', () {
+      test('starts silent, so a mirror never plays before being told to', () {
+        expect(receiver.audioToViewers.value, isFalse);
+      });
+
+      test('a snapshot carries the routing, for a screen joining mid-session', () {
+        receiver.apply(_snapshot(audioToViewers: true));
+
+        expect(receiver.audioToViewers.value, isTrue);
+      });
+
+      test('an audioOutput delta flips it', () {
+        receiver
+          ..apply(_snapshot(seq: 1))
+          ..apply(const LiveShareMessage.audioOutput(seq: 2, toViewers: true));
+
+        expect(receiver.audioToViewers.value, isTrue);
+
+        receiver.apply(const LiveShareMessage.audioOutput(seq: 3, toViewers: false));
+        expect(receiver.audioToViewers.value, isFalse);
+      });
+
+      test('going idle withdraws permission to play', () {
+        // A clip left running on a classroom screen after the presenter stops
+        // sharing has nothing left on screen to explain it and no way to stop
+        // it. Both gaps come from the widget that owned the clip going with
+        // the board.
+        receiver
+          ..apply(_snapshot(seq: 1, audioToViewers: true))
+          ..apply(const LiveShareMessage.clear(seq: 2));
+
+        expect(receiver.audioToViewers.value, isFalse);
+      });
+    });
+
     test('snapshot fully replaces state, including int-collapsed strokes', () {
       receiver.apply(_snapshot(
         widgets: [_widget('w1')],

@@ -45,8 +45,15 @@ class ViewerScreenView extends ScreenViewBase<ViewerScreenViewModel, ViewerScree
               ),
               onGapDetected: controller.onGapDetected,
               onUnsupportedContentChanged: controller.onUnsupportedContentChanged,
+              soundEnabledHere: () => controller.isSoundEnabled.value,
+              onAudioRoutingChanged: controller.onAudioRoutingChanged,
             ),
           ),
+        ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: _SoundSwitch(controller: controller),
         ),
         Positioned.fill(
           child: ValueListenableBuilder<LiveViewState>(
@@ -284,6 +291,67 @@ class _TerminalPanel extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+}
+
+/// The control that makes this screen the board's speaker.
+///
+/// Deliberately persistent rather than a toast that fades. The presenter cannot
+/// see whether any screen has its sound armed — the relay is one-way. This
+/// screen is the only place that fact is ever visible. A control that hid itself
+/// after use would leave a silent classroom with nothing to point at.
+class _SoundSwitch extends StatelessWidget {
+
+  final ViewerScreenController controller;
+
+  const _SoundSwitch({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.localizations;
+    final theme = FluentTheme.of(context);
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: controller.isSoundEnabled,
+      builder: (context, isEnabled, _) => ValueListenableBuilder<bool>(
+        valueListenable: controller.isPresenterRoutingAudio,
+        builder: (context, isRouting, _) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: theme.resources.cardBackgroundFillColorDefault,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.resources.controlStrokeColorDefault),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(isEnabled ? LucideIcons.volume2 : LucideIcons.volumeOff, size: 18),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(loc.viewerScreen_soundHere, style: theme.typography.body),
+                    // Says whether arming this screen would currently achieve
+                    // anything, which is the one thing the presenter can't tell
+                    // them and this screen can.
+                    if (isEnabled && !isRouting)
+                      Text(
+                        loc.viewerScreen_soundNotRouted,
+                        style: theme.typography.caption?.copyWith(color: theme.resources.textFillColorSecondary),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                ToggleSwitch(checked: isEnabled, onChanged: controller.onSoundEnabledChanged),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
 import 'package:h3xboard/models/api/board_detail.dart';
 import 'package:h3xboard/models/api/board_summary.dart';
 import 'package:h3xboard/models/api/browse_files_result.dart';
+import 'package:h3xboard/models/api/file_summary.dart';
 import 'package:h3xboard/models/api/share_session_info.dart';
+import 'package:h3xboard/models/api/storage_usage.dart';
 import 'package:h3xboard/services/cookies/cookie_store.dart';
 import 'package:h3xboard/services/websocket/websocket_connect_web.dart'
     if (dart.library.io) 'package:h3xboard/services/websocket/websocket_connect_io.dart';
@@ -121,6 +124,63 @@ class H3xBoardApiClient {
   Future<BrowseFilesResult> browseFiles([String? path]) async {
     final result = await _call('files.v1.browse', <String, dynamic>{'path': path ?? ''});
     return BrowseFilesResult.fromJson(result as Map<String, dynamic>);
+  }
+
+  /// Resolves a batch of files by id — for ids stored outside the file tree,
+  /// such as the ones a board keeps in its content blob.
+  ///
+  /// Ids that don't resolve are **skipped rather than reported**: deleted,
+  /// someone else's, or a system file such as a board screenshot. The result is
+  /// therefore shorter than [ids] whenever one is gone, and a missing entry
+  /// means "gone", not "failed".
+  ///
+  /// Chunked, because the server caps one call at [_getFilesBatchSize] and a
+  /// caller has no reason to know that.
+  Future<List<FileSummary>> getFiles(List<String> ids) async {
+    final files = <FileSummary>[];
+    for (var i = 0; i < ids.length; i += _getFilesBatchSize) {
+      final batch = ids.sublist(i, math.min(i + _getFilesBatchSize, ids.length));
+      final result = await _call('files.v1.getMany', <String, dynamic>{'ids': batch});
+      files.addAll((result as List<dynamic>).map((e) => FileSummary.fromJson(e as Map<String, dynamic>)));
+    }
+    return files;
+  }
+
+  /// The server's cap on one `files.v1.getMany` call; more than this is a
+  /// validation error rather than a truncated answer.
+  static const int _getFilesBatchSize = 200;
+
+  /// Moves and/or renames a file. Metadata only — the bytes and the file id stay
+  /// put, so every widget pointing at it keeps working.
+  ///
+  /// A partial patch: a null field is left alone, so `path: ''` moves the file
+  /// to the root while `path: null` leaves its folder alone. At least one of the
+  /// two must be given.
+  ///
+  /// Names are not unique. Two files may share a path and a name, here as on
+  /// upload, so a name never identifies a file — only [id] does.
+  Future<FileSummary> updateFile(String id, {String? path, String? fileName}) async {
+    assert(path != null || fileName != null, 'updateFile needs a path, a fileName, or both');
+    final result = await _call('files.v1.update', <String, dynamic>{
+      'id': id,
+      'path': ?path,
+      'fileName': ?fileName,
+    });
+    return FileSummary.fromJson(result as Map<String, dynamic>);
+  }
+
+  /// The caller's storage usage and the quota it is measured against.
+  ///
+  /// `quotaBytes` is **absent for an unlimited account** (the server omits null
+  /// fields), which is why [StorageUsage.quotaBytes] is nullable rather than
+  /// carrying a sentinel.
+  ///
+  /// Deliberately not part of `/api/v1/server/info`: that route is anonymous, so
+  /// it could only ever advertise the install-wide default, which is wrong for
+  /// any user with a per-account override.
+  Future<StorageUsage> getStorageUsage() async {
+    final result = await _call('files.v1.usage', <String, dynamic>{});
+    return StorageUsage.fromJson(result as Map<String, dynamic>);
   }
 
   /// Permanently deletes a file (bytes and metadata). There is no undo.

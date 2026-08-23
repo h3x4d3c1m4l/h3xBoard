@@ -43,6 +43,11 @@ class LiveBoardPublisher {
   final bool Function() _isLoading;
   final ValueListenable<LaserPointer?> _laser;
 
+  /// Where the presenter has routed audio, read at snapshot time so a screen
+  /// joining mid-session is correct without waiting for the next toggle.
+  /// Changes to it publish their own delta (see [AudioOutputController]).
+  final bool Function() _audioToViewers;
+
   late final ReactionDisposer _stateReactionDisposer;
   Timer? _safetyTimer;
 
@@ -77,6 +82,7 @@ class LiveBoardPublisher {
     required this._fullScreenWidgetId,
     required this._isLoading,
     required this._laser,
+    required this._audioToViewers,
   }) {
     _hub.registerPresenter(publishSnapshot);
     // Re-evaluate on any observable change: the getters read the view model's
@@ -300,6 +306,7 @@ class LiveBoardPublisher {
       // rather than staying blind until the presenter next moves it.
       laser: _laser.value,
       fullScreenWidgetId: fullScreenWidgetId,
+      audioToViewers: _audioToViewers(),
     ));
   }
 
@@ -308,11 +315,18 @@ class LiveBoardPublisher {
     if (++_deltasSinceSnapshot >= _safetySnapshotEvery) publishSnapshot();
   }
 
-  /// Every uploaded file the given state references — the image widgets'
-  /// files plus the board's background image.
+  /// Every uploaded file the given state references — the image widgets', sound
+  /// pads' and audio players' files plus the board's background image.
+  ///
+  /// This set is the server's allowlist for anonymous viewer downloads, so a
+  /// widget missing from here shows a viewer a 404 rather than its content.
   Set<String> _fileIdsOf(Board board, List<BoardWidget> widgets) => {
         for (final w in widgets)
           if (w.config case ImageConfig(:final fileId) when fileId.isNotEmpty) fileId,
+        for (final w in widgets)
+          if (w.config case SoundPadConfig(:final fileId) when fileId.isNotEmpty) fileId,
+        for (final w in widgets)
+          if (w.config case AudioPlayerConfig(:final fileId) when fileId.isNotEmpty) fileId,
         if (board.backgroundFileId != null) board.backgroundFileId!,
       };
 

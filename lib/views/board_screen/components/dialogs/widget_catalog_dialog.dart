@@ -4,9 +4,9 @@ import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
-import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/themable_panel_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:scroll_edge_hint/scroll_edge_hint.dart';
 

@@ -231,6 +231,7 @@ class AppButtonStyles extends ThemeExtension<AppButtonStyles> with _$AppButtonSt
     required this.toolbarItemChecked,
     required this.tab,
     required this.exit,
+    required this.transport,
   });
 
   factory AppButtonStyles.standard(FluentThemeData theme) {
@@ -267,6 +268,14 @@ class AppButtonStyles extends ThemeExtension<AppButtonStyles> with _$AppButtonSt
         shape: WidgetStatePropertyAll(
           ContinuousRectangleBorder(borderRadius: BorderRadius.circular(kSubBoardTabButtonRadius)),
         ),
+      ),
+      // A media transport control: round and chrome-less. It is sized for a
+      // finger because the board is operated from across a room rather than
+      // clicked at arm's length.
+      transport: control.copyWith(
+        padding: const WidgetStatePropertyAll(kTransportControlPadding),
+        backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+        shape: const WidgetStatePropertyAll(CircleBorder()),
       ),
       exit: ButtonStyle(
         padding: const WidgetStatePropertyAll(
@@ -350,6 +359,12 @@ class AppButtonStyles extends ThemeExtension<AppButtonStyles> with _$AppButtonSt
   @override
   final ButtonStyle exit;
 
+  /// A media transport control (play, pause, stop, loop) on the audio player.
+  /// Round rather than squircle: these read as instrument controls, not as the
+  /// app's ordinary buttons, and they are pressed from across a room.
+  @override
+  final ButtonStyle transport;
+
 }
 
 /// Surface tokens for the app's two dialog shells ([ThemableContentDialog] and
@@ -416,12 +431,16 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> with _$AppSema
   const AppSemanticColors({
     this.destructive = const Color(0xFFEF4444),
     this.selection = kAccentColor,
+    this.onSelection = const Color(0xFFFFFFFF),
   });
 
   /// Derives the tokens that track the theme they sit on — [selection] follows
   /// the accent color, so there is no second blue to keep in step with it.
   factory AppSemanticColors.standard(FluentThemeData theme) {
-    return AppSemanticColors(selection: theme.accentColor);
+    return AppSemanticColors(
+      selection: theme.accentColor,
+      onSelection: theme.resources.textOnAccentFillColorPrimary,
+    );
   }
 
   /// Delete/remove actions — the red on a "Delete" menu item's glyph, and what a
@@ -435,5 +454,17 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> with _$AppSema
   /// color the app already uses to mean "active".
   @override
   final Color selection;
+
+  /// Text and glyphs drawn **on top of** [selection] — a selected file-manager
+  /// row's name, size and icons.
+  ///
+  /// Paired with [selection] here rather than picked at the call site so the two
+  /// cannot drift: [selection] follows the accent, and this is the foreground
+  /// fluent already calculates for accent fills
+  /// (`textOnAccentFillColorPrimary`, the same one a [FilledButton] uses). A
+  /// widget that reaches for the ordinary body color over an accent background
+  /// gets dark-on-blue, which is the bug this exists to prevent.
+  @override
+  final Color onSelection;
 
 }

@@ -8,9 +8,9 @@ import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/emoji/emoji_pack_store.dart';
 import 'package:h3xboard/services/emoji/emoji_repository.dart';
 import 'package:h3xboard/theme/app_theme.dart';
-import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/emoji_image.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
+import 'package:h3xboard/views/components/dialogs/themable_panel_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:scroll_edge_hint/scroll_edge_hint.dart';
 

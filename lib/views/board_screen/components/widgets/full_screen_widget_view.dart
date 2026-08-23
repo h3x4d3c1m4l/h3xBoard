@@ -7,6 +7,7 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/theme/app_theme.dart';
 import 'package:h3xboard/theme/shape_metrics.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/hidden_widget_twin.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/manipulable_board_widget.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -297,9 +298,11 @@ class _MirroredBoardWidgetsState extends State<MirroredBoardWidgets> with Single
             key: ValueKey(bw.id),
             boardWidget: bw,
             // The copy being flown is kept laid out but unpainted, so the widget
-            // is never on screen twice and never restarts on the way back.
-            child: Opacity(
-              opacity: bw.id == shown?.id ? 0 : 1,
+            // is never on screen twice and never restarts on the way back. It is
+            // also inert, so a trigger reaching both copies only sounds once —
+            // see [HiddenWidgetTwin].
+            child: HiddenWidgetTwin(
+              isTwin: bw.id == shown?.id,
               // Read-only mirror: widgets never edit their own config here.
               child: descriptorFor(bw.config).buildWidget(bw.config, (_) {}),
             ),

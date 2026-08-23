@@ -4,6 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/models/live_share/live_share_message.dart';
 import 'package:h3xboard/services/live_share/live_board_receiver.dart';
 import 'package:h3xboard/views/board_screen/components/read_only_board.dart';
+import 'package:h3xboard/views/components/board_audio_scope.dart';
 
 /// Renders a live-shared board from a stream of [LiveShareMessage]s: the
 /// shared display half of the live-share protocol, used by the
@@ -35,12 +36,26 @@ class LiveBoardView extends StatefulWidget {
   /// notice among its own overlays instead of stacking two banners.
   final ValueChanged<bool>? onUnsupportedContentChanged;
 
+  /// Whether *this* screen has had its sound switched on.
+  ///
+  /// Only half the permission: the presenter must also have routed audio to
+  /// viewers. Omitting it means this surface never plays. That is the right
+  /// answer for the external display: it shares the host's audio device.
+  /// Playing here would double the presenter's sound rather than move it.
+  final bool Function()? soundEnabledHere;
+
+  /// Fired when the presenter changes where audio is routed, so the host can
+  /// tell the viewer whether its sound switch would currently do anything.
+  final ValueChanged<bool>? onAudioRoutingChanged;
+
   const LiveBoardView({
     super.key,
     required this.messages,
     required this.placeholder,
     this.onGapDetected,
     this.onUnsupportedContentChanged,
+    this.soundEnabledHere,
+    this.onAudioRoutingChanged,
   });
 
   @override
@@ -53,6 +68,15 @@ class _LiveBoardViewState extends State<LiveBoardView> with SingleTickerProvider
   static const Duration _fadeDuration = Duration(milliseconds: 300);
 
   final LiveBoardReceiver _receiver = LiveBoardReceiver();
+
+  /// Built once and kept: the policy reads through to the notifier and the
+  /// host's callback, so it never needs replacing and can't churn the scope.
+  late final BoardAudioPolicy _audioPolicy = ViewerBoardAudioPolicy(
+    presenterRoutedToViewers: () => _receiver.audioToViewers.value,
+    soundEnabledHere: widget.soundEnabledHere ?? _never,
+  );
+
+  static bool _never() => false;
   late final AnimationController _fadeController;
   StreamSubscription<LiveShareMessage>? _subscription;
 
@@ -71,6 +95,7 @@ class _LiveBoardViewState extends State<LiveBoardView> with SingleTickerProvider
     _receiver
       ..onGapDetected = _onGap
       ..addListener(_onReceiverChanged);
+    _receiver.audioToViewers.addListener(_onAudioRoutingChanged);
     _subscription = widget.messages.listen(_onMessage);
   }
 
@@ -84,6 +109,8 @@ class _LiveBoardViewState extends State<LiveBoardView> with SingleTickerProvider
   }
 
   void _onGap() => widget.onGapDetected?.call();
+
+  void _onAudioRoutingChanged() => widget.onAudioRoutingChanged?.call(_receiver.audioToViewers.value);
 
   void _onReceiverChanged() {
     setState(() {});
@@ -145,13 +172,16 @@ class _LiveBoardViewState extends State<LiveBoardView> with SingleTickerProvider
           Positioned.fill(child: widget.placeholder)
         else
           Positioned.fill(
-            child: ReadOnlyBoard(
-              board: board,
-              widgets: _receiver.widgets,
-              drawingController: _receiver.drawingController,
-              inProgress: _receiver.inProgress,
-              laser: _receiver.laser,
-              fullScreenWidget: _receiver.fullScreenWidget,
+            child: BoardAudioScope(
+              policy: _audioPolicy,
+              child: ReadOnlyBoard(
+                board: board,
+                widgets: _receiver.widgets,
+                drawingController: _receiver.drawingController,
+                inProgress: _receiver.inProgress,
+                laser: _receiver.laser,
+                fullScreenWidget: _receiver.fullScreenWidget,
+              ),
             ),
           ),
         // Crossfade-through-black overlay. Positioned.fill so it actually

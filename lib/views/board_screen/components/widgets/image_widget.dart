@@ -10,6 +10,7 @@ import 'package:h3xboard/models/board_widget.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_file_service.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_kind.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/components/board_assets.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';

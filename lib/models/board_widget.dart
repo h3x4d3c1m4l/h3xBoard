@@ -75,12 +75,13 @@ bool boardWidgetIsGridMatched(BoardWidgetConfig config) => switch (config) {
       _ => false,
     };
 
-/// Returns [config] with any stopwatch/timer running state or dice roll reset to
-/// its default, so two configs can be compared while ignoring their runtime
-/// anchor (see [isWidgetRuntimeOnlyChange]).
+/// Returns [config] with any stopwatch/timer running state, dice roll or sound-pad trigger reset to its default. Two
+/// configs can then be compared while ignoring their runtime anchor (see [isWidgetRuntimeOnlyChange]).
 BoardWidgetConfig clearWidgetRuntimeState(BoardWidgetConfig config) => switch (config) {
       StopwatchConfig c => c.copyWith(elapsedMs: 0, startedAtEpochMs: null),
       TimerConfig c => c.copyWith(elapsedMs: 0, startedAtEpochMs: null),
+      SoundPadConfig c => c.copyWith(triggerSeed: 0, stopSeed: 0),
+      AudioPlayerConfig c => c.copyWith(positionMs: 0, startedAtEpochMs: null),
       DiceConfig c => c.copyWith(face: 1, rollSeed: 0, rolledAtEpochMs: null),
       NumberDiceConfig c => c.copyWith(value: 0, rollSeed: 0, rolledAtEpochMs: null),
       _ => config,
@@ -93,6 +94,43 @@ bool isWidgetRuntimeOnlyChange(BoardWidgetConfig oldConfig, BoardWidgetConfig ne
     oldConfig.runtimeType == newConfig.runtimeType &&
     oldConfig != newConfig &&
     clearWidgetRuntimeState(oldConfig) == clearWidgetRuntimeState(newConfig);
+
+/// A caption from an uploaded file's name, with the extension dropped. A pad
+/// reading "applause.mp3" says nothing "applause" doesn't.
+///
+/// Empty when the caller has no name to offer, which both widgets render as
+/// their own placeholder.
+String captionForFileName(String? fileName) {
+  if (fileName == null || fileName.isEmpty) return '';
+  final dot = fileName.lastIndexOf('.');
+  return dot <= 0 ? fileName : fileName.substring(0, dot);
+}
+
+/// The uploaded file a widget takes its **caption** from, or null when it has
+/// none.
+///
+/// Narrower than the set of files a board references. An image widget and a
+/// board background have bytes but no caption, so renaming those changes
+/// nothing on screen.
+String? boardWidgetCaptionFileId(BoardWidgetConfig config) => switch (config) {
+      SoundPadConfig(:final fileId) when fileId.isNotEmpty => fileId,
+      AudioPlayerConfig(:final fileId) when fileId.isNotEmpty => fileId,
+      _ => null,
+    };
+
+/// [config] with its caption re-derived from [fileName], or unchanged when it
+/// carries no caption.
+///
+/// A caption is a snapshot of the file's name taken when it was picked, so it
+/// goes stale as soon as the file is renamed. Boards re-derive it on load rather
+/// than storing a live lookup. Mirrors never see file metadata: the external
+/// display and web viewers receive bytes, so the name has to travel with the
+/// config.
+BoardWidgetConfig boardWidgetWithCaption(BoardWidgetConfig config, String fileName) => switch (config) {
+      SoundPadConfig c => c.copyWith(label: captionForFileName(fileName)),
+      AudioPlayerConfig c => c.copyWith(title: captionForFileName(fileName)),
+      _ => config,
+    };
 
 @freezed
 sealed class BoardWidgetConfig with _$BoardWidgetConfig {
@@ -183,6 +221,61 @@ sealed class BoardWidgetConfig with _$BoardWidgetConfig {
   const factory BoardWidgetConfig.emoji({
     @Default('😀') String emoji,
   }) = EmojiConfig;
+
+  // A soundboard button: one uploaded sound, an emoji to recognise it by.
+  //
+  // Playback travels as config, like a dice roll — but *unlike* the dice and the stopwatch it carries no wall-clock
+  // anchor, and that difference is deliberate. Those two reconstruct their state from `now - anchor`, which is fine
+  // when being a few seconds off still looks like a stopwatch. A sound is unforgiving: if the presenter's clock and a
+  // viewer's disagree by more than the clip is long, reconstructing from an anchor plays nothing at all.
+  //
+  // So [triggerSeed] is an edge, not a timestamp: it advances by one per tap. A receiver that sees [triggerSeed] change
+  // plays from the start using its own clock. That is immune to skew by construction. The edge doubles as the answer to
+  // re-tapping a pad that is already sounding — a new edge is a new voice, layered over the old one.
+  //
+  // [stopSeed] is the same trick for the stop badge, which silences every voice this pad has going. Two counters
+  // rather than one field, because a single counter cannot say which of the two happened.
+  //
+  // [durationMs] is filled in when the sound is picked (see SoundPadWidgetDescriptor), not when it is played, so it is
+  // part of the edit rather than runtime state.
+  const factory BoardWidgetConfig.soundPad({
+    @Default('') String fileId,
+    @Default('') String label,
+    @Default('🔊') String emoji,
+    @Default(1.0) double volume,
+    @Default(0) int triggerSeed,
+    @Default(0) int stopSeed,
+    int? durationMs,
+  }) = SoundPadConfig;
+
+  // A full transport for one uploaded track: play/pause, scrub, loop, volume.
+  //
+  // [startedAtEpochMs] is null while paused, and [positionMs] is where the track sits — either the paused position,
+  // or the position as of the last refresh while playing.
+  //
+  // A receiver must **not** reconstruct the position as `now - startedAtEpochMs` the way the stopwatch does. Two
+  // devices' clock *offsets* can differ by seconds, which for a stopwatch is invisible and for audio means starting
+  // somewhere else entirely. Instead a receiver starts at whatever [positionMs] it was handed and counts forward on
+  // its own clock. So only clock *rates* matter, and those agree to parts per million.
+  //
+  // The timestamp still earns its place: it is what tells a receiver the track is playing rather than paused. The
+  // presenter also refreshes the pair every few seconds while playing. That way a screen joining mid-track lands
+  // close to the right place instead of at the last pause.
+  const factory BoardWidgetConfig.audioPlayer({
+    @Default('') String fileId,
+    @Default('') String title,
+    @Default(1.0) double volume,
+    @Default(false) bool loop,
+    @Default(0) int positionMs,
+    int? startedAtEpochMs,
+    int? durationMs,
+    // The MIME type the file was uploaded as, captured when it is picked.
+    //
+    // Only streaming needs it: SoLoud can sniff MP3 and Ogg out of a partial stream, but not WAV or FLAC. So the
+    // player has to know which format it has *before* deciding how to load it. Null on a player configured before
+    // this field existed, which simply takes the whole-file path.
+    String? contentType,
+  }) = AudioPlayerConfig;
 
   // A roll travels as config, not as frames. [rolledAtEpochMs] is the wall-clock
   // anchor the tumble is animated from — the same trick the stopwatch uses for

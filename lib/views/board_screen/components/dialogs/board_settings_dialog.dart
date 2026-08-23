@@ -12,9 +12,10 @@ import 'package:h3xboard/views/board_screen/components/backgrounds/board_backgro
 import 'package:h3xboard/views/board_screen/components/backgrounds/chalkboard_background.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/color_picker_dialog.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_dialog.dart';
-import 'package:h3xboard/views/board_screen/components/dialogs/themable_panel_dialog.dart';
+import 'package:h3xboard/views/board_screen/components/dialogs/file_picker_kind.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/dialog_scroll_area.dart';
+import 'package:h3xboard/views/components/dialogs/themable_panel_dialog.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
@@ -293,7 +294,8 @@ class _BoardSettingsDialogState extends State<BoardSettingsDialog> {
     return _Section(
       icon: LucideIcons.image,
       title: loc.boardSettingsDialog_backgroundImage,
-      subtitle: _hasBackgroundImage ? loc.boardSettingsDialog_backgroundSelected : loc.boardSettingsDialog_backgroundNone,
+      subtitle:
+          _hasBackgroundImage ? loc.boardSettingsDialog_backgroundSelected : loc.boardSettingsDialog_backgroundNone,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

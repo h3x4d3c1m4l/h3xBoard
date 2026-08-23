@@ -32,6 +32,8 @@ void main() {
     TimerConfig,
     TodoListConfig,
     PianoConfig,
+    SoundPadConfig,
+    AudioPlayerConfig,
     UnsupportedConfig,
   };
 

@@ -32,6 +32,11 @@ const double kShortControlCornerRadius = 18;
 /// padding keeps them square (fluent's own default for a large icon button).
 const EdgeInsetsGeometry kIconControlPadding = EdgeInsets.all(8);
 
+/// Inner padding of a media transport control. Square like [kIconControlPadding]
+/// but larger, because these are pressed from across a room rather than at arm's
+/// length.
+const EdgeInsetsGeometry kTransportControlPadding = EdgeInsets.all(12);
+
 /// The account chip in the boards top bar — the inset around its initials tile.
 ///
 /// Picked so the chip stands exactly as tall as the search box beside it: the

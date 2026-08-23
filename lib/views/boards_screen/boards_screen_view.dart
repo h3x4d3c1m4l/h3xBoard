@@ -14,13 +14,14 @@ import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/components/dialogs/settings_dialog.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_controller.dart';
 import 'package:h3xboard/views/boards_screen/boards_screen_view_model.dart';
-import 'package:h3xboard/views/boards_screen/components/scroll_shadow.dart';
 import 'package:h3xboard/views/components/continuous_text_box.dart';
 import 'package:h3xboard/views/components/dialogs/app_dialog.dart';
+import 'package:h3xboard/views/components/dialogs/file_manager/file_manager_dialog.dart';
 import 'package:h3xboard/views/components/dialogs/themable_content_dialog.dart';
 import 'package:h3xboard/views/components/flyouts/app_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/continuous_menu_flyout.dart';
 import 'package:h3xboard/views/components/flyouts/stable_flyout_controller.dart';
+import 'package:h3xboard/views/components/scroll_shadow.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -51,6 +52,7 @@ int _columnsFor(double available) {
 }
 
 class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScreenController> {
+
   const BoardsScreenView({required super.viewModel, required super.controller, required super.contextAccessor});
 
   // The board grid scrolls its own content, so let it run to the physical bottom
@@ -82,6 +84,7 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
             // flyout the dialog lands on the same navigator the flyout dismisses
             // on (see _AccountMenu). The gear icon shares this and is unaffected.
             onOpenSettings: () => showSettingsDialog(contextAccessor.buildContext, useRootNavigator: false),
+            onOpenFiles: () => showFileManagerDialog(contextAccessor.buildContext, useRootNavigator: false),
             onSignOut: controller.onLogoutPressed,
             onSearchChanged: controller.onSearchChanged,
             userDisplayName: controller.userDisplayName,
@@ -143,12 +146,15 @@ class BoardsScreenView extends ScreenViewBase<BoardsScreenViewModel, BoardsScree
       ),
     );
   }
+
 }
 
 /// The header bar: brand on the left and the settings gear + account menu on the
 /// right.
 class _TopBar extends StatelessWidget {
+
   final VoidCallback onOpenSettings;
+  final VoidCallback onOpenFiles;
   final VoidCallback onSignOut;
   final ValueChanged<String> onSearchChanged;
   final String userDisplayName;
@@ -156,6 +162,7 @@ class _TopBar extends StatelessWidget {
 
   const _TopBar({
     required this.onOpenSettings,
+    required this.onOpenFiles,
     required this.onSignOut,
     required this.onSearchChanged,
     required this.userDisplayName,
@@ -211,6 +218,7 @@ class _TopBar extends StatelessWidget {
                     displayName: userDisplayName,
                     initials: userInitials,
                     onOpenSettings: onOpenSettings,
+                    onOpenFiles: onOpenFiles,
                     onSignOut: onSignOut,
                   ),
                 ],
@@ -221,28 +229,34 @@ class _TopBar extends StatelessWidget {
       ),
     );
   }
+
 }
 
 /// The account chip in the top-right; tapping it opens a flyout with Preferences
 /// and Sign out.
 class _AccountMenu extends StatefulWidget {
+
   final String displayName;
   final String initials;
   final VoidCallback onOpenSettings;
+  final VoidCallback onOpenFiles;
   final VoidCallback onSignOut;
 
   const _AccountMenu({
     required this.displayName,
     required this.initials,
     required this.onOpenSettings,
+    required this.onOpenFiles,
     required this.onSignOut,
   });
 
   @override
   State<_AccountMenu> createState() => _AccountMenuState();
+
 }
 
 class _AccountMenuState extends State<_AccountMenu> {
+
   final _flyoutController = StableFlyoutController();
 
   void _showMenu() {
@@ -255,6 +269,11 @@ class _AccountMenuState extends State<_AccountMenu> {
         shape: continuousMenuShape(context),
         itemMargin: kMenuItemMargin,
         items: [
+          MenuFlyoutItem(
+            leading: const Icon(LucideIcons.folderOpen),
+            text: Text(loc.fileManager_title),
+            onPressed: _onFilesPressed,
+          ),
           MenuFlyoutItem(
             leading: const Icon(LucideIcons.slidersHorizontal),
             text: Text(loc.appSettingsButton_preferences),
@@ -269,6 +288,12 @@ class _AccountMenuState extends State<_AccountMenu> {
         ],
       ),
     );
+  }
+
+  void _onFilesPressed() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onOpenFiles();
+    });
   }
 
   void _onPreferencesPressed() {
@@ -378,11 +403,13 @@ class _AccountMenuState extends State<_AccountMenu> {
     _flyoutController.dispose();
     super.dispose();
   }
+
 }
 
 /// The scrollable content below the top bar: greeting, board count, the "New
 /// board" button, and the responsive grid of board cards.
 class _BoardsBody extends StatelessWidget {
+
   final List<BoardSummary> boards;
   final int totalCount;
   final int reloadToken;
@@ -494,10 +521,12 @@ class _BoardsBody extends StatelessWidget {
       ),
     );
   }
+
 }
 
 /// The dashed "create a fresh board" tile, always shown first in the grid.
 class _NewBoardCard extends StatelessWidget {
+
   final double width;
   final VoidCallback onPressed;
 
@@ -551,11 +580,13 @@ class _NewBoardCard extends StatelessWidget {
       ),
     );
   }
+
 }
 
 /// A single board tile: screenshot thumbnail on top, title + "edited" time and a
 /// "…" menu (delete) below. The whole card opens the board.
 class _BoardCard extends StatelessWidget {
+
   final BoardSummary board;
   final double width;
   final int reloadToken;
@@ -658,11 +689,13 @@ class _BoardCard extends StatelessWidget {
       ),
     );
   }
+
 }
 
 /// Loads and shows a board's screenshot, or a neutral placeholder while loading,
 /// on failure, or when the board has no screenshot yet.
 class _BoardThumbnail extends StatefulWidget {
+
   final BoardSummary board;
 
   /// Changes whenever the boards screen reloads; a new value re-fetches the
@@ -673,9 +706,11 @@ class _BoardThumbnail extends StatefulWidget {
 
   @override
   State<_BoardThumbnail> createState() => _BoardThumbnailState();
+
 }
 
 class _BoardThumbnailState extends State<_BoardThumbnail> {
+
   final _fileService = GetIt.I<H3xBoardFileService>();
   Uint8List? _bytes;
   bool _fetching = false;
@@ -730,9 +765,11 @@ class _BoardThumbnailState extends State<_BoardThumbnail> {
       errorBuilder: (context, error, stackTrace) => const _ThumbPlaceholder(),
     );
   }
+
 }
 
 class _ThumbPlaceholder extends StatelessWidget {
+
   final bool loading;
 
   const _ThumbPlaceholder({this.loading = false});
@@ -749,10 +786,12 @@ class _ThumbPlaceholder extends StatelessWidget {
       ),
     );
   }
+
 }
 
 /// The per-card "…" overflow menu (Rename and Delete, each with a dialog).
 class _CardMenu extends StatefulWidget {
+
   final String title;
   final VoidCallback onDelete;
   final ValueChanged<String> onRename;
@@ -761,9 +800,11 @@ class _CardMenu extends StatefulWidget {
 
   @override
   State<_CardMenu> createState() => _CardMenuState();
+
 }
 
 class _CardMenuState extends State<_CardMenu> {
+
   final _flyoutController = StableFlyoutController();
 
   void _showMenu() {
@@ -882,6 +923,7 @@ class _CardMenuState extends State<_CardMenu> {
     _flyoutController.dispose();
     super.dispose();
   }
+
 }
 
 /// Time-of-day greeting, personalised with [firstName] when we know it.

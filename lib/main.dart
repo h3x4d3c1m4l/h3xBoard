@@ -9,6 +9,7 @@ import 'package:h3xboard/external_display/external_display_app.dart';
 import 'package:h3xboard/routing/app_router.dart';
 import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
+import 'package:h3xboard/services/audio/audio_output_controller.dart';
 import 'package:h3xboard/services/cookies/cookie_store.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
@@ -105,7 +106,14 @@ Future<void> setupServices() async {
     ..registerSingleton<LiveShareSessionService>(
       LiveShareSessionService(api: api, hub: liveShareHub, sink: serverShareSink),
     )
-    ..registerSingleton<ExternalDisplayMirror>(externalDisplayMirror);
+    ..registerSingleton<ExternalDisplayMirror>(externalDisplayMirror)
+    ..registerSingleton<AudioOutputController>(
+      AudioOutputController(
+        isSharing: () => GetIt.I<LiveShareSessionService>().isSharing,
+        viewerCount: () => GetIt.I<LiveShareSessionService>().viewerCount,
+        hub: liveShareHub,
+      )..load().ignore(),
+    );
 
   // Prime the server info (warning banner, registration capability) before the
   // first screen renders; it refreshes again on every later disconnect.

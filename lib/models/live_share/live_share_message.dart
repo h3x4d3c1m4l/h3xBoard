@@ -42,8 +42,10 @@ sealed class LiveShareMessage with _$LiveShareMessage {
   /// A snapshot whose [board] id differs from the one on screen is a board
   /// switch (receivers transition through black); same id = in-place refresh.
   /// [fileIds] lists every uploaded file the payload references (image
-  /// widgets, background image) — the server stores it as the allowlist for
-  /// anonymous viewer file downloads.
+  /// widgets, sound pads, background image) — the server stores it as the
+  /// allowlist for anonymous viewer file downloads.
+  /// [audioToViewers] is the audio routing in force, so a viewer joining
+  /// mid-session knows whether it is the one meant to make the noise.
   const factory LiveShareMessage.snapshot({
     @Default(1) int v,
     @Default(0) int seq,
@@ -54,6 +56,7 @@ sealed class LiveShareMessage with _$LiveShareMessage {
     @Default(<String>[]) List<String> fileIds,
     LaserPointer? laser,
     String? fullScreenWidgetId,
+    @Default(false) bool audioToViewers,
   }) = LiveShareSnapshot;
 
   /// The active sub-board's appearance changed (background, line pattern, …)
@@ -127,6 +130,26 @@ sealed class LiveShareMessage with _$LiveShareMessage {
     @Default(0) int seq,
     String? widgetId,
   }) = LiveShareFullScreen;
+
+  /// Where the presenter has routed widget audio.
+  ///
+  /// A mode like [LiveShareFullScreen], not board content. Pads and players
+  /// keep arriving through the ordinary widget deltas. This only decides who
+  /// is allowed to make the noise.
+  ///
+  /// [toViewers] true means the presenter has gone silent and expects a screen
+  /// to play instead. It is a *permission*, not an instruction. A viewer plays
+  /// only when this is true **and** its own sound switch is on. That keeps the
+  /// routing exclusive rather than additive, and keeps thirty student laptops
+  /// quiet when one classroom TV is meant to sound.
+  ///
+  /// Carried on [LiveShareSnapshot.audioToViewers] as well, so a screen that
+  /// joins mid-session knows without waiting for the presenter to toggle it.
+  const factory LiveShareMessage.audioOutput({
+    @Default(1) int v,
+    @Default(0) int seq,
+    required bool toViewers,
+  }) = LiveShareAudioOutput;
 
   /// No board is open (the presenter left the board screen). External display
   /// shows its idle placeholder, web viewers show "waiting".
