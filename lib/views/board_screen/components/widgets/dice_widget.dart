@@ -268,6 +268,9 @@ class DiceWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.dices;
 
   @override
+  String get emoji => '🎲';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_dice;
 
   @override

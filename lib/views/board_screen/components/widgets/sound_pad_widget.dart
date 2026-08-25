@@ -363,6 +363,9 @@ class SoundPadWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.volume2;
 
   @override
+  String get emoji => '🥁';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_soundPad;
 
   @override

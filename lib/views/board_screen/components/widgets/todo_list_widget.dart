@@ -195,6 +195,9 @@ class TodoListWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.listTodo;
 
   @override
+  String get emoji => '✅';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_todoList;
 
   @override

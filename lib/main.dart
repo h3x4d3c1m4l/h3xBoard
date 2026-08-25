@@ -11,6 +11,7 @@ import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/services/audio/audio_output_controller.dart';
 import 'package:h3xboard/services/cookies/cookie_store.dart';
+import 'package:h3xboard/services/emoji/ui_emoji_pack.dart';
 import 'package:h3xboard/services/external_display_mirror.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
@@ -107,16 +108,17 @@ Future<void> setupServices() async {
       LiveShareSessionService(api: api, hub: liveShareHub, sink: serverShareSink),
     )
     ..registerSingleton<ExternalDisplayMirror>(externalDisplayMirror)
+    ..registerSingleton<UiEmojiPack>(UiEmojiPack())
     ..registerSingleton<AudioOutputController>(
       AudioOutputController(
         isSharing: () => GetIt.I<LiveShareSessionService>().isSharing,
         viewerCount: () => GetIt.I<LiveShareSessionService>().viewerCount,
         hub: liveShareHub,
-      )..load().ignore(),
+      ),
     );
 
-  // Prime the server info (warning banner, registration capability) before the
-  // first screen renders; it refreshes again on every later disconnect.
-  unawaited(serverController.refreshServerInfo());
+  // Launch-time on purpose, unlike the other warm-ups: a plugged-in display has
+  // to show its idle placeholder on the login and boards screens too, so this
+  // cannot wait for the bootstrap that only runs on the way to a board.
   unawaited(GetIt.I<ExternalDisplayMirror>().start());
 }

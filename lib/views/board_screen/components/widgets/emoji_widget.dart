@@ -41,6 +41,9 @@ class EmojiWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.smile;
 
   @override
+  String get emoji => '😀';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_emoji;
 
   @override

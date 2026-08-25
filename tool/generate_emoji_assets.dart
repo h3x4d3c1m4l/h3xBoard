@@ -67,6 +67,16 @@ const _toneNames = ['light', 'mediumLight', 'medium', 'mediumDark', 'dark'];
 
 const _variationSelector = 0xFE0F;
 
+// Where the app's own UI emoji are declared: every board widget descriptor's
+// `String get emoji`, which the add-widget menu draws. Scanned rather than
+// listed here so adding a widget cannot leave the pack behind — see [_uiEmojiKeys].
+final _descriptorDir = Directory('lib/views/board_screen/components/widgets');
+final _descriptorEmojiPattern = RegExp("String get emoji => '([^']+)';");
+
+/// Name of the pack holding that artwork. Must match `UiEmojiPack._packName` in
+/// lib/services/emoji/ui_emoji_pack.dart, which is what the app loads at startup.
+const _uiPackName = 'ui';
+
 final _sourcesDir = Directory('.dart_tool/emoji_sources');
 final _outDir = Directory('assets/emoji');
 final _vecDir = Directory('assets/emoji/vec');
@@ -125,14 +135,42 @@ bool _outputIsCurrent() {
   if (!index.existsSync() || !_vecDir.existsSync()) return false;
   try {
     final stamp = jsonDecode(index.readAsStringSync()) as Map<String, dynamic>;
+    final uiEmoji = (stamp['uiEmoji'] as List<dynamic>?)?.cast<String>();
     return stamp['emojiVersion'] == _expectedEmojiVersion &&
         stamp['notoVersion'] == _notoTag &&
         stamp['cldrVersion'] == _cldrTag &&
+        // A new board widget adds an emoji here, which is what makes a plain
+        // `just gen-emoji` rebuild the UI pack instead of no-opping.
+        const ListEquality<String>().equals(uiEmoji, _uiEmojiKeys()) &&
         _locales.every((l) => File('${_outDir.path}/labels_$l.json').existsSync());
   } catch (_) {
     // A truncated or hand-edited index is not something to reason about.
     return false;
   }
+}
+
+/// The asset keys the app's own UI needs, read straight out of the board widget
+/// descriptors that declare them (`String get emoji => '🎲';`).
+///
+/// Scanned rather than duplicated in a list here, and stamped into index.json by
+/// [_writeIndex], so adding a widget invalidates the output and a plain
+/// `just gen-emoji` rebuilds the pack. A hand-maintained list would silently ship
+/// a menu row with no artwork the first time someone forgot to update it.
+///
+/// Returned sorted so the stamp is stable regardless of file order on disk.
+List<String> _uiEmojiKeys() {
+  if (!_descriptorDir.existsSync()) return const [];
+  final keys = <String>{};
+  for (final file in _descriptorDir.listSync()) {
+    if (file is! File || !file.path.endsWith('.dart')) continue;
+    for (final match in _descriptorEmojiPattern.allMatches(file.readAsStringSync())) {
+      final emoji = match.group(1)!;
+      keys.add(EmojiEntry.formatAssetKey(
+        emoji.runes.where((cp) => cp != _variationSelector),
+      ));
+    }
+  }
+  return keys.toList()..sort();
 }
 
 // ---------------------------------------------------------------------------
@@ -508,6 +546,19 @@ Future<void> _writePacks(List<PickerGroup> groups, Map<String, Uint8List> compil
     count++;
   }
 
+  // The app's own UI emoji, cutting the add-widget menu from one fetch per row
+  // to one for the whole menu. Small enough (~19 entries) to preload at startup,
+  // unlike the category packs, which are pulled only as the picker scrolls.
+  final uiKeys = _uiEmojiKeys();
+  final uncovered = uiKeys.where((key) => !compiled.containsKey(key)).toList();
+  if (uncovered.isNotEmpty) {
+    throw StateError(
+      'Board widget descriptors declare emoji with no bundled artwork: '
+      '${uncovered.join(', ')}. Pick an emoji the Noto set covers.',
+    );
+  }
+  writePack(_uiPackName, uiKeys);
+
   for (final group in groups) {
     writePack(group.id, [for (final emoji in group.emoji) emoji.base.assetKey]);
 
@@ -539,6 +590,9 @@ Future<void> _writeIndex(List<PickerGroup> groups, String emojiVersion) async {
     'emojiVersion': emojiVersion,
     'notoVersion': _notoTag,
     'cldrVersion': _cldrTag,
+    // Not read at runtime — this is the stamp [_outputIsCurrent] compares so a
+    // newly added board widget rebuilds the UI pack on the next `just gen-emoji`.
+    'uiEmoji': _uiEmojiKeys(),
     'groups': [
       for (final group in groups)
         {

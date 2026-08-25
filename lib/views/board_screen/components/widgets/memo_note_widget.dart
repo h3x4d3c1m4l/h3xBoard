@@ -147,6 +147,9 @@ class MemoNoteWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.stickyNote;
 
   @override
+  String get emoji => '📝';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_memoNote;
 
   @override

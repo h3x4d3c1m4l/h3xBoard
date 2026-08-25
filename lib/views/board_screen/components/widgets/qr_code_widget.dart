@@ -81,6 +81,9 @@ class QrCodeWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.qrCode;
 
   @override
+  String get emoji => '🔳';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_qrCode;
 
   @override

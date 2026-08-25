@@ -159,6 +159,9 @@ class PianoWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.piano;
 
   @override
+  String get emoji => '🎹';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_piano;
 
   @override

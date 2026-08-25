@@ -123,6 +123,14 @@ const double kTooltipCornerRadius = 8;
 const double kToolbarCornerRadius = 32;
 const EdgeInsetsGeometry kToolbarPadding = EdgeInsets.all(4);
 
+/// Inner padding of a tool button. Vertical is zero on purpose: the button's own
+/// content supplies it, so the bar's height is decided in one place.
+///
+/// A [ButtonStyle] that omits `padding` falls through to fluent's
+/// `kDefaultButtonPadding` (11/5/11/6), which is where the toolbar's height used
+/// to come from. Stating it here makes it a decision instead of an accident.
+const EdgeInsetsGeometry kToolbarItemPadding = EdgeInsets.symmetric(horizontal: 10);
+
 /// Max width of centered page content — the board grid on the Boards screen and
 /// the top bars on both the Boards and Board screens. Beyond this the content is
 /// centered with equal gutters so the two top bars line up with the grid.

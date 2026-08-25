@@ -8,8 +8,10 @@ import 'package:h3xboard/services/app_settings_controller.dart';
 import 'package:h3xboard/views/base/screen_view_base.dart';
 import 'package:h3xboard/views/board_screen/board_screen_controller.dart';
 import 'package:h3xboard/views/board_screen/board_screen_view_model.dart';
+import 'package:h3xboard/views/board_screen/components/balanced_trailing.dart';
 import 'package:h3xboard/views/board_screen/components/board.dart';
 import 'package:h3xboard/views/board_screen/components/board_scaffold.dart';
+import 'package:h3xboard/views/board_screen/components/buttons/board_settings_button.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/board_top_bar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/drawing_toolbar.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/tool_toolbar.dart';
@@ -145,10 +147,17 @@ class BoardScreenView extends ScreenViewBase<BoardScreenViewModel, BoardScreenCo
                   position: toolBarPos,
                   inside: appSettings.toolBarInside,
                   visible: barsVisible,
-                  bar: ToolToolbar(
-                    controller: controller,
-                    viewModel: viewModel,
+                  // Board settings rides along with the tool bar — it hides with
+                  // it while the laser is armed — but sits beside it rather than
+                  // in it, since it styles the board rather than a tool.
+                  bar: BalancedTrailing(
                     direction: toolBarPos.axis,
+                    trailing: BoardSettingsButton(controller: controller),
+                    child: ToolToolbar(
+                      controller: controller,
+                      viewModel: viewModel,
+                      direction: toolBarPos.axis,
+                    ),
                   ),
                 );
                 final colorBar = DockedBar(

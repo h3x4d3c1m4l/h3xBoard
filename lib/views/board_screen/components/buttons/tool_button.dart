@@ -173,15 +173,23 @@ class _ToolButtonContent extends StatelessWidget {
       alignment: .topRight,
       children: [
         Padding(
-          padding: const .fromLTRB(4, 6, 6, 0),
+          // Asymmetric horizontally to keep the label clear of the flyout chevron.
+          padding: const .fromLTRB(4, 4, 6, 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            spacing: 4,
-            children: [Icon(icon, size: 18), Text(title, maxLines: 1)],
+            spacing: 2,
+            children: [
+              Icon(icon, size: 18),
+              // No `style`: the label's size comes from the toolbar button role's
+              // `textStyle` and its color from the button's foreground, so it
+              // tracks the pressed and active states. Setting a TextStyle here
+              // would pin the color and strand the label on an accent fill.
+              Text(title, maxLines: 1),
+            ],
           ),
         ),
         if (hasFlyout) Padding(
-          padding: const .only(top: 4),
+          padding: const .only(top: 2),
           child: Icon(LucideIcons.chevronDown, size: 12),
         ),
       ],

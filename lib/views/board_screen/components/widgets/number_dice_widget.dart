@@ -174,6 +174,9 @@ class NumberDiceWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.hash;
 
   @override
+  String get emoji => '🔢';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_numberDice;
 
   @override

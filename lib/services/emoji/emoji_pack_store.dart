@@ -47,7 +47,7 @@ class EmojiPackStore extends ChangeNotifier {
   /// in flight. Callers rebuild on [notifyListeners].
   void request(EmojiGroup group, EmojiSkinTone tone) {
     for (final name in _packNames(group, tone)) {
-      if (!_packs.containsKey(name) && !_failed.contains(name)) _load(name, group.id);
+      if (!_packs.containsKey(name) && !_failed.contains(name)) _load(name);
     }
   }
 
@@ -73,12 +73,12 @@ class EmojiPackStore extends ChangeNotifier {
         if (tone != EmojiSkinTone.none && group.hasSkinTones) '${group.id.name}.${tone.name}',
       ];
 
-  Future<void> _load(String name, EmojiGroupId group) async {
+  Future<void> _load(String name) async {
     if (!_loading.add(name)) return;
     try {
       final bytes = await bundle.load('assets/emoji/packs/$name.pack');
       if (_disposed) return;
-      _packs[name] = EmojiPack.parse(group, bytes);
+      _packs[name] = EmojiPack.parse(name, bytes);
     } catch (_) {
       // A category with no toned emoji has no toned pack, which is expected.
       // Anything else missing leaves those tiles blank rather than taking the
@@ -105,15 +105,17 @@ class EmojiPack {
   static const _magic = 'EMPK';
   static const _supportedVersion = 1;
 
-  final EmojiGroupId group;
+  /// The pack's file name, for diagnostics only — a category id
+  /// (`peopleBody`, `flags.dark`) or the app's own `ui` pack.
+  final String name;
   final ByteData _bytes;
   final Map<String, (int offset, int length)> _entries;
 
-  const EmojiPack._(this.group, this._bytes, this._entries);
+  const EmojiPack._(this.name, this._bytes, this._entries);
 
   /// Reads the directory at the head of [bytes]. Throws [FormatException] if the
   /// file isn't a pack this build understands.
-  factory EmojiPack.parse(EmojiGroupId group, ByteData bytes) {
+  factory EmojiPack.parse(String name, ByteData bytes) {
     if (bytes.lengthInBytes < 9) throw const FormatException('Emoji pack is truncated');
     final magic = ascii.decode(bytes.buffer.asUint8List(bytes.offsetInBytes, 4));
     if (magic != _magic) throw FormatException('Not an emoji pack: $magic');
@@ -133,7 +135,7 @@ class EmojiPack {
       cursor += 8;
       entries[key] = (offset, length);
     }
-    return EmojiPack._(group, bytes, entries);
+    return EmojiPack._(name, bytes, entries);
   }
 
   /// Absolute byte offset of every entry, for the alignment test — the decoder
@@ -193,6 +195,6 @@ class _PackedBytesLoader extends BytesLoader {
   int get hashCode => Object.hash(_pack, _assetKey);
 
   @override
-  String toString() => 'EmojiPack(${_pack.group.name})/$_assetKey';
+  String toString() => 'EmojiPack(${_pack.name})/$_assetKey';
 
 }

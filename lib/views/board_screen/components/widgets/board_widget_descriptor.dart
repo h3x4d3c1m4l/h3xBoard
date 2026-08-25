@@ -30,6 +30,11 @@ abstract class BoardWidgetDescriptor {
   const BoardWidgetDescriptor();
 
   IconData get icon;
+  // Shorthand for the widget in the add-widget menu, where an emoji reads faster
+  // than a line icon. MUST be an emoji the bundled Noto artwork covers — it is
+  // drawn with [EmojiImage], never as text, because Impeller rasterizes neither
+  // CBDT nor COLRv1, so a plain Text() would render nothing on iOS/Android/macOS.
+  String get emoji;
   String label(AppLocalizations localizations);
   Size naturalSize(BoardWidgetConfig config);
   BoardWidgetConfig get defaultConfig;

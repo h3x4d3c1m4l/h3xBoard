@@ -5,6 +5,8 @@ import 'package:get_it/get_it.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:h3xboard/routing/app_router.gr.dart';
 import 'package:h3xboard/services/app_settings_controller.dart';
+import 'package:h3xboard/services/audio/audio_output_controller.dart';
+import 'package:h3xboard/services/emoji/ui_emoji_pack.dart';
 import 'package:h3xboard/services/h3x_board_api_client.dart';
 import 'package:h3xboard/services/h3x_board_auth_service.dart';
 import 'package:h3xboard/services/pending_navigation_service.dart';
@@ -72,11 +74,29 @@ class InitializationScreenController extends ScreenControllerBase<Initialization
 
     await pipeline.execute(
       (ctx) async {
-        _updateProgress(runContext, nowInitializingText: 'Loading fonts ...', retries: ctx.attemptNumber);
-        await GoogleFonts.pendingFonts([GoogleFonts.ubuntu(), GoogleFonts.patrickHand()]);
+        _updateProgress(runContext, nowInitializingText: 'Loading assets ...', retries: ctx.attemptNumber);
+        // Local reads that ride along with the fonts rather than earning a step
+        // of its own. Both MUST swallow their own failures: this runs inside the
+        // retry pipeline, so anything that throws here retries forever.
+        // Warming the emoji pack is what keeps the add-widget menu to one
+        // request instead of one per row.
+        await Future.wait([
+          GoogleFonts.pendingFonts([GoogleFonts.ubuntu(), GoogleFonts.patrickHand()]),
+          GetIt.I<UiEmojiPack>().load(),
+          GetIt.I<AudioOutputController>().load(),
+        ]);
       },
       context: runContext,
     );
+
+    // Feeds the warning banner and the registration capability, and this screen's
+    // own Server chip. Sequenced here rather than fired at launch so it has
+    // landed before Login renders. Not retried: it reports failure by clearing
+    // [serverInfo] rather than throwing, so a retry loop would never terminate.
+    _updateProgress(runContext, nowInitializingText: 'Checking server ...', retries: 0);
+    await _server.refreshServerInfo();
+
+    if (isStale()) return;
 
     final session = GetIt.I<SessionController>();
     final authService = GetIt.I<H3xBoardAuthService>();

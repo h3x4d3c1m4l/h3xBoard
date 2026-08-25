@@ -200,6 +200,9 @@ class GeodreieckWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.triangleRight;
 
   @override
+  String get emoji => '📐';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_geodreieck;
 
   @override

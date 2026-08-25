@@ -498,6 +498,9 @@ class AudioPlayerWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.circlePlay;
 
   @override
+  String get emoji => '🎵';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_audioPlayer;
 
   @override

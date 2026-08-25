@@ -150,6 +150,12 @@ lib/views/board_screen/components/widgets/
 
 No other files need changes. Settings menu items (Fluent UI flyout) are provided by the descriptor's `settingsMenuItems()`.
 
+**The descriptor's `emoji` needs `just gen-emoji` after step 3.** It is what the add-widget menu draws, and it is served from a preloaded pack, not from the emoji's individual asset. The generator *scans the descriptor files* for `String get emoji` and stamps the resulting key list into `index.json`, so a new widget invalidates the output and a plain `just gen-emoji` rebuilds `ui.pack` — no `--force`, no list to keep in sync by hand. Forget to run it and `test/emoji_pack_test.dart` fails by name; the menu still draws in the meantime, falling back to the individual asset. Pick an emoji the Noto set covers — the generator hard-fails and names it if not.
+
+**Two ways in, both from the toolbar's last group** ([tool_toolbar.dart](lib/views/board_screen/components/toolbars/tool_toolbar.dart)): `AddWidgetButton` opens the emoji menu (every catalog widget, alphabetical by localized label, one tap to place), and its last row opens `WidgetCatalogDialog` — the dialog is what offers live previews and search, which a menu cannot. A descriptor opts out of both with `showInCatalog => false`.
+
+**`BoardSettingsButton` is deliberately *not* in the toolbar** — it restyles the board, not what a tool does. It hangs off the bar's trailing end via `BalancedTrailing`, so it rides the bar's hide animation while staying out of its groups. That widget exists because `BoardScaffold` centres whatever it is handed: a plain `Row(children: [bar, button])` would slide the bar off centre by half the button's width, silently and with a perfectly valid layout. An invisible copy of the button on the leading side restores the balance whatever it measures — the same counterweight trick as `BalancedSide` in the top bar, in a `Flex` rather than a `Stack`. `test/balanced_trailing_test.dart` is what holds the centring; the button is built twice, so it must not carry a `GlobalKey`.
+
 **Layers**: Widget list order = render order (last = topmost). Layer operations (`moveToTop`, `moveUp`, etc.) reorder the list.
 
 ### Emoji
@@ -161,15 +167,19 @@ tool/generate_emoji_assets.dart     # `just gen-emoji` — the whole pipeline
 assets/emoji/vec/<key>.vec          # 3564 compiled artworks (~16 MB)
 assets/emoji/packs/<group>.pack     # the same base artwork, one file per category
 assets/emoji/packs/<group>.<tone>.pack   # that category's skin-tone variants
-assets/emoji/index.json             # groups, Unicode order, skin-tone variants
+assets/emoji/packs/ui.pack          # the app's own emoji (descriptor `emoji`), ~30 KB
+assets/emoji/index.json             # groups, Unicode order, skin-tone variants, ui stamp
 assets/emoji/labels_<locale>.json   # CLDR names + search keywords per locale
 lib/services/emoji/emoji_repository.dart   # asset keys, lazy catalog, search
 lib/services/emoji/emoji_pack_store.dart   # pack parsing + BytesLoader
+lib/services/emoji/ui_emoji_pack.dart      # ui.pack, preloaded at startup
 ```
 
 Every asset directory is listed separately in pubspec.yaml — **Flutter does not recurse into subdirectories**, so a new folder under `assets/emoji/` is silently absent until it is declared.
 
-**Two ways in to the same artwork, because the board and the picker want opposite things.** The board draws a handful of emoji, so it loads each `.vec` individually — on web that is one small fetch per emoji actually on the page, which is what keeps the anonymous viewer cheap. The picker shows hundreds at once, where that same design cost ~113 requests to open and ~1900 to browse the catalog. It reads one pack per category instead: 1 request to open, 9 to browse everything.
+**Three ways in to the same artwork, because the board, the picker and the app's own chrome want different things.** The board draws a handful of emoji, so it loads each `.vec` individually — on web that is one small fetch per emoji actually on the page, which is what keeps the anonymous viewer cheap. The picker shows hundreds at once, where that same design cost ~113 requests to open and ~1900 to browse the catalog. It reads one pack per category instead: 1 request to open, 9 to browse everything.
+
+The third is `UiEmojiPack`, for emoji the app itself draws — today the descriptor `emoji` in the add-widget menu. It differs from the picker's packs on both counts: it is tiny (~30 KB for ~19 entries, against megabytes per category) and it is needed the moment a menu opens rather than as something scrolls into view. So it is **loaded once at startup** — in `InitializationScreenController._bootstrap`, riding along with the fonts step — and then answers synchronously. `loaderFor` returning null is a normal, handled state (pack not arrived yet, or an emoji added since the last `just gen-emoji`); `EmojiImage` falls back to the emoji's own asset, so the menu always draws.
 
 Three things that are easy to get wrong here:
 

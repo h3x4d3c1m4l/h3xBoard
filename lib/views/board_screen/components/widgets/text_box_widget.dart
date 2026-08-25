@@ -522,6 +522,9 @@ class TextBoxWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.type;
 
   @override
+  String get emoji => '🔤';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_textBox;
 
   @override

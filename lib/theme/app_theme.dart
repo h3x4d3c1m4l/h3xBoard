@@ -22,6 +22,24 @@ const Color kAccentColor = Color(0xFF3D61D8);
 /// surface behind them — most of all a dialog's gray actions bar.
 const Color _kNeutralButtonBorderColor = Color(0xFFC4C9D1);
 
+/// A tool button's label: `typography.caption`'s metrics (12/16) and **no color**.
+///
+/// The color is the point. Fluent resolves a button's text color as
+/// `textStyle?.color ?? foregroundColor` (`buttons/base.dart`), so leaving it out
+/// is what lets the label track the button's own foreground — dark when idle,
+/// dimmed while pressed, white on the accent fill when the tool is active.
+/// Handing the widget `typography.caption` directly instead pins the label to
+/// caption's own near-black, which reads as black text on a blue button next to
+/// a white icon.
+///
+/// Stated here rather than derived from `typography.caption` because
+/// [TextStyle.copyWith] cannot clear a color once set.
+const TextStyle _kToolbarItemTextStyle = TextStyle(
+  fontSize: 12,
+  height: 16 / 12,
+  fontWeight: FontWeight.w300,
+);
+
 /// Caches the fallback tokens per [FluentThemeData], so a subtree themed without
 /// [AppTheme] doesn't rebuild them on every widget build.
 final Expando<AppTheme> _fallbackCache = Expando<AppTheme>('AppTheme fallback');
@@ -258,8 +276,13 @@ class AppButtonStyles extends ThemeExtension<AppButtonStyles> with _$AppButtonSt
       // it was given. Everything else about the role lives here.
       toolbarItem: const ButtonStyle(
         backgroundColor: WidgetStatePropertyAll(Colors.transparent),
+        padding: WidgetStatePropertyAll(kToolbarItemPadding),
+        textStyle: WidgetStatePropertyAll(_kToolbarItemTextStyle),
       ),
-      toolbarItemChecked: checkedColors,
+      toolbarItemChecked: checkedColors.copyWith(
+        padding: const WidgetStatePropertyAll(kToolbarItemPadding),
+        textStyle: const WidgetStatePropertyAll(_kToolbarItemTextStyle),
+      ),
       tab: ButtonStyle(
         padding: const WidgetStatePropertyAll(
           EdgeInsetsDirectional.symmetric(horizontal: kTabHorizontalPadding, vertical: kTabVerticalPadding),

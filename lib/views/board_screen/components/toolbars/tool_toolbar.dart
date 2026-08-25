@@ -11,6 +11,7 @@ import 'package:h3xboard/views/board_screen/components/buttons/pen_tool_button.d
 import 'package:h3xboard/views/board_screen/components/buttons/pointer_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/text_tool_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/tool_button.dart';
+import 'package:h3xboard/views/board_screen/components/toolbars/bar_scroll_area.dart';
 import 'package:h3xboard/views/board_screen/components/toolbars/toggle_button_toolbar.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -40,37 +41,42 @@ class ToolToolbar extends StatelessWidget {
         decoration: context.appTheme.surfaces.toolbar,
         child: Padding(
           padding: context.appTheme.surfaces.toolbarPadding,
-          child: Flex(
+          child: BarScrollArea(
             direction: direction,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ToggleButtonToolbar(
-                direction: direction,
-                buttons: [
-                  PointerToolButton(viewModel: viewModel, controller: controller),
-                  PenToolButton(viewModel: viewModel, controller: controller),
-                  MarkupToolButton(viewModel: viewModel, controller: controller),
-                  TextToolButton(controller: controller),
-                  EraserToolButton(viewModel: viewModel, controller: controller),
-                ],
-              ),
-              _ToolbarDivider(direction: direction),
-              ToggleButtonToolbar(
-                direction: direction,
-                buttons: [
-                  ToolButton(icon: LucideIcons.undo, title: context.localizations.toolToolbar_undo, onPressed: controller.historyManager.canUndo ? controller.historyManager.undo : null),
-                  ToolButton(icon: LucideIcons.redo, title: context.localizations.toolToolbar_redo, onPressed: controller.historyManager.canRedo ? controller.historyManager.redo : null),
-                  ToolButton(icon: LucideIcons.trash2, title: context.localizations.toolToolbar_clear, onPressed: controller.onClearButtonPressed),
-                ],
-              ),
-              _ToolbarDivider(direction: direction),
-              ToggleButtonToolbar(
-                direction: direction,
-                buttons: [
-                  AddWidgetButton(controller: controller),
-                ],
-              ),
-            ],
+            // The bar's own surface, so the ends dissolve into it.
+            fadeColor: context.appTheme.surfaces.toolbar.color,
+            child: Flex(
+              direction: direction,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ToggleButtonToolbar(
+                  direction: direction,
+                  buttons: [
+                    PointerToolButton(viewModel: viewModel, controller: controller),
+                    PenToolButton(viewModel: viewModel, controller: controller),
+                    MarkupToolButton(viewModel: viewModel, controller: controller),
+                    TextToolButton(controller: controller),
+                    EraserToolButton(viewModel: viewModel, controller: controller),
+                  ],
+                ),
+                _ToolbarDivider(direction: direction),
+                ToggleButtonToolbar(
+                  direction: direction,
+                  buttons: [
+                    ToolButton(icon: LucideIcons.undo, title: context.localizations.toolToolbar_undo, onPressed: controller.historyManager.canUndo ? controller.historyManager.undo : null),
+                    ToolButton(icon: LucideIcons.redo, title: context.localizations.toolToolbar_redo, onPressed: controller.historyManager.canRedo ? controller.historyManager.redo : null),
+                    ToolButton(icon: LucideIcons.trash2, title: context.localizations.toolToolbar_clear, onPressed: controller.onClearButtonPressed),
+                  ],
+                ),
+                _ToolbarDivider(direction: direction),
+                ToggleButtonToolbar(
+                  direction: direction,
+                  buttons: [
+                    AddWidgetButton(controller: controller),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -95,7 +101,9 @@ class _ToolbarDivider extends StatelessWidget {
           : const EdgeInsets.symmetric(vertical: 8),
       child: Divider(
         direction: isHorizontal ? Axis.vertical : Axis.horizontal,
-        size: 48,
+        // MUST stay below the tool buttons' own height, or it becomes the bar's
+        // height floor instead of a separator.
+        size: 36,
         style: const DividerThemeData(
           verticalMargin: EdgeInsets.zero,
           horizontalMargin: EdgeInsets.zero,

@@ -97,6 +97,9 @@ class TrafficLightWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.trafficCone;
 
   @override
+  String get emoji => '🚦';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_trafficLight;
 
   @override

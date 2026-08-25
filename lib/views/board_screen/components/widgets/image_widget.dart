@@ -99,6 +99,9 @@ class ImageWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.image;
 
   @override
+  String get emoji => '🖼️';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_image;
 
   @override

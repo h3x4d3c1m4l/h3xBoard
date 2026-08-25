@@ -355,6 +355,9 @@ class TimerWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.hourglass;
 
   @override
+  String get emoji => '⏲️';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_timer;
 
   @override

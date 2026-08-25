@@ -61,6 +61,9 @@ class UnsupportedWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.triangleAlert;
 
   @override
+  String get emoji => '❓';
+
+  @override
   String label(AppLocalizations localizations) => localizations.unsupportedWidget_title;
 
   @override

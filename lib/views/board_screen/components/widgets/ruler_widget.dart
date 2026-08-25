@@ -134,6 +134,9 @@ class RulerWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.ruler;
 
   @override
+  String get emoji => '📏';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_ruler;
 
   @override

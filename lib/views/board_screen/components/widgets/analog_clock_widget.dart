@@ -392,6 +392,9 @@ class AnalogClockWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.clock3;
 
   @override
+  String get emoji => '🕰️';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_analogClock;
 
   @override

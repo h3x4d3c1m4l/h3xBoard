@@ -197,6 +197,9 @@ class StopwatchWidgetDescriptor extends BoardWidgetDescriptor {
   IconData get icon => LucideIcons.timer;
 
   @override
+  String get emoji => '⏱️';
+
+  @override
   String label(AppLocalizations localizations) => localizations.addWidgetMenu_stopwatch;
 
   @override

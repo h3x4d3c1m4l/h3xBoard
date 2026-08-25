@@ -56,9 +56,17 @@ abstract class AudioOutputControllerBase with Store {
   AudioOutput _preferred = AudioOutput.thisDevice;
 
   /// Restores the stored preference. Safe to call more than once.
+  ///
+  /// Never throws: the bootstrap awaits this inside its retry pipeline, which
+  /// would otherwise spin forever on an unreadable store. Falling back to the
+  /// default output costs the user one setting, not a boot.
   Future<void> load() async {
-    final stored = await _store.getOutput();
-    if (stored != null) _setPreferred(stored);
+    try {
+      final stored = await _store.getOutput();
+      if (stored != null) _setPreferred(stored);
+    } catch (_) {
+      // Keep [AudioOutput.thisDevice].
+    }
   }
 
   @action

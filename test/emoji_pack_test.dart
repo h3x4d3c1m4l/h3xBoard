@@ -3,6 +3,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:h3xboard/services/emoji/emoji_pack_store.dart';
 import 'package:h3xboard/services/emoji/emoji_repository.dart';
+import 'package:h3xboard/services/emoji/ui_emoji_pack.dart';
+import 'package:h3xboard/views/board_screen/components/widgets/board_widget_descriptor.dart';
 import 'package:h3xboard/views/board_screen/components/widgets/emoji_image.dart';
 
 /// Guards the category packs: a binary format written by `just gen-emoji` and
@@ -13,13 +15,29 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<EmojiPack> packFor(EmojiGroupId group) async =>
-      EmojiPack.parse(group, await rootBundle.load('assets/emoji/packs/${group.name}.pack'));
+      EmojiPack.parse(group.name, await rootBundle.load('assets/emoji/packs/${group.name}.pack'));
 
   test('every category ships a parseable pack', () async {
     for (final group in EmojiGroupId.values) {
       final pack = await packFor(group);
-      expect(pack.group, group);
+      expect(pack.name, group.name);
     }
+  });
+
+  // The generator reads these emoji out of the descriptor files and stamps them
+  // into index.json, so `just gen-emoji` rebuilds the pack whenever a widget is
+  // added. This is what catches the case that stamp cannot: a build whose assets
+  // were never regenerated at all. A failure here means run `just gen-emoji`.
+  test('the UI pack covers every board widget descriptor emoji', () async {
+    final pack = UiEmojiPack();
+    await pack.load();
+    expect(pack.isLoaded, isTrue, reason: 'assets/emoji/packs/ui.pack is missing — run `just gen-emoji`');
+
+    final missing = [
+      for (final descriptor in widgetRegistry.values)
+        if (pack.loaderFor(descriptor.emoji) == null) descriptor.emoji,
+    ];
+    expect(missing, isEmpty, reason: 'ui.pack is stale — run `just gen-emoji` to add ${missing.join(' ')}');
   });
 
   test('a pack holds the base artwork for every emoji in its category', () async {
@@ -70,7 +88,7 @@ void main() {
     );
 
     final tonePack = EmojiPack.parse(
-      group.id,
+      '${group.id.name}.dark',
       await rootBundle.load('assets/emoji/packs/${group.id.name}.dark.pack'),
     );
     expect(tonePack.loaderFor(emojiAssetKey(toned.withTone(EmojiSkinTone.dark))), isNotNull);
@@ -121,7 +139,7 @@ void main() {
     expect(packs, isNotEmpty);
 
     for (final asset in packs) {
-      final pack = EmojiPack.parse(EmojiGroupId.flags, await rootBundle.load(asset));
+      final pack = EmojiPack.parse(asset, await rootBundle.load(asset));
       final unaligned = pack.debugOffsets.entries.where((e) => e.value % 8 != 0).toList();
       expect(unaligned, isEmpty, reason: '$asset has ${unaligned.length} unaligned entries');
     }
@@ -145,12 +163,12 @@ void main() {
 
   test('a foreign or truncated file is rejected rather than misread', () async {
     expect(
-      () => EmojiPack.parse(EmojiGroupId.flags, ByteData(4)),
+      () => EmojiPack.parse('flags', ByteData(4)),
       throwsA(isA<FormatException>()),
     );
     final notAPack = Uint8List.fromList('NOPE'.codeUnits + List.filled(16, 0));
     expect(
-      () => EmojiPack.parse(EmojiGroupId.flags, ByteData.sublistView(notAPack)),
+      () => EmojiPack.parse('flags', ByteData.sublistView(notAPack)),
       throwsA(isA<FormatException>()),
     );
   });

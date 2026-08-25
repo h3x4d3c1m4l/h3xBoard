@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/custom_color_button.dart';
 import 'package:h3xboard/views/board_screen/components/buttons/drawing_color_button.dart';
+import 'package:h3xboard/views/board_screen/components/toolbars/bar_scroll_area.dart';
 
 class DrawingToolbar extends StatelessWidget {
 
@@ -38,11 +39,14 @@ class DrawingToolbar extends StatelessWidget {
       ),
     ];
 
-    return Flex(
+    return BarScrollArea(
       direction: direction,
-      mainAxisSize: MainAxisSize.min,
-      spacing: 16,
-      children: children,
+      child: Flex(
+        direction: direction,
+        mainAxisSize: MainAxisSize.min,
+        spacing: 16,
+        children: children,
+      ),
     );
   }
 

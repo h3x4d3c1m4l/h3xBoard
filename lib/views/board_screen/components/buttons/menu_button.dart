@@ -55,14 +55,6 @@ class _MenuButtonState extends State<MenuButton> {
               },
             ),
           MenuFlyoutItem(
-            leading: const Icon(LucideIcons.settings),
-            text: Text(context.localizations.boardSettingsButton_settings),
-            onPressed: () {
-              Navigator.of(context).pop();
-              unawaited(widget.controller.onShowBoardSettings());
-            },
-          ),
-          MenuFlyoutItem(
             leading: const Icon(LucideIcons.folderOpen),
             text: Text(context.localizations.fileManager_title),
             onPressed: () {
