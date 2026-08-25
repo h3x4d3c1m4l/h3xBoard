@@ -73,11 +73,17 @@ void main() {
     // The control: outside the field and outside the action row, a touch still
     // drops focus — so the test above is proving the tap region, not a missing
     // [KeyboardDismisser].
+    //
+    // On the way *up*, though: the dismisser waits for the release to tell a tap
+    // from the start of a scroll, so a finger merely resting here changes
+    // nothing yet.
     final gesture = await pressDown(tester, tester.getCenter(find.text('Edit to-do list')));
-    expect(fieldFocus.hasFocus, isFalse);
+    expect(fieldFocus.hasFocus, isTrue, reason: 'still pressed — nothing has been decided');
 
     await gesture.up();
     await tester.pumpAndSettle();
+
+    expect(fieldFocus.hasFocus, isFalse);
   });
 
 }

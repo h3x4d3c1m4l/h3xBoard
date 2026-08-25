@@ -55,6 +55,50 @@ void main() {
     expect(focusNode.hasFocus, isFalse);
   });
 
+  testWidgets('a drag that starts outside the field keeps the keyboard', (tester) async {
+    // Scrolling a page the keyboard has shrunk: the finger lands on whatever the
+    // form happens to have under it, and dragging from there must scroll rather
+    // than take the keyboard away.
+    final focusNode = FocusNode();
+    addTearDown(focusNode.dispose);
+
+    await tester.pumpWidget(_host(KeyboardDismisser(child: _fieldAndNeighbour(focusNode))));
+    focusNode.requestFocus();
+    await tester.pump();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(_outside)),
+      kind: PointerDeviceKind.touch,
+    );
+    await gesture.moveBy(const Offset(0, -kTouchSlop * 3));
+    await tester.pump();
+    expect(focusNode.hasFocus, isTrue, reason: 'nothing may happen while the finger is still down');
+
+    await gesture.up();
+    await tester.pump();
+
+    expect(focusNode.hasFocus, isTrue);
+  });
+
+  testWidgets('a touch that wanders less than the slop is still a tap', (tester) async {
+    final focusNode = FocusNode();
+    addTearDown(focusNode.dispose);
+
+    await tester.pumpWidget(_host(KeyboardDismisser(child: _fieldAndNeighbour(focusNode))));
+    focusNode.requestFocus();
+    await tester.pump();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(_outside)),
+      kind: PointerDeviceKind.touch,
+    );
+    await gesture.moveBy(const Offset(0, kTouchSlop / 2));
+    await gesture.up();
+    await tester.pump();
+
+    expect(focusNode.hasFocus, isFalse);
+  });
+
   testWidgets('without the dismisser the keyboard would stay up', (tester) async {
     // The negative case: this is Flutter's stock behaviour on a phone, and it is
     // what makes the test above a test of *our* widget rather than of the default.

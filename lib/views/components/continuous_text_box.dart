@@ -15,6 +15,7 @@ class ContinuousTextBox extends StatefulWidget {
   final TextEditingController? controller;
   final FocusNode? focusNode;
   final String? placeholder;
+  final String? errorText;
   final Widget? prefix;
   final bool enabled;
   final bool autofocus;
@@ -41,6 +42,7 @@ class ContinuousTextBox extends StatefulWidget {
     this.controller,
     this.focusNode,
     this.placeholder,
+    this.errorText,
     this.prefix,
     this.enabled = true,
     this.autofocus = false,
@@ -112,16 +114,24 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
     final theme = FluentTheme.of(context);
     final res = theme.resources;
     final focused = _focusNode.hasFocus;
+    final invalid = widget.errorText != null;
 
     final shape = ContinuousRectangleBorder(
       borderRadius: BorderRadius.circular(kControlCornerRadius),
       side: BorderSide(
-        color: focused ? theme.accentColor : res.controlStrokeColorDefault,
-        width: focused ? 2 : 1,
+        // Critical outranks focus: the field the user is fixing is usually the
+        // focused one, and dropping the red there would hide the very state
+        // they are being asked to correct.
+        color: invalid
+            ? res.systemFillColorCritical
+            : focused
+                ? theme.accentColor
+                : res.controlStrokeColorDefault,
+        width: focused || invalid ? 2 : 1,
       ),
     );
 
-    return DecoratedBox(
+    final field = DecoratedBox(
       decoration: ShapeDecoration(
         color: widget.enabled ? res.controlFillColorDefault : res.controlFillColorDisabled,
         shape: shape,
@@ -162,6 +172,21 @@ class _ContinuousTextBoxState extends State<ContinuousTextBox> {
           ),
         ),
       ),
+    );
+
+    if (!invalid) return field;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        field,
+        const SizedBox(height: 4),
+        Text(
+          widget.errorText!,
+          style: theme.typography.caption?.copyWith(color: res.systemFillColorCritical),
+        ),
+      ],
     );
   }
 

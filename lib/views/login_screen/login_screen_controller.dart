@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/extensions/build_context_extension.dart';
 import 'package:h3xboard/models/api/api_exception.dart';
@@ -17,6 +20,36 @@ import 'package:h3xboard/views/components/dialogs/watch_code_dialog.dart';
 import 'package:h3xboard/views/login_screen/login_screen_view_model.dart';
 
 class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
+
+  /// The names the four fields are registered under in the form, and the keys
+  /// their values come back under in [FormBuilderState.value].
+  static const emailField = 'email';
+  static const passwordField = 'password';
+  static const firstNameField = 'firstName';
+  static const lastNameField = 'lastName';
+
+  static final FormFieldValidator<String> _emailRule = FormBuilderValidators.compose<String>([
+    FormBuilderValidators.required<String>(),
+    FormBuilderValidators.email(),
+  ]);
+
+  /// What the email field has to be before the form will call the server.
+  ///
+  /// `required` before `email` so a blank field says it is blank rather than
+  /// that it is not an address. Both messages come from
+  /// form_builder_validators' own translations, which is why
+  /// `FormBuilderLocalizations.delegate` is registered in `board_app.dart`.
+  ///
+  /// Trimmed before checking, to agree with the field's `valueTransformer`: a
+  /// tablet keyboard hands out a trailing space for free, and an address
+  /// refused over one is a baffling thing to be told when the form would have
+  /// sent the trimmed value anyway.
+  static String? emailValidator(String? value) => _emailRule(value?.trim());
+
+  /// The password is only checked for being there. Every rule about *what* a
+  /// password may be belongs to the server, which is the only side that knows
+  /// them and the only side that can enforce them.
+  static final FormFieldValidator<String> passwordValidator = FormBuilderValidators.required<String>();
 
   final _auth = GetIt.I<H3xBoardAuthService>();
   final _wsClient = GetIt.I<H3xBoardApiClient>();
@@ -62,7 +95,12 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
     viewModel.setRegistrationAllowed(_server.serverInfo.value?.registrationAllowed ?? true);
   }
 
-  void toggleMode() => viewModel.toggleMode();
+  void toggleMode() {
+    viewModel.toggleMode();
+    // Back to a blank form: the two fields that survive the switch keep their
+    // text (and their errors) otherwise, since they are the same fields.
+    viewModel.formKey.currentState?.reset();
+  }
 
   /// Asks for a share code and opens the anonymous board viewer on it (pushed,
   /// so leaving the viewer returns here).
@@ -76,7 +114,39 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
     unawaited(context.router.push(ViewerRoute(code: code)));
   }
 
+  /// Puts the caret in the first field the form refused, in the order the
+  /// fields are built.
+  void _focusFirstInvalidField(FormBuilderState form) {
+    for (final field in form.fields.values) {
+      if (field.hasError) {
+        field.focus();
+        return;
+      }
+    }
+  }
+
   Future<void> submit() async {
+    final form = viewModel.formKey.currentState;
+    if (form == null) return;
+
+    // A refused submit is what arms live validation: from here on the view hands
+    // the form an AutovalidateMode, so a field re-checks itself as it is fixed.
+    viewModel.enableValidateOnEdit();
+    // `focusOnInvalid: false` and the jump done by hand, because the flag is
+    // sticky: FormState re-validates every field on every build once the form
+    // has been interacted with, and each of those validations would move focus
+    // into the first invalid field whenever focus sits outside the form — from
+    // a dialog opened over the screen, for instance.
+    if (!form.saveAndValidate(focusOnInvalid: false)) {
+      _focusFirstInvalidField(form);
+      return;
+    }
+
+    final values = form.value;
+    // Non-null past saveAndValidate: both rules are `required`.
+    final email = values[emailField] as String? ?? '';
+    final password = values[passwordField] as String? ?? '';
+
     viewModel
       ..setIsLoading(true)
       ..setErrorMessage(null)
@@ -84,14 +154,14 @@ class LoginScreenController extends ScreenControllerBase<LoginScreenViewModel> {
     try {
       final AuthResponse result = viewModel.isRegisterMode
           ? await _auth.register(
-              email: viewModel.emailController.text,
-              password: viewModel.passwordController.text,
-              firstName: viewModel.firstNameController.text,
-              lastName: viewModel.lastNameController.text,
+              email: email,
+              password: password,
+              firstName: values[firstNameField] as String? ?? '',
+              lastName: values[lastNameField] as String? ?? '',
             )
           : await _auth.login(
-              email: viewModel.emailController.text,
-              password: viewModel.passwordController.text,
+              email: email,
+              password: password,
             );
       await _wsClient.connect();
       // Credentials were accepted: let the platform/browser offer to save them.

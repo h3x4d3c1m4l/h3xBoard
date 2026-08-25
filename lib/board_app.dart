@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:get_it/get_it.dart';
 import 'package:h3xboard/l10n/generated/app_localizations.dart';
 import 'package:h3xboard/routing/app_router.dart';
@@ -48,6 +49,7 @@ class _BoardAppState extends State<BoardApp> {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
           FluentLocalizations.delegate,
+          FormBuilderLocalizations.delegate,
         ],
         supportedLocales: [Locale('en'), Locale('nl')],
         theme: theme,

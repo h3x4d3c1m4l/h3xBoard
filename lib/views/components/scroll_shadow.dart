@@ -40,9 +40,8 @@ class _ScrollShadowState extends State<ScrollShadow> {
   double _top = 0;
   double _bottom = 0;
 
-  bool _onScroll(ScrollNotification notification) {
-    final m = notification.metrics;
-    if (m.axis != Axis.vertical) return false;
+  void _apply(ScrollMetrics m) {
+    if (m.axis != Axis.vertical) return;
     final top = ((m.pixels - m.minScrollExtent) / widget.size).clamp(0.0, 1.0);
     final bottom = ((m.maxScrollExtent - m.pixels) / widget.size).clamp(0.0, 1.0);
     if (top != _top || bottom != _bottom) {
@@ -51,20 +50,34 @@ class _ScrollShadowState extends State<ScrollShadow> {
         _bottom = bottom;
       });
     }
-    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     final color = widget.color ?? const Color(0x1A000000);
     return NotificationListener<ScrollNotification>(
-      onNotification: _onScroll,
-      child: Stack(
-        children: [
-          widget.child,
-          Positioned(top: 0, left: 0, right: 0, child: _edge(color, top: true, opacity: _top)),
-          Positioned(bottom: 0, left: 0, right: 0, child: _edge(color, top: false, opacity: _bottom)),
-        ],
+      onNotification: (notification) {
+        _apply(notification.metrics);
+        return false;
+      },
+      // Scrolling is not the only thing that changes what is scrollable: content
+      // that grows or shrinks (a form sprouting error lines) and a viewport that
+      // does (the keyboard) both change the metrics without a single scroll
+      // event. Without this, a shadow lit by an earlier drag stays lit over
+      // content that now fits — a band with nothing behind it. Metrics arrive on
+      // a microtask, so setState is safe here.
+      child: NotificationListener<ScrollMetricsNotification>(
+        onNotification: (notification) {
+          _apply(notification.metrics);
+          return false;
+        },
+        child: Stack(
+          children: [
+            widget.child,
+            Positioned(top: 0, left: 0, right: 0, child: _edge(color, top: true, opacity: _top)),
+            Positioned(bottom: 0, left: 0, right: 0, child: _edge(color, top: false, opacity: _bottom)),
+          ],
+        ),
       ),
     );
   }
